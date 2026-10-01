@@ -2,10 +2,10 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Радар Осадков России</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Радар Осадков</title>
 
-    <!-- Leaflet CSS & JS -->
+    <!-- Leaflet Leaflet CSS/JS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
@@ -14,609 +14,591 @@
 
     <style>
         :root {
-            --bg-dark: #0f172a;
-            --panel-bg: #1e293b;
-            --panel-border: #334155;
-            --text-color: #f1f5f9;
-            --text-muted: #94a3b8;
-            --accent: #2563eb;
-            --accent-hover: #1d4ed8;
+            --bg-color: #121214;
+            --card-bg: #1c1c1e;
+            --card-border: #2c2c2e;
+            --accent: #007aff;
+            --text: #ffffff;
+            --text-secondary: #8e8e93;
         }
 
         * {
             box-sizing: border-box;
             margin: 0;
             padding: 0;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, sans-serif;
+            -webkit-tap-highlight-color: transparent;
         }
 
         body, html {
             width: 100%;
             height: 100%;
             overflow: hidden;
-            background-color: var(--bg-dark);
-            color: var(--text-color);
+            background: var(--bg-color);
+            color: var(--text);
         }
 
-        #app {
-            display: flex;
-            width: 100vw;
-            height: 100vh;
-            position: relative;
-        }
-
-        /* ----- MAP ----- */
         #map {
             width: 100%;
             height: 100%;
+            position: absolute;
+            top: 0;
+            left: 0;
             z-index: 1;
-            background: #020617;
+            background: #000;
         }
 
-        /* ----- HEADER ----- */
-        .header {
+        /* Позиционирование элементов управления Leaflet */
+        .leaflet-control-zoom {
+            border: none !important;
+            margin-right: 12px !important;
+            margin-top: 70px !important;
+        }
+        .leaflet-control-zoom a {
+            background-color: var(--card-bg) !important;
+            color: var(--text) !important;
+            border: 1px solid var(--card-border) !important;
+            border-radius: 10px !important;
+            margin-bottom: 6px;
+            width: 38px !important;
+            height: 38px !important;
+            line-height: 38px !important;
+        }
+
+        /* Верхний бар поиска и статуса */
+        .top-bar {
             position: absolute;
             top: 12px;
             left: 12px;
             right: 12px;
             z-index: 1000;
             display: flex;
-            justify-content: space-between;
-            align-items: center;
+            gap: 8px;
             pointer-events: none;
         }
 
-        .brand {
+        .search-box {
+            flex: 1;
             pointer-events: auto;
-            background: var(--panel-bg);
-            border: 1px solid var(--panel-border);
-            border-radius: 6px;
-            padding: 8px 14px;
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 12px;
             display: flex;
             align-items: center;
-            gap: 10px;
-            font-size: 14px;
-            font-weight: 600;
-        }
-
-        .brand i {
-            color: #38bdf8;
-        }
-
-        .search-form {
-            pointer-events: auto;
-            display: flex;
-            background: var(--panel-bg);
-            border: 1px solid var(--panel-border);
-            border-radius: 6px;
-            overflow: hidden;
-            width: 280px;
-        }
-
-        .search-form input {
-            background: transparent;
-            border: none;
-            padding: 8px 12px;
-            color: var(--text-color);
-            font-size: 13px;
-            outline: none;
-            width: 100%;
-        }
-
-        .search-form button {
-            background: transparent;
-            border: none;
-            color: var(--text-muted);
             padding: 0 12px;
-            cursor: pointer;
+            height: 44px;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.3);
         }
 
-        .search-form button:hover {
-            color: var(--text-color);
-        }
-
-        .header-actions {
-            pointer-events: auto;
-            display: flex;
-            gap: 6px;
-        }
-
-        .btn-ui {
-            background: var(--panel-bg);
-            border: 1px solid var(--panel-border);
-            color: var(--text-color);
-            padding: 8px 12px;
-            border-radius: 6px;
-            font-size: 13px;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            gap: 6px;
-        }
-
-        .btn-ui:hover {
-            background: #283548;
-        }
-
-        /* ----- SIDEBAR ----- */
-        .sidebar {
-            position: absolute;
-            top: 56px;
-            left: 12px;
-            bottom: 80px;
-            width: 300px;
-            z-index: 999;
-            background: var(--panel-bg);
-            border: 1px solid var(--panel-border);
-            border-radius: 6px;
-            display: flex;
-            flex-direction: column;
-            transition: transform 0.2s ease;
-        }
-
-        .sidebar.hidden {
-            transform: translateX(-320px);
-        }
-
-        .sidebar-title {
-            padding: 12px;
-            font-size: 13px;
-            font-weight: 600;
-            border-bottom: 1px solid var(--panel-border);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .sidebar-body {
-            padding: 12px;
-            overflow-y: auto;
-            display: flex;
-            flex-direction: column;
-            gap: 16px;
-        }
-
-        .section-label {
-            font-size: 11px;
-            font-weight: 700;
-            text-transform: uppercase;
-            color: var(--text-muted);
-            margin-bottom: 8px;
-            letter-spacing: 0.5px;
-        }
-
-        .item-row {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            font-size: 13px;
-            padding: 6px 0;
-        }
-
-        .item-row label {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            cursor: pointer;
-        }
-
-        .range-box {
-            display: flex;
-            flex-direction: column;
-            gap: 4px;
-            margin-top: 6px;
-        }
-
-        .range-box div {
-            display: flex;
-            justify-content: space-between;
-            font-size: 11px;
-            color: var(--text-muted);
-        }
-
-        input[type="range"] {
+        .search-box input {
+            background: transparent;
+            border: none;
+            outline: none;
+            color: var(--text);
+            font-size: 15px;
             width: 100%;
-            accent-color: var(--accent);
+            margin-left: 8px;
         }
 
-        .grid-2 {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 6px;
-        }
-
-        .btn-stub {
-            background: #0f172a;
-            border: 1px solid var(--panel-border);
-            color: var(--text-color);
-            padding: 7px;
-            border-radius: 4px;
-            font-size: 12px;
-            text-align: left;
-            cursor: pointer;
+        .icon-btn {
+            pointer-events: auto;
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            color: var(--text);
+            width: 44px;
+            height: 44px;
+            border-radius: 12px;
             display: flex;
             align-items: center;
-            gap: 6px;
+            justify-content: center;
+            font-size: 16px;
+            cursor: pointer;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+            flex-shrink: 0;
         }
 
-        .btn-stub:hover {
-            border-color: var(--accent);
+        .icon-btn:active {
+            background: #2c2c2e;
         }
 
-        /* ----- PLAYER / TIMELINE ----- */
-        .player-bar {
+        /* Плеер хронологии (внизу) */
+        .player-card {
             position: absolute;
-            bottom: 12px;
-            left: 50%;
-            transform: translateX(-50%);
+            bottom: 20px;
+            left: 12px;
+            right: 12px;
             z-index: 1000;
-            width: min(720px, calc(100vw - 24px));
-            background: var(--panel-bg);
-            border: 1px solid var(--panel-border);
-            border-radius: 6px;
-            padding: 8px 14px;
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 16px;
+            padding: 12px 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+            max-width: 500px;
+            margin: 0 auto;
+        }
+
+        .player-row {
             display: flex;
             align-items: center;
             gap: 12px;
         }
 
-        .btn-play {
+        .play-btn {
             background: var(--accent);
-            color: #fff;
+            color: white;
             border: none;
-            width: 34px;
-            height: 34px;
-            border-radius: 4px;
-            cursor: pointer;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
+            font-size: 15px;
+            cursor: pointer;
+            flex-shrink: 0;
         }
 
-        .btn-play:hover {
-            background: var(--accent-hover);
-        }
-
-        .timeline-info {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            gap: 4px;
-        }
-
-        .timeline-header {
+        .time-info {
             display: flex;
             justify-content: space-between;
-            font-size: 12px;
+            font-size: 13px;
+            color: var(--text-secondary);
+            margin-bottom: 2px;
         }
 
-        .time-text {
+        .time-info span.active-time {
+            color: var(--text);
             font-weight: 600;
-            color: #38bdf8;
         }
 
-        /* ----- LEGEND ----- */
-        .legend {
-            position: absolute;
-            bottom: 70px;
-            right: 12px;
-            z-index: 999;
-            background: var(--panel-bg);
-            border: 1px solid var(--panel-border);
-            border-radius: 6px;
-            padding: 10px;
-            width: 200px;
-            font-size: 11px;
+        .slider-container {
+            flex: 1;
         }
 
-        .legend-bar {
-            height: 8px;
+        input[type="range"] {
+            width: 100%;
+            height: 4px;
             border-radius: 2px;
-            background: linear-gradient(to right, #00e676, #ffeb3b, #ff9800, #f44336, #9c27b0);
-            margin: 6px 0;
+            accent-color: var(--accent);
+            background: #3a3a3c;
         }
 
-        .legend-labels {
+        /* Выдвижное меню слоев (Шторка) */
+        .sheet-backdrop {
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 1001;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s ease;
+        }
+
+        .sheet-backdrop.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .bottom-sheet {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            z-index: 1002;
+            background: var(--card-bg);
+            border-top: 1px solid var(--card-border);
+            border-radius: 20px 20px 0 0;
+            padding: 16px 20px 32px 20px;
+            transform: translateY(100%);
+            transition: transform 0.25s cubic-bezier(0.1, 0.9, 0.2, 1);
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .bottom-sheet.open {
+            transform: translateY(0);
+        }
+
+        .sheet-handle {
+            width: 36px;
+            height: 4px;
+            background: #3a3a3c;
+            border-radius: 2px;
+            margin: 0 auto 16px auto;
+        }
+
+        .sheet-title {
+            font-size: 17px;
+            font-weight: 600;
+            margin-bottom: 16px;
+        }
+
+        .section-title {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            margin: 16px 0 8px 0;
+        }
+
+        .option-row {
             display: flex;
+            align-items: center;
             justify-content: space-between;
-            color: var(--text-muted);
+            padding: 12px 0;
+            border-bottom: 1px solid #2c2c2e;
+            font-size: 15px;
+        }
+
+        .option-row:last-child {
+            border-bottom: none;
+        }
+
+        /* Переключатель iOS Style */
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 44px;
+            height: 24px;
+        }
+
+        .switch input { opacity: 0; width: 0; height: 0; }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-color: #3a3a3c;
+            transition: .2s;
+            border-radius: 24px;
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 20px;
+            width: 20px;
+            left: 2px;
+            bottom: 2px;
+            background-color: white;
+            transition: .2s;
+            border-radius: 50%;
+        }
+
+        input:checked + .slider { background-color: var(--accent); }
+        input:checked + .slider:before { transform: translateX(20px); }
+
+        /* Кнопки выбора подложки */
+        .map-types {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 8px;
+            margin-top: 8px;
+        }
+
+        .map-type-btn {
+            background: #2c2c2e;
+            border: 1px solid transparent;
+            color: var(--text);
+            padding: 10px 4px;
+            border-radius: 10px;
+            font-size: 12px;
+            text-align: center;
+            cursor: pointer;
+        }
+
+        .map-type-btn.active {
+            border-color: var(--accent);
+            background: #3a3a3c;
+        }
+
+        /* Легенда интенсивности */
+        .legend-bar {
+            height: 6px;
+            border-radius: 3px;
+            background: linear-gradient(to right, #00e676, #ffeb3b, #ff9800, #f44336, #9c27b0);
+            margin-top: 8px;
+        }
+
+        /* Адаптация под ПК */
+        @media (min-width: 600px) {
+            .bottom-sheet {
+                left: auto;
+                right: 12px;
+                top: 68px;
+                bottom: auto;
+                width: 320px;
+                border-radius: 16px;
+                border: 1px solid var(--card-border);
+                transform: translateY(-10px);
+                opacity: 0;
+                pointer-events: none;
+                padding: 16px;
+            }
+            .bottom-sheet.open {
+                transform: translateY(0);
+                opacity: 1;
+                pointer-events: auto;
+            }
+            .sheet-handle { display: none; }
+            .sheet-backdrop { display: none; }
         }
     </style>
 </head>
 <body>
 
-<div id="app">
-    <!-- Карта Leaflet -->
-    <div id="map"></div>
+<div id="map"></div>
 
-    <!-- Верхняя панель -->
-    <div class="header">
-        <div class="brand">
-            <i class="fa-solid fa-cloud-bolt"></i>
-            <span>Радар России</span>
-        </div>
-
-        <div class="search-form">
-            <input type="text" id="searchInput" placeholder="Поиск (Москва, Новосибирск...)" onkeydown="if(event.key==='Enter') doSearch()">
-            <button onclick="doSearch()"><i class="fa-solid fa-magnifying-glass"></i></button>
-        </div>
-
-        <div class="header-actions">
-            <button class="btn-ui" onclick="toggleSidebar()"><i class="fa-solid fa-layer-group"></i> Слои</button>
-            <button class="btn-ui" onclick="stub('Метеостанции')"><i class="fa-solid fa-tower-observation"></i> Станции</button>
-            <button class="btn-ui" onclick="stub('Аэропорты METAR')"><i class="fa-solid fa-plane"></i> METAR</button>
-        </div>
+<!-- Верхний бар -->
+<div class="top-bar">
+    <div class="search-box">
+        <i class="fa-solid fa-magnifying-glass" style="color: var(--text-secondary)"></i>
+        <input type="text" id="searchInput" placeholder="Поиск города..." onkeydown="if(event.key==='Enter') searchCity()">
     </div>
+    <button class="icon-btn" onclick="toggleSheet()" title="Слои">
+        <i class="fa-solid fa-layer-group"></i>
+    </button>
+</div>
 
-    <!-- Боковая панель -->
-    <div class="sidebar" id="sidebar">
-        <div class="sidebar-title">
-            <span>Параметры и слои</span>
-            <i class="fa-solid fa-xmark" style="cursor:pointer;" onclick="toggleSidebar()"></i>
-        </div>
-
-        <div class="sidebar-body">
-            <!-- Радар -->
-            <div>
-                <div class="section-label">Радар осадков</div>
-                <div class="item-row">
-                    <label>
-                        <input type="checkbox" id="radarCheck" checked onchange="toggleRadar(this.checked)">
-                        <span>Осадки в реальном времени</span>
-                    </label>
-                </div>
-                <div class="range-box">
-                    <div>
-                        <span>Прозрачность</span>
-                        <span id="opVal">70%</span>
-                    </div>
-                    <input type="range" id="opRange" min="0" max="100" value="70" oninput="setOpacity(this.value)">
-                </div>
-            </div>
-
-            <!-- Доп. Слои (Заглушки) -->
-            <div>
-                <div class="section-label">Спецслои</div>
-                <div class="item-row">
-                    <label><input type="checkbox" onchange="stub('Слой ветра')"> Ветровой поток</label>
-                </div>
-                <div class="item-row">
-                    <label><input type="checkbox" onchange="stub('Карта молний')"> Грозы / Молнии</label>
-                </div>
-                <div class="item-row">
-                    <label><input type="checkbox" onchange="stub('Спутник ИК')"> Спутник (Инфракрасный)</label>
-                </div>
-                <div class="item-row">
-                    <label><input type="checkbox" onchange="stub('Штормовые предупреждения')"> Предупреждения МЧС</label>
-                </div>
-            </div>
-
-            <!-- Подложка -->
-            <div>
-                <div class="section-label">Карта-основа</div>
-                <div class="grid-2">
-                    <button class="btn-stub" onclick="setBase('dark')"><i class="fa-solid fa-moon"></i> Темная</button>
-                    <button class="btn-stub" onclick="setBase('sat')"><i class="fa-solid fa-globe"></i> Спутник</button>
-                    <button class="btn-stub" onclick="setBase('light')"><i class="fa-solid fa-sun"></i> Светлая</button>
-                    <button class="btn-stub" onclick="setBase('osm')"><i class="fa-solid fa-map"></i> Topo</button>
-                </div>
-            </div>
-
-            <!-- Аналитика -->
-            <div>
-                <div class="section-label">Инструменты</div>
-                <div class="grid-2">
-                    <button class="btn-stub" onclick="stub('Профиль высот')"><i class="fa-solid fa-chart-line"></i> График</button>
-                    <button class="btn-stub" onclick="stub('Экспорт снимка')"><i class="fa-solid fa-download"></i> Экспорт</button>
-                    <button class="btn-stub" onclick="stub('Линейка расстояний')"><i class="fa-solid fa-ruler"></i> Замер</button>
-                    <button class="btn-stub" onclick="stub('Архив 24 часа')"><i class="fa-solid fa-clock-rotate-left"></i> Архив</button>
-                </div>
-            </div>
-        </div>
+<!-- Виджет плеера -->
+<div class="player-card">
+    <div class="time-info">
+        <span>Карта осадков</span>
+        <span class="active-time" id="timeDisplay">Загрузка...</span>
     </div>
-
-    <!-- Легенда -->
-    <div class="legend">
-        <div style="color: var(--text-muted)">Интенсивность (dBZ)</div>
-        <div class="legend-bar"></div>
-        <div class="legend-labels">
-            <span>Слабый</span>
-            <span>Умеренный</span>
-            <span>Сильный</span>
-        </div>
-    </div>
-
-    <!-- Таймлайн / Плеер -->
-    <div class="player-bar">
-        <button class="btn-play" id="playBtn" onclick="togglePlay()">
+    <div class="player-row">
+        <button class="play-btn" id="playBtn" onclick="togglePlay()">
             <i class="fa-solid fa-play"></i>
         </button>
-
-        <div class="timeline-info">
-            <div class="timeline-header">
-                <span>Анимация осадков (последние 2 часа)</span>
-                <span class="time-text" id="timeLabel">Загрузка...</span>
-            </div>
-            <input type="range" id="timeRange" min="0" max="100" value="100" oninput="onTimeManual(this.value)">
+        <div class="slider-container">
+            <input type="range" id="timeline" min="0" max="100" value="100" oninput="onTimelineChange(this.value)">
         </div>
-
-        <button class="btn-ui" style="padding: 6px 10px;" onclick="changeSpeed()">
-            <span id="speedTxt" style="font-weight: bold; font-size: 11px;">1x</span>
+        <button class="icon-btn" style="width: 36px; height: 36px; font-size: 12px; border-radius: 50%;" onclick="toggleSpeed()">
+            <span id="speedDisplay">1x</span>
         </button>
     </div>
 </div>
 
+<!-- Выдвижная шторка настроек -->
+<div class="sheet-backdrop" id="backdrop" onclick="toggleSheet()"></div>
+<div class="bottom-sheet" id="sheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-title">Слои и карты</div>
+
+    <div class="section-title">Радар</div>
+    <div class="option-row">
+        <span>Слой осадков</span>
+        <label class="switch">
+            <input type="checkbox" id="radarToggle" checked onchange="toggleRadar(this.checked)">
+            <span class="slider"></span>
+        </label>
+    </div>
+    <div style="padding: 8px 0;">
+        <div style="display:flex; justify-content:space-between; font-size:13px; color:var(--text-secondary); margin-bottom: 6px;">
+            <span>Прозрачность</span>
+            <span id="opacityVal">75%</span>
+        </div>
+        <input type="range" min="0" max="100" value="75" oninput="changeOpacity(this.value)">
+    </div>
+    
+    <div class="legend-bar"></div>
+    <div style="display:flex; justify-content:space-between; font-size:10px; color:var(--text-secondary); margin-top:4px;">
+        <span>Слабый</span>
+        <span>Умеренный</span>
+        <span>Сильный</span>
+    </div>
+
+    <div class="section-title">Карта-основа</div>
+    <div class="map-types">
+        <div class="map-type-btn active" onclick="setBasemap('dark', this)">Тёмная</div>
+        <div class="map-type-btn" onclick="setBasemap('satellite', this)">Спутник</div>
+        <div class="map-type-btn" onclick="setBasemap('light', this)">Светлая</div>
+        <div class="map-type-btn" onclick="setBasemap('osm', this)">Схема</div>
+    </div>
+
+    <div class="section-title">Дополнительно (Заглушки)</div>
+    <div class="option-row">
+        <span>Ветер и потоки</span>
+        <label class="switch"><input type="checkbox" onchange="stub('Ветер')"><span class="slider"></span></label>
+    </div>
+    <div class="option-row">
+        <span>Грозы и молнии</span>
+        <label class="switch"><input type="checkbox" onchange="stub('Молнии')"><span class="slider"></span></label>
+    </div>
+    <div class="option-row">
+        <span>Метеостанции РФ</span>
+        <label class="switch"><input type="checkbox" onchange="stub('Станции')"><span class="slider"></span></label>
+    </div>
+    <div class="option-row">
+        <span>Предупреждения МЧС</span>
+        <label class="switch"><input type="checkbox" onchange="stub('МЧС')"><span class="slider"></span></label>
+    </div>
+</div>
+
 <script>
-    // ----- ИНИЦИАЛИЗА КАРТЫ LEAFLET -----
-    // Центрирование по умолчанию: Россия
+    // ----- КАРТА LEAFLET -----
     const map = L.map('map', {
-        center: [60.0, 90.0],
-        zoom: 3,
-        zoomControl: false
+        center: [55.7512, 37.6184], // Москва
+        zoom: 5,
+        zoomControl: true,
+        attributionControl: false
     });
 
-    L.control.zoom({ position: 'bottomright' }).addTo(map);
-
-    // Подложки
     const basemaps = {
-        dark: L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { maxZoom: 18 }),
-        light: L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', { maxZoom: 18 }),
-        sat: L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 18 }),
-        osm: L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 18 })
+        dark: L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { maxZoom: 19 }),
+        satellite: L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 18 }),
+        light: L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', { maxZoom: 19 }),
+        osm: L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 })
     };
 
-    let activeBase = basemaps.dark;
-    activeBase.addTo(map);
+    let currentBase = basemaps.dark;
+    currentBase.addTo(map);
 
-    function setBase(type) {
-        map.removeLayer(activeBase);
-        activeBase = basemaps[type];
-        activeBase.addTo(map);
+    function setBasemap(type, btn) {
+        map.removeLayer(currentBase);
+        currentBase = basemaps[type];
+        currentBase.addTo(map);
+
+        document.querySelectorAll('.map-type-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
     }
 
-    // ----- ЗАГРУЗКА РАДАРА (RainViewer API) -----
+    // ----- РАДАР ОСАДКОВ (RainViewer API) -----
     let frames = [];
     let radarLayers = {};
     let currentIndex = 0;
     let isPlaying = false;
-    let playTimer = null;
-    let speed = 600; // мс
+    let playInterval = null;
+    let speed = 500;
 
     async function initRadar() {
         try {
             const res = await fetch('https://api.rainviewer.com/public/weather-maps.json');
             const data = await res.json();
             
-            frames = data.radar.past; // массив кадров
+            frames = data.radar.past;
             
-            frames.forEach((f, i) => {
-                radarLayers[i] = L.tileLayer(`https://tilecache.rainviewer.com/v2/radar/${f.time}/256/{z}/{x}/{y}/2/1_1.png`, {
-                    opacity: 0.7,
-                    zIndex: 100 + i
+            frames.forEach((frame, idx) => {
+                radarLayers[idx] = L.tileLayer(`https://tilecache.rainviewer.com/v2/radar/${frame.time}/256/{z}/{x}/{y}/2/1_1.png`, {
+                    opacity: 0.75,
+                    zIndex: 100 + idx
                 });
             });
 
             currentIndex = frames.length - 1;
-            renderFrame(currentIndex);
-
+            showFrame(currentIndex);
         } catch (e) {
-            document.getElementById('timeLabel').innerText = "Ошибка API";
+            document.getElementById('timeDisplay').innerText = "Ошибка загрузки";
         }
     }
 
-    function renderFrame(index) {
-        // Скрываем текущие слои
-        Object.keys(radarLayers).forEach(i => {
-            if (map.hasLayer(radarLayers[i])) map.removeLayer(radarLayers[i]);
+    function showFrame(index) {
+        Object.keys(radarLayers).forEach(idx => {
+            if (map.hasLayer(radarLayers[idx])) map.removeLayer(radarLayers[idx]);
         });
 
-        // Показываем нужный
-        if (radarLayers[index] && document.getElementById('radarCheck').checked) {
+        if (radarLayers[index] && document.getElementById('radarToggle').checked) {
             map.addLayer(radarLayers[index]);
         }
 
-        // Обновляем время
         if (frames[index]) {
-            const time = new Date(frames[index].time * 1000);
-            document.getElementById('timeLabel').innerText = time.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+            const date = new Date(frames[index].time * 1000);
+            document.getElementById('timeDisplay').innerText = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
         }
 
-        // Положение ползунка
-        document.getElementById('timeRange').value = (index / (frames.length - 1)) * 100;
+        document.getElementById('timeline').value = (index / (frames.length - 1)) * 100;
     }
 
-    function toggleRadar(show) {
-        if (show) renderFrame(currentIndex);
+    function togglePlay() {
+        isPlaying = !isPlaying;
+        const btn = document.getElementById('playBtn');
+        if (isPlaying) {
+            btn.innerHTML = '<i class="fa-solid fa-pause"></i>';
+            playInterval = setInterval(() => {
+                currentIndex = (currentIndex + 1) % frames.length;
+                showFrame(currentIndex);
+            }, speed);
+        } else {
+            btn.innerHTML = '<i class="fa-solid fa-play"></i>';
+            clearInterval(playInterval);
+        }
+    }
+
+    function onTimelineChange(val) {
+        if (!frames.length) return;
+        currentIndex = Math.round((val / 100) * (frames.length - 1));
+        showFrame(currentIndex);
+    }
+
+    function toggleSpeed() {
+        const speeds = [500, 250, 1000];
+        const labels = ['1x', '2x', '0.5x'];
+        let idx = speeds.indexOf(speed);
+        idx = (idx + 1) % speeds.length;
+        speed = speeds[idx];
+        document.getElementById('speedDisplay').innerText = labels[idx];
+
+        if (isPlaying) {
+            togglePlay();
+            togglePlay();
+        }
+    }
+
+    function toggleRadar(enabled) {
+        if (enabled) showFrame(currentIndex);
         else {
-            Object.keys(radarLayers).forEach(i => {
-                if (map.hasLayer(radarLayers[i])) map.removeLayer(radarLayers[i]);
+            Object.keys(radarLayers).forEach(idx => {
+                if (map.hasLayer(radarLayers[idx])) map.removeLayer(radarLayers[idx]);
             });
         }
     }
 
-    function setOpacity(val) {
-        document.getElementById('opVal').innerText = val + '%';
+    function changeOpacity(val) {
+        document.getElementById('opacityVal').innerText = val + '%';
         const opacity = val / 100;
         Object.values(radarLayers).forEach(layer => layer.setOpacity(opacity));
     }
 
-    // Анимация
-    function togglePlay() {
-        isPlaying = !isPlaying;
-        const btn = document.getElementById('playBtn');
-        
-        if (isPlaying) {
-            btn.innerHTML = '<i class="fa-solid fa-pause"></i>';
-            playTimer = setInterval(() => {
-                currentIndex = (currentIndex + 1) % frames.length;
-                renderFrame(currentIndex);
-            }, speed);
-        } else {
-            btn.innerHTML = '<i class="fa-solid fa-play"></i>';
-            clearInterval(playTimer);
-        }
+    // ----- ИНТЕРФЕЙС И ПОИСК -----
+    function toggleSheet() {
+        document.getElementById('sheet').classList.toggle('open');
+        document.getElementById('backdrop').classList.toggle('active');
     }
 
-    function onTimeManual(val) {
-        if (!frames.length) return;
-        currentIndex = Math.round((val / 100) * (frames.length - 1));
-        renderFrame(currentIndex);
-    }
-
-    function changeSpeed() {
-        const speeds = [600, 300, 1000];
-        const labels = ['1x', '2x', '0.5x'];
-        let i = speeds.indexOf(speed);
-        i = (i + 1) % speeds.length;
-        speed = speeds[i];
-        document.getElementById('speedTxt').innerText = labels[i];
-
-        if (isPlaying) {
-            togglePlay();
-            togglePlay();
-        }
-    }
-
-    // ----- ВСПОМОГАТЕЛЬНЫЙ ФУНКЦИОНАЛ -----
-    function toggleSidebar() {
-        document.getElementById('sidebar').classList.toggle('hidden');
-    }
-
-    function stub(title) {
-        alert(`Модуль "${title}" готов к подключению бэкенда.`);
-    }
-
-    async function doSearch() {
+    async function searchCity() {
         const query = document.getElementById('searchInput').value;
         if (!query) return;
 
         try {
             const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}`);
             const data = await res.json();
-            if (data && data.length > 0) {
+            if (data.length > 0) {
                 map.flyTo([data[0].lat, data[0].lon], 9);
-            } else {
-                alert('Город не найден');
             }
-        } catch (e) {
-            alert('Ошибка поиска');
-        }
+        } catch (e) {}
     }
 
-    // Клик по карте
+    function stub(name) {
+        alert(`Модуль "${name}" готов к привязке к бэкенду.`);
+    }
+
+    // Попап клика по карте
     map.on('click', (e) => {
         L.popup()
             .setLatLng(e.latlng)
             .setContent(`
-                <div style="font-size:12px; color:#000;">
-                    <b>Координаты:</b> ${e.latlng.lat.toFixed(3)}, ${e.latlng.lng.toFixed(3)}<br>
-                    <b>Интенсивность:</b> ~${(Math.random() * 2).toFixed(1)} мм/ч
+                <div style="font-size:13px; color:#000;">
+                    <b>Координаты:</b> ${e.latlng.lat.toFixed(2)}, ${e.latlng.lng.toFixed(2)}<br>
+                    <b>Осадки:</b> ~${(Math.random() * 1.5).toFixed(1)} мм/ч
                 </div>
             `)
             .openOn(map);
     });
 
-    // Запуск
+    // Старт
     initRadar();
 </script>
 </body>

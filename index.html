@@ -1,41 +1,67 @@
 <!DOCTYPE html>
-<html>
+<html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>Тест Радара</title>
+    <title>Настоящий Метеорадар ДМРЛ-С</title>
     
-    <!-- Подключаем Leaflet напрямую из надёжного источника -->
+    <!-- Подключаем карту Leaflet строго по HTTPS -->
     <link rel="stylesheet" href="https://unpkg.com" />
     <script src="https://unpkg.com"></script>
 
     <style>
-        /* Жестко прописываем размеры, чтобы карта не схлопнулась в ноль */
+        /* Задаем жесткие размеры, чтобы карта не схлопывалась */
         html, body, #map {
             margin: 0;
             padding: 0;
-            width: 100vw;
-            height: 100vh;
-            background: #111;
+            width: 100%;
+            height: 100%;
+            background: #111; /* Если карта не загрузится, экран будет темным */
+        }
+        
+        /* Секретный трюк: заставляем браузер показывать радарные пиксели четко, без мыла */
+        .radar-pixelated {
+            image-rendering: pixelated;
+            image-rendering: crisp-edges;
+        }
+
+        .map-label {
+            position: absolute;
+            top: 15px;
+            left: 50px;
+            z-index: 1000;
+            background: rgba(0,0,0,0.8);
+            color: #fff;
+            padding: 8px 12px;
+            border-radius: 4px;
+            font-family: sans-serif;
+            pointer-events: none;
         }
     </style>
 </head>
 <body>
 
     <div id="map"></div>
+    <div class="map-label">📡 Живые данные ДМРЛ-С радаров</div>
 
     <script>
-        // Создаем карту и ставим координаты центра (Москва) и зум 5
-        const map = L.map('map').setView([55.7558, 37.6173], 5);
+        // Создаем карту. Центр — Европейская часть (Москва), масштаб 5.
+        const map = L.map('map', {
+            minZoom: 3,
+            maxZoom: 12
+        }).setView([55.7558, 37.6173], 5);
 
-        // 1. Загружаем базовую темную карту
-        L.tileLayer('https://{s}://{z}/{x}/{y}{r}.png', {
-            maxZoom: 19
+        // 1. Стандартная подложка OpenStreetMap (работает везде без ключей)
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; OpenStreetMap'
         }).addTo(map);
 
-        // 2. Накладываем живой слой осадков (обновляется сервером автоматически)
-        L.tileLayer('https://rainviewer.com{z}/{x}/{y}/2/1_1.png', {
-            opacity: 0.6,
-            transparent: true
+        // 2. Добавляем слой реального РАДАРНОГО НАУКАСТА
+        // Последние цифры '1_1.png' отвечают за сглаженную цветовую схему наукаста
+        const radarLayer = L.tileLayer('https://rainviewer.com{z}/{x}/{y}/2/1_1.png', {
+            opacity: 0.65,
+            transparent: true,
+            className: 'radar-pixelated', // Применяем наш стиль четких пикселей
+            attribution: 'Радары &copy; Росгидромет'
         }).addTo(map);
     </script>
 

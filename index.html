@@ -14,20 +14,20 @@
 
     <style>
         :root {
-            --bg-glass: rgba(18, 22, 31, 0.82);
-            --bg-glass-hover: rgba(28, 34, 48, 0.92);
-            --bg-card: #161b26;
-            --border: rgba(255, 255, 255, 0.08);
-            --border-light: rgba(255, 255, 255, 0.16);
+            --bg-glass: rgba(15, 20, 31, 0.78);
+            --bg-glass-hover: rgba(26, 33, 50, 0.9);
+            --bg-card: rgba(19, 25, 38, 0.92);
+            --border: rgba(255, 255, 255, 0.1);
+            --border-light: rgba(255, 255, 255, 0.2);
             --text-primary: #f8fafc;
             --text-secondary: #94a3b8;
             --accent: #3b82f6;
-            --accent-glow: rgba(59, 130, 246, 0.4);
+            --accent-glow: rgba(59, 130, 246, 0.45);
             --danger: #ef4444;
             --warning: #f59e0b;
-            --shadow: 0 16px 36px rgba(0, 0, 0, 0.5);
+            --shadow: 0 20px 40px rgba(0, 0, 0, 0.6);
             
-            /* Единые функции плавности */
+            /* Единая физика анимаций */
             --ease-spring: cubic-bezier(0.16, 1, 0.3, 1);
             --ease-bounce: cubic-bezier(0.34, 1.56, 0.64, 1);
             --ease-std: cubic-bezier(0.4, 0, 0.2, 1);
@@ -37,7 +37,7 @@
             box-sizing: border-box;
             margin: 0;
             padding: 0;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, sans-serif;
             -webkit-tap-highlight-color: transparent;
         }
 
@@ -45,7 +45,7 @@
             width: 100%;
             height: 100%;
             overflow: hidden;
-            background: #090c10;
+            background: #07090e;
             color: var(--text-primary);
             touch-action: manipulation;
             user-select: none;
@@ -58,65 +58,149 @@
             top: 0;
             left: 0;
             z-index: 1;
-            background: #090c10;
-            touch-action: auto;
+            background: #07090e;
         }
 
-        /* --- КАСТОМНЫЕ ПОПАПЫ C АНИМАЦИЕЙ --- */
-        .leaflet-popup-content-wrapper, .leaflet-popup-tip {
+        /* --- АНИМИРОВАННАЯ ТОЧКА ПРОСМОТРА ДАННЫХ (ПИНГ-МАРКЕР) --- */
+        .ping-marker {
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .ping-dot {
+            width: 12px;
+            height: 12px;
+            background: #3b82f6;
+            border: 2px solid #ffffff;
+            border-radius: 50%;
+            box-shadow: 0 0 14px #3b82f6, 0 0 24px rgba(59, 130, 246, 0.8);
+            z-index: 2;
+        }
+
+        .ping-ring {
+            position: absolute;
+            width: 36px;
+            height: 36px;
+            border: 2px solid rgba(59, 130, 246, 0.8);
+            border-radius: 50%;
+            animation: pingExpand 1.6s infinite var(--ease-spring);
+            z-index: 1;
+        }
+
+        @keyframes pingExpand {
+            0% { transform: scale(0.3); opacity: 1; }
+            80%, 100% { transform: scale(2.4); opacity: 0; }
+        }
+
+        /* --- СТИЛИЗОВАННЫЕ КАРТОЧКИ ПОПАПОВ --- */
+        .leaflet-popup-content-wrapper {
             background: var(--bg-card) !important;
             color: var(--text-primary) !important;
             border: 1px solid var(--border-light) !important;
-            box-shadow: var(--shadow) !important;
-            border-radius: 14px !important;
-            backdrop-filter: blur(12px);
-        }
-        
-        .leaflet-popup {
-            animation: popupSpring 0.35s var(--ease-spring) forwards;
+            box-shadow: 0 24px 48px rgba(0, 0, 0, 0.7), 0 0 20px rgba(59, 130, 246, 0.15) !important;
+            border-radius: 20px !important;
+            backdrop-filter: blur(20px);
+            padding: 4px !important;
         }
 
-        @keyframes popupSpring {
-            0% { opacity: 0; transform: scale(0.85) translateY(12px); }
+        .leaflet-popup-tip {
+            background: var(--bg-card) !important;
+            border: 1px solid var(--border-light) !important;
+        }
+
+        .leaflet-popup {
+            animation: popupBounce 0.4s var(--ease-spring) forwards;
+        }
+
+        @keyframes popupBounce {
+            0% { opacity: 0; transform: scale(0.8) translateY(18px); }
             100% { opacity: 1; transform: scale(1) translateY(0); }
         }
 
         .leaflet-popup-content {
             margin: 12px 14px !important;
-            line-height: 1.5 !important;
+            line-height: 1.4 !important;
         }
 
-        /* --- LEAFLET ZOOM С ПЛАВНЫМ ХОВЕРОМ --- */
+        .weather-pop-card {
+            min-width: 200px;
+        }
+
+        .pop-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 8px;
+            margin-bottom: 10px;
+        }
+
+        .pop-temp {
+            font-size: 26px;
+            font-weight: 800;
+            color: #60a5fa;
+            letter-spacing: -0.5px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .pop-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            font-size: 11.5px;
+        }
+
+        .pop-item {
+            background: rgba(255, 255, 255, 0.04);
+            padding: 6px 8px;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            color: var(--text-secondary);
+        }
+
+        .pop-item b {
+            color: var(--text-primary);
+            margin-left: auto;
+        }
+
+        /* --- КНОПКИ ЗУМА LEAFLET --- */
         .leaflet-control-zoom {
             border: none !important;
-            margin-bottom: 100px !important;
+            margin-bottom: 110px !important;
             margin-right: 14px !important;
             box-shadow: var(--shadow) !important;
         }
         .leaflet-control-zoom a {
             background: var(--bg-glass) !important;
-            backdrop-filter: blur(16px);
+            backdrop-filter: blur(20px);
             color: var(--text-primary) !important;
             border: 1px solid var(--border) !important;
-            border-radius: 12px !important;
-            width: 38px !important;
-            height: 38px !important;
-            line-height: 38px !important;
+            border-radius: 14px !important;
+            width: 40px !important;
+            height: 40px !important;
+            line-height: 40px !important;
             margin-top: 6px;
             font-size: 15px !important;
-            transition: all 0.25s var(--ease-std) !important;
+            transition: all 0.25s var(--ease-spring) !important;
         }
         .leaflet-control-zoom a:hover {
             background: var(--bg-glass-hover) !important;
             border-color: var(--border-light) !important;
-            transform: scale(1.05);
+            transform: scale(1.08);
+            box-shadow: 0 0 16px rgba(255, 255, 255, 0.1);
         }
         .leaflet-control-zoom a:active {
             transform: scale(0.92);
-            border-color: var(--accent) !important;
         }
 
-        /* --- ВЕРХНЯЯ ПАНЕЛЬ ПЛАВАЮЩИХ ОСТРОВКОВ --- */
+        /* --- ВЕРХНЯЯ ПАНЕЛЬ СТЕКЛЯННЫХ ОСТРОВКОВ --- */
         .top-deck {
             position: absolute;
             top: 14px;
@@ -128,61 +212,63 @@
             justify-content: space-between;
             gap: 10px;
             pointer-events: none;
-            animation: fadeInDown 0.6s var(--ease-spring);
+            animation: slideDown 0.6s var(--ease-spring);
         }
 
-        @keyframes fadeInDown {
-            from { opacity: 0; transform: translateY(-16px); }
+        @keyframes slideDown {
+            from { opacity: 0; transform: translateY(-20px); }
             to { opacity: 1; transform: translateY(0); }
         }
 
         .glass-pill {
             pointer-events: auto;
             background: var(--bg-glass);
-            backdrop-filter: blur(20px);
+            backdrop-filter: blur(24px);
             border: 1px solid var(--border);
-            border-radius: 16px;
+            border-radius: 18px;
             box-shadow: var(--shadow);
             display: flex;
             align-items: center;
-            transition: border-color 0.3s ease, box-shadow 0.3s ease, transform 0.3s var(--ease-spring);
+            transition: all 0.3s var(--ease-spring);
         }
 
         .brand-pill {
             padding: 0 16px;
-            height: 44px;
+            height: 46px;
             font-size: 13px;
-            font-weight: 700;
-            letter-spacing: 0.6px;
-            gap: 8px;
+            font-weight: 800;
+            letter-spacing: 0.8px;
+            gap: 10px;
             color: #fff;
             flex-shrink: 0;
+            background: linear-gradient(135deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.02) 100%), var(--bg-glass);
         }
 
         .brand-pill i {
             color: var(--accent);
-            font-size: 15px;
-            filter: drop-shadow(0 0 8px var(--accent-glow));
-            transition: transform 0.4s var(--ease-bounce);
+            font-size: 16px;
+            filter: drop-shadow(0 0 10px var(--accent-glow));
+            transition: transform 0.5s var(--ease-bounce);
         }
 
         .brand-pill:hover i {
-            transform: rotate(15deg) scale(1.15);
+            transform: rotate(20deg) scale(1.2);
         }
 
         .search-pill {
             flex: 1;
             max-width: 380px;
-            height: 44px;
-            padding: 0 14px;
+            height: 46px;
+            padding: 0 16px;
             gap: 10px;
             transition: all 0.3s var(--ease-spring);
         }
 
         .search-pill:focus-within {
             border-color: var(--accent);
-            box-shadow: 0 0 20px var(--accent-glow);
-            transform: translateY(-1px);
+            box-shadow: 0 0 24px var(--accent-glow);
+            transform: translateY(-2px);
+            background: var(--bg-glass-hover);
         }
 
         .search-pill input {
@@ -205,17 +291,17 @@
         }
 
         .btn-glass {
-            width: 44px;
-            height: 44px;
+            width: 46px;
+            height: 46px;
             background: var(--bg-glass);
-            backdrop-filter: blur(20px);
+            backdrop-filter: blur(24px);
             border: 1px solid var(--border);
-            border-radius: 14px;
+            border-radius: 16px;
             color: var(--text-primary);
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 14px;
+            font-size: 15px;
             cursor: pointer;
             box-shadow: var(--shadow);
             transition: all 0.25s var(--ease-spring);
@@ -224,8 +310,8 @@
         .btn-glass:hover {
             background: var(--bg-glass-hover);
             border-color: var(--border-light);
-            transform: translateY(-2px);
-            box-shadow: 0 8px 20px rgba(0,0,0,0.4);
+            transform: translateY(-3px) scale(1.02);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
         }
 
         .btn-glass:active, .btn-glass.active {
@@ -233,48 +319,49 @@
             background: var(--bg-glass-hover);
             border-color: var(--accent);
             color: var(--accent);
-            box-shadow: 0 0 16px var(--accent-glow);
+            box-shadow: 0 0 20px var(--accent-glow);
         }
 
-        /* --- ШКАЛА ОСАДКОВ --- */
+        /* --- ШКАЛА ИНТЕНСИВНОСТИ ОСАДКОВ --- */
         .legend-pill {
             position: absolute;
-            top: 68px;
+            top: 72px;
             left: 14px;
             z-index: 9;
-            padding: 8px 12px;
+            padding: 8px 14px;
             pointer-events: auto;
             flex-direction: column;
-            gap: 4px;
-            animation: fadeInLeft 0.6s var(--ease-spring);
+            gap: 5px;
+            animation: slideRight 0.6s var(--ease-spring);
         }
 
-        @keyframes fadeInLeft {
-            from { opacity: 0; transform: translateX(-16px); }
+        @keyframes slideRight {
+            from { opacity: 0; transform: translateX(-20px); }
             to { opacity: 1; transform: translateX(0); }
         }
 
         .legend-bar {
-            width: 130px;
-            height: 4px;
-            border-radius: 2px;
+            width: 140px;
+            height: 5px;
+            border-radius: 3px;
             background: linear-gradient(to right, #00e676, #ffeb3b, #ff9800, #f44336, #9c27b0);
+            box-shadow: 0 0 10px rgba(0,0,0,0.5);
         }
 
-        /* --- ЛИНЕЙКА ИНФО-БАР --- */
+        /* --- ИНФОРМАТОР ЛИНЕЙКИ --- */
         .ruler-badge {
             position: absolute;
-            top: 68px;
+            top: 72px;
             right: 14px;
             z-index: 9;
-            padding: 8px 14px;
+            padding: 8px 16px;
             font-size: 12px;
-            gap: 10px;
+            gap: 12px;
             pointer-events: auto;
             opacity: 0;
-            transform: translateY(-10px) scale(0.9);
+            transform: translateY(-12px) scale(0.9);
             visibility: hidden;
-            transition: all 0.3s var(--ease-spring);
+            transition: all 0.35s var(--ease-spring);
         }
 
         .ruler-badge.active {
@@ -283,24 +370,24 @@
             visibility: visible;
         }
 
-        /* --- НИЖНИЙ ПЛЕЕР ХРОНОЛОГИИ --- */
+        /* --- НИЖНИЙ ПЛЕЕР (ХРОНОЛОГИЯ) --- */
         .player-deck {
             position: absolute;
-            bottom: 14px;
+            bottom: 16px;
             left: 14px;
             right: 14px;
             z-index: 10;
-            max-width: 600px;
+            max-width: 620px;
             margin: 0 auto;
-            padding: 12px 16px;
+            padding: 14px 18px;
             flex-direction: column;
-            gap: 8px;
+            gap: 10px;
             pointer-events: auto;
-            animation: fadeInUp 0.6s var(--ease-spring);
+            animation: slideUp 0.6s var(--ease-spring);
         }
 
-        @keyframes fadeInUp {
-            from { opacity: 0; transform: translateY(20px); }
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(30px); }
             to { opacity: 1; transform: translateY(0); }
         }
 
@@ -316,13 +403,13 @@
             align-items: center;
             gap: 6px;
             font-size: 11px;
-            font-weight: 600;
+            font-weight: 700;
             color: var(--warning);
             background: rgba(245, 158, 11, 0.12);
-            border: 1px solid rgba(245, 158, 11, 0.25);
-            padding: 3px 10px;
+            border: 1px solid rgba(245, 158, 11, 0.3);
+            padding: 4px 12px;
             border-radius: 20px;
-            text-transform: uppercase;
+            letter-spacing: 0.5px;
             transition: all 0.3s ease;
         }
 
@@ -332,89 +419,93 @@
         }
 
         @keyframes pulseGlow {
-            0% { opacity: 0.3; transform: scale(0.8); }
-            50% { opacity: 1; transform: scale(1.3); }
-            100% { opacity: 0.3; transform: scale(0.8); }
+            0% { opacity: 0.2; transform: scale(0.8); }
+            50% { opacity: 1; transform: scale(1.4); }
+            100% { opacity: 0.2; transform: scale(0.8); }
         }
 
         .time-readout {
-            font-size: 15px;
-            font-weight: 700;
+            font-size: 16px;
+            font-weight: 800;
             color: #60a5fa;
-            letter-spacing: 0.5px;
-            transition: color 0.3s ease;
+            letter-spacing: 0.6px;
+            text-shadow: 0 0 12px var(--accent-glow);
         }
 
         .player-body {
             display: flex;
             align-items: center;
-            gap: 12px;
+            gap: 14px;
             width: 100%;
         }
 
         .play-btn-main {
-            width: 40px;
-            height: 40px;
-            border-radius: 12px;
+            width: 42px;
+            height: 42px;
+            border-radius: 14px;
             background: var(--accent);
             border: none;
             color: #fff;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 14px;
+            font-size: 15px;
             cursor: pointer;
-            box-shadow: 0 0 16px var(--accent-glow);
+            box-shadow: 0 0 20px var(--accent-glow);
             flex-shrink: 0;
             transition: all 0.25s var(--ease-spring);
         }
 
         .play-btn-main:hover {
-            transform: scale(1.08);
-            box-shadow: 0 0 24px var(--accent-glow);
+            transform: scale(1.1);
+            box-shadow: 0 0 28px var(--accent-glow);
         }
 
         .play-btn-main:active {
             transform: scale(0.92);
         }
 
-        /* Кастомный Range Input с анимацией thumb */
+        /* ПОЛЗУНОК ВРЕМЕНИ С ДИНАМИЧЕСКИМ ТРЕКОМ */
+        .range-container {
+            flex: 1;
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+
         input[type="range"] {
             -webkit-appearance: none;
             width: 100%;
             height: 6px;
             border-radius: 3px;
-            background: rgba(255, 255, 255, 0.12);
+            background: rgba(255, 255, 255, 0.15);
             outline: none;
-            transition: background 0.3s ease;
+            cursor: pointer;
         }
 
         input[type="range"]::-webkit-slider-thumb {
             -webkit-appearance: none;
-            width: 18px;
-            height: 18px;
+            width: 20px;
+            height: 20px;
             border-radius: 50%;
-            background: var(--accent);
-            box-shadow: 0 0 12px var(--accent);
+            background: #ffffff;
+            border: 3px solid var(--accent);
+            box-shadow: 0 0 14px var(--accent);
             cursor: pointer;
             transition: transform 0.2s var(--ease-spring), box-shadow 0.2s ease;
         }
 
         input[type="range"]::-webkit-slider-thumb:hover {
-            transform: scale(1.25);
-            box-shadow: 0 0 18px var(--accent);
+            transform: scale(1.3);
+            box-shadow: 0 0 22px var(--accent);
         }
 
-        input[type="range"]::-webkit-slider-thumb:active {
-            transform: scale(1.1);
-        }
-
-        /* --- ВЫДВИЖНОЕ МЕНЮ С БЕСШОВНОЙ CSS-АНИМАЦИЕЙ --- */
+        /* --- ВЫДВИЖНОЕ МЕНЮ СЛОЕВ И НАСТРОЕК --- */
         .drawer-overlay {
             position: absolute;
             top: 0; left: 0; right: 0; bottom: 0;
             background: rgba(0, 0, 0, 0.65);
-            backdrop-filter: blur(6px);
+            backdrop-filter: blur(8px);
             z-index: 20;
             opacity: 0;
             pointer-events: none;
@@ -434,9 +525,9 @@
             z-index: 21;
             background: var(--bg-card);
             border-top: 1px solid var(--border-light);
-            border-radius: 24px 24px 0 0;
-            padding: 20px;
-            max-height: 82vh;
+            border-radius: 28px 28px 0 0;
+            padding: 22px;
+            max-height: 84vh;
             overflow-y: auto;
             box-shadow: var(--shadow);
             transform: translateY(100%);
@@ -452,7 +543,7 @@
             justify-content: space-between;
             align-items: center;
             font-size: 14px;
-            font-weight: 700;
+            font-weight: 800;
             text-transform: uppercase;
             letter-spacing: 0.8px;
             padding-bottom: 12px;
@@ -464,25 +555,25 @@
             font-size: 11px;
             color: var(--text-secondary);
             text-transform: uppercase;
-            font-weight: 700;
-            letter-spacing: 0.6px;
-            margin: 16px 0 8px 0;
+            font-weight: 800;
+            letter-spacing: 0.8px;
+            margin: 18px 0 10px 0;
         }
 
         .option-row {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            padding: 8px 0;
-            font-size: 13px;
+            padding: 9px 0;
+            font-size: 13.5px;
         }
 
-        /* Переключатели iOS с плавным переливом */
+        /* iOS Toggle Switch */
         .toggle-switch {
             position: relative;
             display: inline-block;
-            width: 42px;
-            height: 24px;
+            width: 44px;
+            height: 25px;
         }
         .toggle-switch input {
             opacity: 0;
@@ -493,15 +584,15 @@
             position: absolute;
             cursor: pointer;
             top: 0; left: 0; right: 0; bottom: 0;
-            background-color: rgba(255, 255, 255, 0.15);
+            background-color: rgba(255, 255, 255, 0.16);
             transition: background-color 0.3s var(--ease-std);
-            border-radius: 24px;
+            border-radius: 25px;
         }
         .slider:before {
             position: absolute;
             content: "";
-            height: 18px;
-            width: 18px;
+            height: 19px;
+            width: 19px;
             left: 3px;
             bottom: 3px;
             background-color: white;
@@ -513,14 +604,14 @@
             background-color: var(--accent);
         }
         input:checked + .slider:before {
-            transform: translateX(18px);
+            transform: translateX(19px);
         }
 
-        /* Сетка кнопок подложки карты */
+        /* Сетка кнопок карт-подложек */
         .base-grid {
             display: grid;
             grid-template-columns: repeat(4, 1fr);
-            gap: 6px;
+            gap: 8px;
             margin-top: 6px;
         }
 
@@ -528,9 +619,9 @@
             background: rgba(255, 255, 255, 0.04);
             border: 1px solid var(--border);
             color: var(--text-primary);
-            padding: 9px 0;
-            border-radius: 10px;
-            font-size: 11px;
+            padding: 10px 0;
+            border-radius: 12px;
+            font-size: 11.5px;
             text-align: center;
             cursor: pointer;
             transition: all 0.25s var(--ease-spring);
@@ -548,16 +639,16 @@
 
         .btn-card.active {
             border-color: var(--accent);
-            background: rgba(59, 130, 246, 0.18);
+            background: rgba(59, 130, 246, 0.2);
             color: #60a5fa;
-            font-weight: 600;
-            box-shadow: 0 0 12px var(--accent-glow);
+            font-weight: 700;
+            box-shadow: 0 0 14px var(--accent-glow);
         }
 
         .stubs-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 6px;
+            gap: 8px;
             margin-top: 6px;
         }
 
@@ -566,7 +657,7 @@
             border: 1px solid var(--border);
             color: var(--text-primary);
             padding: 10px 12px;
-            border-radius: 10px;
+            border-radius: 12px;
             font-size: 11.5px;
             text-align: left;
             cursor: pointer;
@@ -586,19 +677,19 @@
             transform: scale(0.95);
         }
 
-        /* ПЛАВАЮЩИЕ УВЕДОМЛЕНИЯ (TOAST) С ПРУЖИНОЙ */
+        /* ПЛАВАЮЩИЕ УВЕДОМЛЕНИЯ (TOAST) */
         .toast {
             position: absolute;
-            top: 68px;
+            top: 72px;
             left: 50%;
             z-index: 30;
             background: var(--accent);
             color: #fff;
-            padding: 9px 18px;
-            border-radius: 20px;
-            font-size: 12px;
-            font-weight: 600;
-            box-shadow: 0 8px 24px var(--accent-glow);
+            padding: 10px 20px;
+            border-radius: 22px;
+            font-size: 12.5px;
+            font-weight: 700;
+            box-shadow: 0 10px 30px var(--accent-glow);
             pointer-events: none;
             opacity: 0;
             transform: translate(-50%, -20px) scale(0.85);
@@ -612,14 +703,14 @@
 
         @media (min-width: 640px) {
             .drawer-sheet {
-                top: 68px;
+                top: 72px;
                 right: 14px;
                 left: auto;
                 bottom: auto;
-                width: 340px;
-                border-radius: 20px;
+                width: 350px;
+                border-radius: 22px;
                 border: 1px solid var(--border-light);
-                transform: translateX(30px) scale(0.95);
+                transform: translateX(40px) scale(0.92);
                 opacity: 0;
                 pointer-events: none;
                 transition: all 0.35s var(--ease-spring);
@@ -639,40 +730,40 @@
 
 <div id="map"></div>
 
-<!-- Уведомления -->
+<!-- Всплывающие уведомления -->
 <div class="toast" id="toast"></div>
 
-<!-- Верхняя панель управления -->
+<!-- Верхний интерфейсный блок -->
 <div class="top-deck">
     <div class="glass-pill brand-pill">
         <i class="fa-solid fa-cloud-bolt"></i> МЕТЕО РАДАР
     </div>
 
     <div class="glass-pill search-pill">
-        <i class="fa-solid fa-magnifying-glass" style="color: var(--text-secondary); font-size: 12px;"></i>
-        <input type="text" id="searchInput" placeholder="Поиск населенного пункта..." onkeydown="if(event.key==='Enter') searchCity()">
+        <i class="fa-solid fa-magnifying-glass" style="color: var(--text-secondary); font-size: 13px;"></i>
+        <input type="text" id="searchInput" placeholder="Поиск города или места..." onkeydown="if(event.key==='Enter') searchCity()">
     </div>
 
     <div class="tools-group">
-        <button class="btn-glass" onclick="locateUser()" title="Моя геопозиция">
+        <button class="btn-glass" onclick="locateUser()" title="Мое местоположение">
             <i class="fa-solid fa-location-arrow"></i>
         </button>
-        <button class="btn-glass" id="rulerBtn" onclick="toggleRuler()" title="Линейка расстояний">
+        <button class="btn-glass" id="rulerBtn" onclick="toggleRuler()" title="Измеритель расстояний">
             <i class="fa-solid fa-ruler-combined"></i>
         </button>
-        <button class="btn-glass" onclick="toggleDrawer()" title="Слои и функции">
+        <button class="btn-glass" onclick="toggleDrawer()" title="Слои и фильтры">
             <i class="fa-solid fa-sliders"></i>
         </button>
     </div>
 </div>
 
-<!-- Виджет легенды осадков -->
+<!-- Легенда интенсивности осадков -->
 <div class="glass-pill legend-pill">
-    <span style="font-size: 9.5px; color: var(--text-secondary); text-transform: uppercase; font-weight:700;">Интенсивность</span>
+    <span style="font-size: 9.5px; color: var(--text-secondary); text-transform: uppercase; font-weight:800;">Интенсивность</span>
     <div class="legend-bar"></div>
 </div>
 
-<!-- Информатор линейки -->
+<!-- Табло измерителя расстояния -->
 <div class="glass-pill ruler-badge" id="rulerBadge">
     <span>Дистанция: <b id="rulerDist" style="color:var(--accent);">0 км</b></span>
     <i class="fa-solid fa-xmark" style="cursor:pointer; color:var(--danger); transition: transform 0.2s ease;" onclick="clearRuler()" onmouseover="this.style.transform='scale(1.2)'" onmouseout="this.style.transform='scale(1)'"></i>
@@ -690,20 +781,20 @@
         <button class="play-btn-main" id="playBtn" onclick="togglePlay()">
             <i class="fa-solid fa-play"></i>
         </button>
-        <div style="flex:1;">
+        <div class="range-container">
             <input type="range" id="timeSlider" min="0" max="100" value="0" oninput="onSeek(this.value)">
         </div>
-        <button class="btn-glass" style="width:36px; height:36px; font-size:11px;" onclick="changeSpeed()">
+        <button class="btn-glass" style="width:38px; height:38px; font-size:11.5px; font-weight:700;" onclick="changeSpeed()">
             <span id="speedVal">1x</span>
         </button>
     </div>
 </div>
 
-<!-- Панель управления и слоев -->
+<!-- Панель слоев -->
 <div class="drawer-overlay" id="drawerOverlay" onclick="toggleDrawer()"></div>
 <div class="drawer-sheet" id="drawerSheet">
     <div class="drawer-header">
-        <span>Настройки и слои</span>
+        <span>Управление слоями</span>
         <i class="fa-solid fa-xmark" style="cursor:pointer; transition: transform 0.2s ease;" onclick="toggleDrawer()" onmouseover="this.style.transform='scale(1.2)'" onmouseout="this.style.transform='scale(1)'"></i>
     </div>
 
@@ -716,15 +807,15 @@
             <span class="slider"></span>
         </label>
     </div>
-    <div style="margin: 6px 0 10px 0;">
-        <div class="option-row" style="color:var(--text-secondary); font-size:11px;">
+    <div style="margin: 6px 0 12px 0;">
+        <div class="option-row" style="color:var(--text-secondary); font-size:11.5px;">
             <span>Прозрачность слоя</span>
             <span id="opLabel">75%</span>
         </div>
         <input type="range" min="0" max="100" value="75" oninput="setOpacity(this.value)">
     </div>
 
-    <!-- Карты-основы -->
+    <!-- Карты-основы (Без API ключей) -->
     <div class="section-title">Подложка карты</div>
     <div class="base-grid">
         <div class="btn-card active" onclick="setBase('dark', this)">Темная</div>
@@ -733,7 +824,7 @@
         <div class="btn-card" onclick="setBase('osm', this)">Схема</div>
     </div>
 
-    <!-- Дополнительные слои (Заглушки) -->
+    <!-- Дополнительные слои -->
     <div class="section-title">Метеорологические слои</div>
     <div class="option-row">
         <span>Анимация ветра</span>
@@ -757,34 +848,25 @@
         </label>
     </div>
     <div class="option-row">
-        <span>Карта температур</span>
+        <span>Температурное поле</span>
         <label class="toggle-switch">
             <input type="checkbox" onchange="stub('Температурный слой')">
             <span class="slider"></span>
         </label>
     </div>
-    <div class="option-row">
-        <span>Облачность со спутника</span>
-        <label class="toggle-switch">
-            <input type="checkbox" onchange="stub('Спутниковая облачность')">
-            <span class="slider"></span>
-        </label>
-    </div>
 
-    <!-- Инструменты (Заглушки) -->
+    <!-- Аналитика -->
     <div class="section-title">Инструменты анализа</div>
     <div class="stubs-grid">
         <button class="btn-stub" onclick="stub('Метеостанции РФ')"><i class="fa-solid fa-tower-cell" style="color:var(--accent);"></i> Станции РФ</button>
         <button class="btn-stub" onclick="stub('METAR Аэропорты')"><i class="fa-solid fa-plane" style="color:var(--accent);"></i> Аэропорты</button>
         <button class="btn-stub" onclick="stub('Экспорт снимка')"><i class="fa-solid fa-download" style="color:var(--accent);"></i> Экспорт PNG</button>
-        <button class="btn-stub" onclick="stub('Разрез 3D')"><i class="fa-solid fa-chart-area" style="color:var(--accent);"></i> Разрез 3D</button>
         <button class="btn-stub" onclick="stub('Суточный архив')"><i class="fa-solid fa-clock-rotate-left" style="color:var(--accent);"></i> Архив 24ч</button>
-        <button class="btn-stub" onclick="stub('Таблица осадков')"><i class="fa-solid fa-table" style="color:var(--accent);"></i> Таблица</button>
     </div>
 </div>
 
 <script>
-    // ----- MAP INITIALIZATION -----
+    // ----- ИНИЦИАЛИЗА КАРТЫ И ПОДЛОЖЕКБЕЗ API-КЛЮЧЕЙ -----
     const map = L.map('map', {
         center: [55.7512, 37.6184], // Москва
         zoom: 6,
@@ -793,11 +875,12 @@
 
     L.control.zoom({ position: 'bottomright' }).addTo(map);
 
+    // Подложки Темная и Светлая от CartoDB не требуют ключей API
     const basemaps = {
-        dark: L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { maxZoom: 18 }),
+        dark: L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { maxZoom: 19, subdomains: 'abcd' }),
         sat: L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 18 }),
-        light: L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', { maxZoom: 18 }),
-        osm: L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 18 })
+        light: L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', { maxZoom: 19, subdomains: 'abcd' }),
+        osm: L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 })
     };
 
     let activeBase = basemaps.dark;
@@ -812,7 +895,7 @@
         btn.classList.add('active');
     }
 
-    // ----- RADAR (RainViewer API) -----
+    // ----- РАДАР ОСОДОК (RainViewer API) -----
     let frames = [];
     let radarLayers = {};
     let currentIndex = 0;
@@ -867,16 +950,23 @@
                 statusText.innerText = "ПРОГНОЗ";
                 statusBadge.style.color = "#60a5fa";
                 statusBadge.style.background = "rgba(96, 165, 250, 0.12)";
-                statusBadge.style.borderColor = "rgba(96, 165, 250, 0.25)";
+                statusBadge.style.borderColor = "rgba(96, 165, 250, 0.3)";
             } else {
                 statusText.innerText = "АРХИВ (2Ч)";
                 statusBadge.style.color = "var(--warning)";
                 statusBadge.style.background = "rgba(245, 158, 11, 0.12)";
-                statusBadge.style.borderColor = "rgba(245, 158, 11, 0.25)";
+                statusBadge.style.borderColor = "rgba(245, 158, 11, 0.3)";
             }
         }
 
-        document.getElementById('timeSlider').value = (idx / (frames.length - 1)) * 100;
+        const slider = document.getElementById('timeSlider');
+        slider.value = (idx / (frames.length - 1)) * 100;
+        updateSliderTrack(slider.value);
+    }
+
+    function updateSliderTrack(val) {
+        const slider = document.getElementById('timeSlider');
+        slider.style.background = `linear-gradient(to right, var(--accent) 0%, var(--accent) ${val}%, rgba(255,255,255,0.15) ${val}%, rgba(255,255,255,0.15) 100%)`;
     }
 
     function togglePlay() {
@@ -929,7 +1019,9 @@
         Object.values(radarLayers).forEach(l => l.setOpacity(currentOpacity));
     }
 
-    // ----- ПРОГНОЗ ПО КЛИКУ (Open-Meteo API) -----
+    // ----- УНИКАЛЬНАЯ ТОЧКА ПРОСМОТРА ДАННЫХ (ИНСПЕКТОР) -----
+    let inspectMarker = null;
+
     map.on('click', async (e) => {
         if (rulerActive) {
             addRulerPoint(e.latlng);
@@ -939,39 +1031,83 @@
         const lat = e.latlng.lat.toFixed(4);
         const lon = e.latlng.lng.toFixed(4);
 
-        const popup = L.popup()
+        // Устанавливаем анимированный маркер-пинг
+        if (inspectMarker) map.removeLayer(inspectMarker);
+        inspectMarker = L.marker(e.latlng, {
+            icon: L.divIcon({
+                className: 'ping-marker',
+                html: '<div class="ping-ring"></div><div class="ping-dot"></div>',
+                iconSize: [36, 36],
+                iconAnchor: [18, 18]
+            })
+        }).addTo(map);
+
+        const popup = L.popup({ offset: [0, -10] })
             .setLatLng(e.latlng)
-            .setContent(`<div style="font-size:12px; color:var(--text-secondary);">Получение данных...</div>`)
+            .setContent(`<div style="font-size:12px; color:var(--text-secondary); text-align:center; padding: 6px;"><i class="fa-solid fa-spinner fa-spin" style="color:var(--accent);"></i> Загрузка погоды...</div>`)
             .openOn(map);
 
         try {
-            const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true&windspeed_unit=ms`);
+            const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,apparent_temperature,precipitation,weather_code,surface_pressure,wind_speed_10m&wind_speed_unit=ms`;
+            const res = await fetch(url);
             const data = await res.json();
-            const w = data.current_weather;
+            const c = data.current;
+
+            const weatherInfo = getWmoDetails(c.weather_code);
 
             popup.setContent(`
-                <div style="font-size:12px; line-height:1.5;">
-                    <b style="font-size:13px; color:#fff;">${getWmoDescription(w.weathercode)}</b><br>
-                    <span style="color:var(--text-secondary);">Температура:</span> <b style="color:#60a5fa;">${w.temperature > 0 ? '+' : ''}${w.temperature} °C</b><br>
-                    <span style="color:var(--text-secondary);">Ветер:</span> <b>${w.windspeed} м/с</b><br>
-                    <span style="color:#64748b; font-size:10px;">Координаты: ${lat}, ${lon}</span>
+                <div class="weather-pop-card">
+                    <div class="pop-head">
+                        <div>
+                            <div style="font-size:14px; font-weight:800; color:#fff;">${weatherInfo.title}</div>
+                            <div style="font-size:10px; color:var(--text-secondary);">${lat}, ${lon}</div>
+                        </div>
+                        <i class="${weatherInfo.icon}" style="font-size: 24px; color: ${weatherInfo.color};"></i>
+                    </div>
+                    <div style="display:flex; align-items:baseline; gap:8px; margin-bottom:10px;">
+                        <div class="pop-temp">${c.temperature_2m > 0 ? '+' : ''}${Math.round(c.temperature_2m)}°C</div>
+                        <div style="font-size:11px; color:var(--text-secondary);">Ощущается как <b style="color:#fff">${Math.round(c.apparent_temperature)}°C</b></div>
+                    </div>
+                    <div class="pop-grid">
+                        <div class="pop-item"><i class="fa-solid fa-wind" style="color:#60a5fa;"></i> Ветер <b>${c.wind_speed_10m} м/с</b></div>
+                        <div class="pop-item"><i class="fa-solid fa-droplet" style="color:#38bdf8;"></i> Влажность <b>${c.relative_humidity_2m}%</b></div>
+                        <div class="pop-item"><i class="fa-solid fa-cloud-rain" style="color:#818cf8;"></i> Осадки <b>${c.precipitation} мм</b></div>
+                        <div class="pop-item"><i class="fa-solid fa-gauge" style="color:#a78bfa;"></i> Давление <b>${Math.round(c.surface_pressure * 0.750062)} мм</b></div>
+                    </div>
                 </div>
             `);
         } catch (err) {
-            popup.setContent(`<div style="font-size:12px; color:var(--danger);">Ошибка получения погоды</div>`);
+            popup.setContent(`<div style="font-size:12px; color:var(--danger); padding:4px;">Ошибка загрузки метеоданных</div>`);
         }
     });
 
-    function getWmoDescription(code) {
+    map.on('popupclose', () => {
+        if (inspectMarker) {
+            map.removeLayer(inspectMarker);
+            inspectMarker = null;
+        }
+    });
+
+    function getWmoDetails(code) {
         const desc = {
-            0: 'Ясно', 1: 'Малооблачно', 2: 'Переменная облачность', 3: 'Пасмурно',
-            45: 'Туман', 51: 'Морось', 61: 'Слабый дождь', 63: 'Умеренный дождь', 65: 'Сильный дождь',
-            71: 'Слабый снег', 73: 'Снегопад', 80: 'Ливень', 95: 'Гроза'
+            0: { title: 'Ясно', icon: 'fa-solid fa-sun', color: '#f59e0b' },
+            1: { title: 'Малооблачно', icon: 'fa-solid fa-cloud-sun', color: '#fbbf24' },
+            2: { title: 'Переменная облачность', icon: 'fa-solid fa-cloud-sun', color: '#94a3b8' },
+            3: { title: 'Пасмурно', icon: 'fa-solid fa-cloud', color: '#64748b' },
+            45: { title: 'Туман', icon: 'fa-solid fa-smog', color: '#94a3b8' },
+            51: { title: 'Морось', icon: 'fa-solid fa-cloud-rain', color: '#38bdf8' },
+            61: { title: 'Слабый дождь', icon: 'fa-solid fa-cloud-rain', color: '#60a5fa' },
+            63: { title: 'Умеренный дождь', icon: 'fa-solid fa-cloud-showers-heavy', color: '#3b82f6' },
+            65: { title: 'Сильный ливень', icon: 'fa-solid fa-cloud-showers-water', color: '#1d4ed8' },
+            71: { title: 'Слабый снег', icon: 'fa-solid fa-snowflake', color: '#e0f2fe' },
+            73: { title: 'Снегопад', icon: 'fa-solid fa-snowflake', color: '#bae6fd' },
+            80: { title: 'Ливень', icon: 'fa-solid fa-cloud-showers-heavy', color: '#2563eb' },
+            95: { title: 'Гроза', icon: 'fa-solid fa-bolt', color: '#f59e0b' }
         };
-        return desc[code] || 'Осадки';
+        return desc[code] || { title: 'Осадки', icon: 'fa-solid fa-cloud-sun-rain', color: '#60a5fa' };
     }
 
-    // ----- ИНСТРУМЕНТ ЛИНЕЙКА -----
+    // ----- ЛИНЕЙКА ИЗМЕРЕНИЙ -----
     let rulerActive = false;
     let rulerPoints = [];
     let rulerPolyline = null;
@@ -985,7 +1121,7 @@
         if (rulerActive) {
             btn.classList.add('active');
             badge.classList.add('active');
-            showToast("Кликайте по карте для замера");
+            showToast("Кликайте по карте для измерения");
         } else {
             btn.classList.remove('active');
             badge.classList.remove('active');
@@ -995,12 +1131,12 @@
 
     function addRulerPoint(latlng) {
         rulerPoints.push(latlng);
-        const m = L.circleMarker(latlng, { radius: 5, color: '#3b82f6', fillColor: '#3b82f6', fillOpacity: 1 }).addTo(map);
+        const m = L.circleMarker(latlng, { radius: 5, color: '#3b82f6', fillColor: '#ffffff', fillOpacity: 1, weight: 3 }).addTo(map);
         rulerMarkers.push(m);
 
         if (rulerPoints.length > 1) {
             if (rulerPolyline) map.removeLayer(rulerPolyline);
-            rulerPolyline = L.polyline(rulerPoints, { color: '#3b82f6', weight: 3, dashArray: '6, 6' }).addTo(map);
+            rulerPolyline = L.polyline(rulerPoints, { color: '#3b82f6', weight: 3, dashArray: '8, 8' }).addTo(map);
 
             let total = 0;
             for (let i = 0; i < rulerPoints.length - 1; i++) {
@@ -1029,7 +1165,7 @@
             if (data.length > 0) {
                 map.flyTo([data[0].lat, data[0].lon], 9, { duration: 1.5 });
             } else {
-                showToast("Город не найден");
+                showToast("Локация не найдена");
             }
         } catch (e) {}
     }
@@ -1044,7 +1180,7 @@
         );
     }
 
-    // ----- ВЫДВИЖНОЕ МЕНЮ И УВЕДОМЛЕНИЯ -----
+    // ----- ИНТЕРФЕЙСНЫЕ ФУНКЦИИ -----
     function toggleDrawer() {
         document.getElementById('drawerSheet').classList.toggle('active');
         document.getElementById('drawerOverlay').classList.toggle('active');

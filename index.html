@@ -62,9 +62,9 @@
             background: #07090e;
         }
 
-        /* --- ПЛАВНЫЕ ТРАНЗИЦИИ ДЛЯ СЛОЕВ РАДАРА --- */
-        .leaflet-tile-container {
-            transition: opacity 0.35s var(--ease-std) !important;
+        /* --- ИЗОЛИРОВАННАЯ ТРАНЗИЦИЯ ДЛЯ СЛОЕВ РАДАРА (НЕ МЕШАЕТ ЗУМУ КАРТЫ) --- */
+        .radar-layer {
+            transition: opacity 0.35s var(--ease-std);
             will-change: opacity;
         }
 
@@ -524,7 +524,7 @@
             box-shadow: 0 0 22px var(--accent);
         }
 
-        /* --- ВЫДВИЖНОЕ МЕНЮ СЛОЕВ И НАСТРОЕК --- */
+        /* --- ВЫДВИЖНОЕ МЕНЮ СЛОЕВ И НАСТРОЕК (ИСПРАВЛЕНО ВЫСТУПАНИЕ) --- */
         .drawer-overlay {
             position: absolute;
             top: 0; left: 0; right: 0; bottom: 0;
@@ -555,13 +555,17 @@
             max-height: 84vh;
             overflow-y: auto;
             box-shadow: var(--shadow);
-            transform: translateY(100%) translateZ(0);
-            transition: transform 0.45s var(--ease-spring);
-            will-change: transform;
+            transform: translateY(calc(100% + 60px)) translateZ(0);
+            visibility: hidden;
+            pointer-events: none;
+            transition: transform 0.45s var(--ease-spring), visibility 0.45s var(--ease-spring);
+            will-change: transform, visibility;
         }
 
         .drawer-sheet.active {
             transform: translateY(0) translateZ(0);
+            visibility: visible;
+            pointer-events: auto;
         }
 
         .drawer-header {
@@ -740,14 +744,16 @@
                 width: 350px;
                 border-radius: 22px;
                 border: 1px solid var(--border-light);
-                transform: translateX(40px) scale(0.92) translateZ(0);
+                transform: translateX(30px) scale(0.95) translateZ(0);
                 opacity: 0;
+                visibility: hidden;
                 pointer-events: none;
-                transition: all 0.4s var(--ease-spring);
+                transition: transform 0.4s var(--ease-spring), opacity 0.4s var(--ease-spring), visibility 0.4s var(--ease-spring);
             }
             .drawer-sheet.active {
                 transform: translateX(0) scale(1) translateZ(0);
                 opacity: 1;
+                visibility: visible;
                 pointer-events: auto;
             }
             .drawer-overlay {
@@ -896,11 +902,18 @@
 </div>
 
 <script>
-    // ----- ИНИЦИАЛИЗА КАРТЫ И ПОДЛОЖЕК -----
+    // ----- ИНИЦИАЛИЗА КАРТЫ С НАСТРОЙКАМИ ПЛАВНОГО ЗУМА -----
     const map = L.map('map', {
         center: [55.7512, 37.6184], // Москва
         zoom: 6,
-        zoomControl: false
+        zoomControl: false,
+        zoomSnap: 0.25,             // Мягкий дробный зум
+        zoomDelta: 0.5,              // Плавный шаг изменения зума
+        wheelPxPerZoomLevel: 100,    // Сглаженный скролл колесиком
+        wheelDebounceTime: 40,
+        zoomAnimation: true,
+        fadeAnimation: true,
+        markerZoomAnimation: true
     });
 
     L.control.zoom({ position: 'bottomright' }).addTo(map);
@@ -924,7 +937,7 @@
         btn.classList.add('active');
     }
 
-    // ----- ПЛАВНЫЙ РАДАР ОСОДОК (RainViewer API c Cross-fading) -----
+    // ----- ПЛАВНЫЙ РАДАР ОСАДКОВ -----
     let frames = [];
     let radarLayers = {};
     let currentIndex = 0;
@@ -944,11 +957,12 @@
 
             if (!frames.length) return;
 
-            // Предварительное монтирование всех слоев в карту с нулевой прозрачностью для исключения микрозадержек DOM
+            // Предварительное монтирование слоев с изолированным классом
             frames.forEach((f, idx) => {
                 const layer = L.tileLayer(`https://tilecache.rainviewer.com/v2/radar/${f.time}/256/{z}/{x}/{y}/2/1_1.png`, {
                     opacity: 0,
-                    zIndex: 100 + idx
+                    zIndex: 100 + idx,
+                    className: 'radar-layer'
                 });
                 radarLayers[idx] = layer;
                 if (document.getElementById('radarCheck').checked) {
@@ -966,7 +980,6 @@
     function showFrame(idx) {
         if (!frames.length) return;
 
-        // Плавное переключение прозрачности между слоями (без удаления из DOM)
         Object.keys(radarLayers).forEach(i => {
             const key = parseInt(i);
             const layer = radarLayers[key];

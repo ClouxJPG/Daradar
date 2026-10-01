@@ -1,58 +1,153 @@
-<script>
-    document.addEventListener("DOMContentLoaded", function() {
-        
-        // 1. Инициализация карты (как у тебя настроено с GPT)
-        const map = L.map('map').setView([55.7558, 37.6173], 5);
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            maxZoom: 18,
-            attribution: '&copy; OpenStreetMap'
-        }).addTo(map);
+    <title>Leaflet Метеорадар ДМРЛ-С России</title>
 
-        // Функция окрашивания реальных уровней отражаемости ДМРЛ-С
-        function getRadarStyle(feature) {
-            // Во внутренней матрице Росгидромета сила осадков пишется в параметр GRAY_INDEX или dbz
-            const dbz = feature.properties.GRAY_INDEX || feature.properties.dbz || 0;
-            let color = '#00a8f3'; // Слабый дождь
-            
-            if (dbz >= 45) color = '#ed1c24';      // Град / Сильный ливень
-            else if (dbz >= 35) color = '#ff7f27'; // Сильный дождь
-            else if (dbz >= 25) color = '#fff200'; // Умеренный дождь
-            
-            return {
-                fillColor: color,
-                weight: 0.5,
-                opacity: 0.9,
-                fillOpacity: 0.5,
-                color: color
-            };
+    <!-- Leaflet -->
+    <link
+        rel="stylesheet"
+        href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    />
+
+    <script
+        src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+    ></script>
+
+    <style>
+        html, body {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background: #1a1a1a;
         }
 
-        // 2. Стучимся к твоему новому серверу за НАСТОЯЩИМИ данными
-        // Замени '/api/radar' на полный URL твоего сервера на Vercel, если запускаешь с GitHub Pages
-        fetch('/api/radar') 
-            .then(response => response.json())
-            .then(realRadarGeoJSON => {
-                
-                // Отрисовываем живой векторный слой Росгидромета на Leaflet
-                L.geoJSON(realRadarGeoJSON, {
-                    style: getRadarStyle,
-                    filter: function(feature) {
-                        // Отсекаем пустые зоны, где радар ничего не зафиксировал (dBZ близко к нулю)
-                        const dbz = feature.properties.GRAY_INDEX || feature.properties.dbz || 0;
-                        return dbz > 10; 
-                    },
-                    onEachFeature: function (feature, layer) {
-                        const dbz = feature.properties.GRAY_INDEX || feature.properties.dbz || 0;
-                        layer.bindPopup(`<b>Физическое эхо:</b> ${dbz} dBZ<br><b>Код станции:</b> ${feature.properties.station_id || 'ДМРЛ-С'}`);
+        #map {
+            width: 100%;
+            height: 100%;
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- Карта -->
+    <div id="map"></div>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            
+            // 1. Инициализация карты
+            const map = L.map('map').setView([55.7558, 37.6173], 5);
+
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                maxZoom: 18,
+                attribution: '&copy; OpenStreetMap'
+            }).addTo(map);
+
+            // Функция окрашивания реальных уровней отражаемости ДМРЛ-С
+            function getRadarStyle(feature) {
+
+                const properties = feature.properties || {};
+
+                const dbz =
+                    properties.GRAY_INDEX ||
+                    properties.dbz ||
+                    0;
+
+                let color = '#00a8f3';
+
+                if (dbz >= 45) {
+                    color = '#ed1c24';
+                }
+                else if (dbz >= 35) {
+                    color = '#ff7f27';
+                }
+                else if (dbz >= 25) {
+                    color = '#fff200';
+                }
+
+                return {
+                    fillColor: color,
+                    weight: 0.5,
+                    opacity: 0.9,
+                    fillOpacity: 0.5,
+                    color: color
+                };
+            }
+
+            // 2. Запрос реальных данных с сервера
+            fetch('/api/radar')
+                .then(response => {
+
+                    if (!response.ok) {
+                        throw new Error(
+                            'Сервер вернул HTTP ' + response.status
+                        );
                     }
-                }).addTo(map);
 
-            })
-            .catch(error => {
-                console.error("Ошибка загрузки живого радара:", error);
-            });
-    });
-</script>
+                    return response.json();
+                })
 
-<script src="radar.js"></script>
+                .then(realRadarGeoJSON => {
+
+                    // Отрисовываем данные радара
+                    L.geoJSON(realRadarGeoJSON, {
+
+                        style: getRadarStyle,
+
+                        filter: function(feature) {
+
+                            const properties = feature.properties || {};
+
+                            const dbz =
+                                properties.GRAY_INDEX ||
+                                properties.dbz ||
+                                0;
+
+                            return dbz > 10;
+                        },
+
+                        onEachFeature: function(feature, layer) {
+
+                            const properties =
+                                feature.properties || {};
+
+                            const dbz =
+                                properties.GRAY_INDEX ||
+                                properties.dbz ||
+                                0;
+
+                            layer.bindPopup(
+                                `<b>Физическое эхо:</b> ${dbz} dBZ<br>` +
+                                `<b>Код станции:</b> ${
+                                    properties.station_id || 'ДМРЛ-С'
+                                }`
+                            );
+                        }
+
+                    }).addTo(map);
+
+                })
+
+                .catch(error => {
+
+                    console.error(
+                        "Ошибка загрузки живого радара:",
+                        error
+                    );
+
+                });
+
+        });
+    </script>
+
+    <!-- Дополнительный JS радара -->
+    <script src="radar.js"></script>
+
+</body>
+</html>

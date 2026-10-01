@@ -3,94 +3,115 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Настоящий Метеорадар ДМРЛ-С</title>
+    <title>Парсинг физических метеоданных (WMS)</title>
     
-    <!-- Скрипты Leaflet -->
     <link rel="stylesheet" href="https://unpkg.com" />
     <script src="https://unpkg.com"></script>
 
     <style>
-        /* Принудительно растягиваем карту во весь экран */
         html, body, #map {
-            margin: 0;
-            padding: 0;
-            width: 100vw;
-            height: 100vh;
-            background-color: #111;
+            margin: 0; padding: 0; width: 100%; height: 100%;
+            background: #111;
         }
-        
-        /* Стили для пикселей радара, чтобы они были четкими и не мылились */
-        .radar-pixelated {
-            image-rendering: pixelated;
-            image-rendering: crisp-edges;
+        .info-panel {
+            position: absolute; top: 20px; right: 20px; z-index: 1000;
+            background: rgba(255, 255, 255, 0.95); padding: 15px;
+            border-radius: 8px; font-family: monospace; font-size: 13px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3); width: 280px; color: #333;
         }
-
-        .map-label {
-            position: absolute;
-            top: 15px;
-            right: 15px;
-            z-index: 1000;
-            background: rgba(0, 0, 0, 0.85);
-            color: #fff;
-            padding: 10px 15px;
-            border-radius: 6px;
-            font-family: sans-serif;
-            font-size: 13px;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
-        }
+        h4 { margin: 0 0 10px 0; font-family: sans-serif; }
     </style>
 </head>
 <body>
 
-    <!-- Важно: этот блок должен быть выше скрипта -->
     <div id="map"></div>
-    
-    <div class="map-label">
-        <b style="font-size: 14px; display:block; margin-bottom:3px;">📡 Радары ДМРЛ-С (Росгидромет)</b>
-        <div id="time-display">Загрузка данных...</div>
+
+    <div class="info-panel">
+        <h4>Физические данные радара</h4>
+        <div id="output">Кликните в любую точку на карте, чтобы отправить точечный запрос к матрице метеослужбы...</div>
     </div>
 
     <script>
-        // Ждем, пока браузер полностью построит HTML-дерево
-        document.addEventListener("DOMContentLoaded", function() {
-            
-            // 1. Инициализируем карту (Центр — Москва)
-            const map = L.map('map').setView([55.7558, 37.6173], 5);
+        // Инициализируем карту (центрируем на тестовую зону с открытым WMS)
+        const map = L.map('map').setView([39.8283, -98.5795], 5);
 
-            // 2. Добавляем базовую темную карту (чтобы радар было круто видно)
-            L.tileLayer('https://{s}://{z}/{x}/{y}{r}.png', {
-                maxZoom: 19,
-                attribution: '&copy; OpenStreetMap'
-            }).addTo(map);
+        // Ставим базовую темную карту
+        L.tileLayer('https://{s}://{z}/{x}/{y}{r}.png', {
+            maxZoom: 19
+        }).addTo(map);
 
-            // 3. Стучимся в API RainViewer за актуальным хэшем радарных данных
-            fetch('https://rainviewer.com')
-                .then(response => response.json())
-                .then(data => {
-                    // Берем самый последний реальный кадр из прошлых (past)
-                    const latestRadar = data.radar.past[data.radar.past.length - 1];
+        // Базовый URL официального WMS-сервера метеослужбы (NOAA/NEXRAD)
+        const wmsUrl = 'https://noaa.gov';
+
+        // 1. Отображаем визуальный радарный слой на карте
+        const radarLayer = L.tileLayer.wms(wmsUrl, {
+            layers: '1',
+            format: 'image/png',
+            transparent: true,
+            opacity: 0.5,
+            attribution: 'NOAA / NEXRAD'
+        }).addTo(map);
+
+        // 2. Ловим клик мыши, чтобы вытащить «сырое» значение из матрицы
+        map.on('click', function(e) {
+            document.getElementById('output').innerHTML = "⏳ Запрос к серверу...";
+
+            // Получаем текущие параметры экрана и координат для ГИС-запроса
+            const size = map.getSize();
+            const bounds = map.getBounds();
+            const crs = map.options.crs;
+
+            // Конвертируем координаты клика в пиксели экрана
+            const point = map.latLngToContainerPoint(e.latlng);
+
+            // Формируем стандартизированный ГИС-запрос GetFeatureInfo
+            // Он просит сервер вернуть текстовое описание данных в конкретном пикселе
+            const url = wmsUrl + L.Util.getParamString({
+                request: 'GetFeatureInfo',
+                service: 'WMS',
+                version: '1.3.0',
+                layers: '1',
+                query_layers: '1',
+                bbox: crs.project(bounds.getSouthWest()).x + ',' + crs.project(bounds.getSouthWest()).y + ',' +
+                      crs.project(bounds.getNorthEast()).x + ',' + crs.project(bounds.getNorthEast()).y,
+                crs: 'EPSG:3857',
+                width: size.x,
+                height: size.y,
+                x: Math.floor(point.x),
+                y: Math.floor(point.y),
+                info_format: 'text/html' // Просим сервер вернуть структуру данных
+            }, wmsUrl);
+
+            // Делаем микро-запрос напрямую к серверу метеослужбы без прокси
+            fetch(url)
+                .then(res => res.text())
+                .then(htmlData => {
+                    // Парсим ответ сервера. Обычно ГИС-сервер возвращает мини-таблицу HTML 
+                    // или JSON с физическими параметрами (отражаемость в dBZ, тип осадков)
+                    const parser = new DOMParser();
+                    const doc = parser.parseFromString(htmlData, 'text/html');
                     
-                    // Выводим время снимка
-                    const radarDate = new Date(latestRadar.time * 1000);
-                    const timeString = radarDate.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
-                    document.getElementById('time-display').innerHTML = `⏱️ Время осадков: <b>${timeString}</b>`;
+                    // Ищем текстовые данные внутри ответа сервера
+                    const bodyText = doc.body.innerText.trim();
 
-                    // 4. Накладываем радар поверх карты.
-                    // '/2/1_1.png' в конце ссылки задает фирменную палитру наукаста
-                    L.tileLayer(`https://rainviewer.com${latestRadar.path}/256/{z}/{x}/{y}/2/1_1.png`, {
-                        tileSize: 256,
-                        opacity: 0.65,
-                        transparent: true,
-                        className: 'radar-pixelated',
-                        attribution: 'Данные &copy; Росгидромет'
-                    }).addTo(map);
+                    if (bodyText && bodyText.length > 10) {
+                        document.getElementById('output').innerHTML = `
+                            <b>Координаты:</b> ${e.latlng.lat.toFixed(4)}, ${e.latlng.lng.toFixed(4)}<br><br>
+                            <b>Ответ матрицы:</b><br>
+                            <pre style="white-space: pre-wrap; font-size:11px;">${bodyText}</pre>
+                        `;
+                    } else {
+                        document.getElementById('output').innerHTML = `
+                            <b>Координаты:</b> ${e.latlng.lat.toFixed(4)}, ${e.latlng.lng.toFixed(4)}<br><br>
+                            <b>Осадки:</b> Нет (ячейка матрицы пуста)
+                        `;
+                    }
                 })
-                .catch(error => {
-                    console.error("Ошибка API радара:", error);
-                    document.getElementById('time-display').innerText = "Ошибка загрузки осадков";
+                .catch(err => {
+                    console.error(err);
+                    document.getElementById('output').innerText = "Ошибка запроса к метеоматрице";
                 });
         });
     </script>
-
 </body>
 </html>

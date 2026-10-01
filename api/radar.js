@@ -1,5 +1,5 @@
 // api/radar.js (или код для твоего Node.js сервера)
-const https = require('https');
+const https = require('https://daradar-sage.vercel.app');
 
 module.exports = async (req, res) => {
     // Устанавливаем CORS-заголовки, чтобы твой HTML на GitHub Pages мог читать этот API

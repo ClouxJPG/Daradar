@@ -3,75 +3,76 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Радар ДМРЛ-С на Leaflet</title>
+    <title>Рабочий Радар на Leaflet</title>
     
-    <!-- Подключаем Leaflet CSS и JS из CDN (без скачивания на ПК) -->
+    <!-- Скрипты Leaflet -->
     <link rel="stylesheet" href="https://unpkg.com" />
     <script src="https://unpkg.com"></script>
 
     <style>
-        body, html { margin: 0; padding: 0; height: 100%; font-family: sans-serif; }
-        #map { height: 100vh; width: 100vw; }
-        .radar-panel {
-            position: absolute; top: 10px; right: 10px; z-index: 1000;
-            background: rgba(255,255,255,0.9); padding: 15px; border-radius: 8px;
-            box-shadow: 0 0 15px rgba(0,0,0,0.2); max-width: 250px;
+        /* Главное исправление: даем карте четкие размеры, чтобы она не была нулевой */
+        html, body, #map {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            background-color: #f0f0f0;
         }
-        h4 { margin: 0 0 10px 0; color: #333; }
-        .legend-item { display: flex; align-items: center; margin-bottom: 4px; font-size: 12px; }
-        .color-box { width: 20px; height: 12px; margin-right: 8px; border: 1px solid #999; }
+        .radar-control {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+            background: white;
+            padding: 15px;
+            border-radius: 5px;
+            font-family: sans-serif;
+            box-shadow: 0 0 10px rgba(0,0,0,0.3);
+        }
     </style>
 </head>
 <body>
 
     <div id="map"></div>
 
-    <!-- Панель управления и легенда ДМРЛ-С -->
-    <div class="radar-panel">
-        <h4>Радар ДМРЛ (Осадки)</h4>
-        <div id="radar-time">Обновление...</div>
-        <hr>
-        <!-- Официальная цветовая шкала интенсивности РГМЦ/ЦАО -->
-        <div class="legend-item"><div class="color-box" style="background:#00a8f3;"></div> Слабый дождь / снег</div>
-        <div class="legend-item"><div class="color-box" style="background:#3f48cc;"></div> Умеренный дождь</div>
-        <div class="legend-item"><div class="color-box" style="background:#fff200;"></div> Сильный ливень</div>
-        <div class="legend-item"><div class="color-box" style="background:#ed1c24;"></div> Очень сильный / Град</div>
+    <div class="radar-control">
+        <h4 style="margin:0 0 5px 0;">Данные ДМРЛ-С</h4>
+        <div id="timestamp">Загрузка времени...</div>
     </div>
 
     <script>
-        // 1. Инициализируем карту Leaflet (центрируем, например, на ЕТР / Москву)
-        const map = L.map('map').setView([55.7558, 37.6173], 6);
+        // Инициализируем карту, центрируем на Москву/Европейскую часть РФ
+        const map = L.map('map').setView([55.7558, 37.6173], 5);
 
-        // 2. Добавляем базовую подложку (светлая карта OpenStreetMap)
+        // Добавляем бесплатную красивую подложку
         L.tileLayer('https://{s}://{z}/{x}/{y}{r}.png', {
             attribution: '&copy; OpenStreetMap'
         }).addTo(map);
 
-        // 3. Генерируем правильную метку времени (Timestamp)
-        // Радары ДМРЛ-С обновляются раз в 10 минут. Округляем текущее время назад.
-        function getRadarTimestamp() {
-            const date = new Date();
-            // Вычитаем 10 минут для гарантии, что сервер уже обработал этот снимок
-            const tenMinutesAgo = new Date(date.getTime() - 10 * 60 * 1000);
-            return Math.floor(tenMinutesAgo.getTime() / 600000) * 600000;
-        }
+        // Получаем свежие данные ДМРЛ через глобальный метео-агрегатор RainViewer
+        // Он забирает сырой поток у Росгидромета, но перепроецирует в удобный формат
+        fetch('https://rainviewer.com')
+            .then(res => res.json())
+            .then(data => {
+                // Берем самый последний доступный снимок из архива (крайний в массиве radar.past)
+                const lastRadar = data.radar.past[data.radar.past.length - 1];
+                
+                // Выводим время снимка в интерфейс
+                const radarTime = new Date(lastRadar.time * 1000).toLocaleTimeString('ru-RU', {hour: '2-digit', minute:'2-digit'});
+                document.getElementById('timestamp').innerHTML = `<b>Осадки на:</b> ${radarTime}`;
 
-        const currentTs = getRadarTimestamp();
-        
-        // Отобразим время данных в интерфейсе
-        const readableTime = new Date(currentTs).toLocaleTimeString('ru-RU', {hour: '2-digit', minute:'2-digit'});
-        document.getElementById('radar-time').innerHTML = `<b>Время данных:</b> ${readableTime}`;
-
-        // 4. Подключаем РЕАЛЬНЫЙ радарный слой данных ДМРЛ
-        // Мы используем официальный поток обработанных радарных тайлов Яндекса (maps.yandex.net),
-        // так как они напрямую сопряжены с сетью Росгидромета.
-        const radarLayer = L.tileLayer('https://yandex.net{x}&y={y}&z={z}&ts=' + currentTs, {
-            maxZoom: 15,
-            minZoom: 3,
-            opacity: 0.65, // Делаем слой полупрозрачным, чтобы видеть подложку карты
-            attribution: 'Данные ДМРЛ-С &copy; Росгидромет / Яндекс'
-        }).addTo(map);
-
+                // Добавляем радарный слой на карту Leaflet
+                L.tileLayer(`https://rainviewer.com${lastRadar.path}/256/{z}/{x}/{y}/2/1_1.png`, {
+                    tileSize: 256,
+                    opacity: 0.65,
+                    transparent: true,
+                    attribution: 'Росгидромет / RainViewer'
+                }).addTo(map);
+            })
+            .catch(err => {
+                console.error("Ошибка обновления радара:", err);
+                document.getElementById('timestamp').innerText = "Ошибка сети";
+            });
     </script>
 </body>
 </html>

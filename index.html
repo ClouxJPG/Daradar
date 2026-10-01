@@ -1,132 +1,56 @@
-<!DOCTYPE html>
-<html lang="ru">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Leaflet Метеорадар ДМРЛ-С России</title>
-    
-    <!-- Стабильный Leaflet строго из официального CDN -->
-    <link
-        rel="stylesheet"
-        href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-    />
-    <script
-        src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
-    ></script>
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        
+        // 1. Инициализация карты (как у тебя настроено с GPT)
+        const map = L.map('map').setView([55.7558, 37.6173], 5);
 
-    <style>
-        /* Жестко фиксируем экран, чтобы карта не схлопывалась в 0 */
-        html, body, #map {
-            margin: 0;
-            padding: 0;
-            width: 100vw;
-            height: 100vh;
-            background-color: #1a1a1a;
-        }
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 18,
+            attribution: '&copy; OpenStreetMap'
+        }).addTo(map);
 
-        .radar-panel {
-            position: absolute;
-            top: 15px;
-            right: 15px;
-            z-index: 1000;
-            background: rgba(30, 30, 30, 0.9);
-            color: #fff;
-            padding: 12px 18px;
-            border-radius: 6px;
-            font-family: sans-serif;
-            font-size: 13px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.6);
-            border: 1px solid #444;
-        }
-    </style>
-</head>
-<body>
-
-    <!-- Контейнер для Leaflet карты -->
-    <div id="map"></div>
-    
-    <div class="radar-panel">
-        <b style="font-size: 14px; color: #00e676;">📡 Сеть ДМРЛ-С России</b>
-        <div style="margin-top: 5px; color: #aaa;">Источник: ФГБУ ЦАО / Росгидромет</div>
-    </div>
-
-    <script>
-        // Дожидаемся, пока браузер гарантированно построит <div id="map">
-        document.addEventListener("DOMContentLoaded", function() {
+        // Функция окрашивания реальных уровней отражаемости ДМРЛ-С
+        function getRadarStyle(feature) {
+            // Во внутренней матрице Росгидромета сила осадков пишется в параметр GRAY_INDEX или dbz
+            const dbz = feature.properties.GRAY_INDEX || feature.properties.dbz || 0;
+            let color = '#00a8f3'; // Слабый дождь
             
-            // 1. Инициализируем карту (Центрируем строго по России, Москва)
-            const map = L.map('map', {
-                center: [55.7558, 37.6173],
-                zoom: 5,
-                zoomControl: true
-            });
-
-            // 2. Добавляем надежную базовую карту, которая работает ВСЕГДА и по HTTPS
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                maxZoom: 18,
-                attribution: '&copy; OpenStreetMap'
-            }).addTo(map);
-
-            // 3. Имитируем парсинг чистого вектора осадков
-            // ЦАО отдает данные контуров в формате GeoJSON. 
-            // Leaflet умеет отрисовывать его нативно за долю секунды!
+            if (dbz >= 45) color = '#ed1c24';      // Град / Сильный ливень
+            else if (dbz >= 35) color = '#ff7f27'; // Сильный дождь
+            else if (dbz >= 25) color = '#fff200'; // Умеренный дождь
             
-            // ТЕСТОВЫЙ НАБОР РЕАЛЬНЫХ РАДАРНЫХ КОНТУРОВ (GeoJSON структура)
-            // Когда друг скинет тебе эндпоинт, ты просто заменишь эту переменную на fetch(url)
-            const mockRadarGeoJSON = {
-                "type": "FeatureCollection",
-                "features": [
-                    {
-                        "type": "Feature",
-                        "properties": { "intensity": "Сильный ливень", "dbz": 45 },
-                        "geometry": {
-                            "type": "Polygon",
-                            "coordinates": [[
-                                [36.5, 56.0], [38.5, 56.0], [38.5, 55.0], [36.5, 55.0], [36.5, 56.0]
-                            ]]
-                        }
-                    },
-                    {
-                        "type": "Feature",
-                        "properties": { "intensity": "Умеренный дождь", "dbz": 30 },
-                        "geometry": {
-                            "type": "Polygon",
-                            "coordinates": [[
-                                [35.0, 56.5], [40.0, 56.5], [40.0, 54.5], [35.0, 54.5], [35.0, 56.5]
-                            ]]
-                        }
-                    }
-                ]
+            return {
+                fillColor: color,
+                weight: 0.5,
+                opacity: 0.9,
+                fillOpacity: 0.5,
+                color: color
             };
+        }
 
-            // Функция, которая красит пиксели радара в правильные метео-цвета (как у наукаста)
-            function getRadarStyle(feature) {
-                const dbz = feature.properties.dbz;
-                let color = '#00a8f3'; // Слабый дождь (голубой)
+        // 2. Стучимся к твоему новому серверу за НАСТОЯЩИМИ данными
+        // Замени '/api/radar' на полный URL твоего сервера на Vercel, если запускаешь с GitHub Pages
+        fetch('/api/radar') 
+            .then(response => response.json())
+            .then(realRadarGeoJSON => {
                 
-                if (dbz >= 40) color = '#ed1c24'; // Град / Ливень (красный)
-                else if (dbz >= 30) color = '#fff200'; // Умеренный (желтый)
-                
-                return {
-                    fillColor: color,
-                    weight: 1,
-                    opacity: 0.8,
-                    fillOpacity: 0.5,
-                    color: color
-                };
-            }
+                // Отрисовываем живой векторный слой Росгидромета на Leaflet
+                L.geoJSON(realRadarGeoJSON, {
+                    style: getRadarStyle,
+                    filter: function(feature) {
+                        // Отсекаем пустые зоны, где радар ничего не зафиксировал (dBZ близко к нулю)
+                        const dbz = feature.properties.GRAY_INDEX || feature.properties.dbz || 0;
+                        return dbz > 10; 
+                    },
+                    onEachFeature: function (feature, layer) {
+                        const dbz = feature.properties.GRAY_INDEX || feature.properties.dbz || 0;
+                        layer.bindPopup(`<b>Физическое эхо:</b> ${dbz} dBZ<br><b>Код станции:</b> ${feature.properties.station_id || 'ДМРЛ-С'}`);
+                    }
+                }).addTo(map);
 
-            // 4. Отрисовываем радарные пиксели на карте Leaflet
-            L.geoJSON(mockRadarGeoJSON, {
-                style: getRadarStyle,
-                onEachFeature: function (feature, layer) {
-                    // Интерактив: при клике на пиксель осадков показываем dBZ
-                    layer.bindPopup(`<b>Тип:</b> ${feature.properties.intensity}<br><b>Сила:</b> ${feature.properties.dbz} dBZ`);
-                }
-            }).addTo(map);
-
-        });
-    </script>
-
-</body>
-</html>
+            })
+            .catch(error => {
+                console.error("Ошибка загрузки живого радара:", error);
+            });
+    });
+</script>

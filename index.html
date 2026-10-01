@@ -2,38 +2,47 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <!-- Отключение зума самой страницы на смартфонах (карта зумится отдельно) -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Радар Осадков</title>
+    <title>Метео Радар</title>
 
     <!-- Leaflet CSS & JS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
     <!-- FontAwesome icons -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
 
     <style>
+        :root {
+            --bg-main: #141416;
+            --bg-panel: #1e1e22;
+            --bg-hover: #2a2a30;
+            --border-color: #33333a;
+            --accent: #2563eb;
+            --accent-hover: #1d4ed8;
+            --text-main: #f4f4f5;
+            --text-muted: #a1a1aa;
+        }
+
         * {
             box-sizing: border-box;
             margin: 0;
             padding: 0;
-            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
             -webkit-tap-highlight-color: transparent;
         }
 
-        /* Запрет зума интерфейса и выделения текста */
         html, body {
             width: 100%;
             height: 100%;
             overflow: hidden;
-            background: #121212;
-            color: #ffffff;
+            background: var(--bg-main);
+            color: var(--text-main);
             touch-action: manipulation;
             user-select: none;
         }
 
-        /* Карта на заднем фоне */
+        /* Карта */
         #map {
             width: 100%;
             height: 100%;
@@ -41,110 +50,134 @@
             top: 0;
             left: 0;
             z-index: 1;
-            background: #0a0a0a;
-            /* На карте сохраняем стандартный мультитач для зума */
+            background: #09090b;
             touch-action: auto;
         }
 
-        /* Кнопки зума карты */
+        /* Кастомный стиль кнопок зума Leaflet */
         .leaflet-control-zoom {
             border: none !important;
+            margin-bottom: 85px !important;
             margin-right: 12px !important;
-            margin-bottom: 90px !important;
         }
         .leaflet-control-zoom a {
-            background: #1e1e1e !important;
-            color: #fff !important;
-            border: 1px solid #333 !important;
-            border-radius: 8px !important;
-            width: 36px !important;
-            height: 36px !important;
-            line-height: 36px !important;
-            margin-top: 4px;
+            background-color: var(--bg-panel) !important;
+            color: var(--text-main) !important;
+            border: 1px solid var(--border-color) !important;
+            border-radius: 4px !important;
+            width: 34px !important;
+            height: 34px !important;
+            line-height: 34px !important;
+            font-size: 14px !important;
         }
 
-        /* Верхняя панель (Поиск + Кнопка меню) */
-        .top-bar {
+        /* Верхняя панель управления */
+        .app-header {
             position: absolute;
-            top: 12px;
-            left: 12px;
-            right: 12px;
+            top: 10px;
+            left: 10px;
+            right: 10px;
             z-index: 10;
             display: flex;
-            gap: 8px;
+            gap: 6px;
             pointer-events: none;
         }
 
-        .search-form {
+        .search-box {
             flex: 1;
+            max-width: 360px;
             pointer-events: auto;
-            background: #1e1e1e;
-            border: 1px solid #333;
-            border-radius: 8px;
+            background: var(--bg-panel);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
             display: flex;
             align-items: center;
             padding: 0 10px;
-            height: 42px;
+            height: 38px;
         }
 
-        .search-form input {
+        .search-box input {
             background: transparent;
             border: none;
             outline: none;
-            color: #fff;
-            font-size: 14px;
+            color: var(--text-main);
+            font-size: 13px;
             width: 100%;
             margin-left: 8px;
         }
 
-        .btn-icon {
+        .btn-tool {
             pointer-events: auto;
-            background: #1e1e1e;
-            border: 1px solid #333;
-            color: #fff;
-            width: 42px;
-            height: 42px;
-            border-radius: 8px;
+            background: var(--bg-panel);
+            border: 1px solid var(--border-color);
+            color: var(--text-main);
+            min-width: 38px;
+            height: 38px;
+            padding: 0 10px;
+            border-radius: 6px;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 15px;
+            gap: 6px;
+            font-size: 13px;
             cursor: pointer;
             flex-shrink: 0;
         }
 
-        .btn-icon:active {
-            background: #2a2a2a;
+        .btn-tool:active, .btn-tool.active {
+            background: var(--bg-hover);
+            border-color: var(--accent);
+            color: #fff;
         }
 
-        /* Нижний плеер (Nowcast style) */
-        .bottom-player {
+        /* Информатор линейки */
+        .ruler-bar {
             position: absolute;
-            bottom: 12px;
-            left: 12px;
-            right: 12px;
+            top: 54px;
+            left: 10px;
             z-index: 10;
-            background: #1e1e1e;
-            border: 1px solid #333;
-            border-radius: 12px;
-            padding: 10px 14px;
+            background: var(--bg-panel);
+            border: 1px solid var(--border-color);
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            display: none;
+            align-items: center;
+            gap: 10px;
+        }
+
+        /* Нижний плеер хронологии */
+        .player-bar {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            right: 10px;
+            z-index: 10;
+            background: var(--bg-panel);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 10px 12px;
+            max-width: 520px;
+            margin: 0 auto;
             display: flex;
             flex-direction: column;
             gap: 6px;
-            max-width: 500px;
-            margin: 0 auto;
         }
 
-        .player-info {
+        .player-status {
             display: flex;
             justify-content: space-between;
-            font-size: 12px;
-            color: #aaa;
+            align-items: center;
+            font-size: 11px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
 
-        .player-info .time-val {
-            color: #2563eb;
+        .player-status .time-display {
+            color: #60a5fa;
             font-weight: 600;
+            font-size: 13px;
         }
 
         .player-controls {
@@ -154,166 +187,130 @@
         }
 
         .play-btn {
-            background: #2563eb;
+            background: var(--accent);
             color: #fff;
             border: none;
-            width: 36px;
-            height: 36px;
-            border-radius: 50%;
+            width: 32px;
+            height: 32px;
+            border-radius: 4px;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 14px;
             cursor: pointer;
             flex-shrink: 0;
+            font-size: 12px;
         }
 
-        .play-btn:active {
-            background: #1d4ed8;
+        .play-btn:hover {
+            background: var(--accent-hover);
         }
 
         input[type="range"] {
             width: 100%;
             height: 4px;
-            accent-color: #2563eb;
-            background: #333;
+            accent-color: var(--accent);
+            background: #27272a;
             border-radius: 2px;
+            cursor: pointer;
         }
 
-        /* Выдвижная панель слоев / Меню */
-        .menu-overlay {
+        /* Выдвижная панель настроек */
+        .drawer-overlay {
             position: absolute;
             top: 0; left: 0; right: 0; bottom: 0;
-            background: rgba(0,0,0,0.6);
+            background: rgba(0, 0, 0, 0.5);
             z-index: 20;
             display: none;
         }
 
-        .menu-panel {
+        .drawer {
             position: absolute;
             bottom: 0;
             left: 0;
             right: 0;
             z-index: 21;
-            background: #1e1e1e;
-            border-top: 1px solid #333;
+            background: var(--bg-panel);
+            border-top: 1px solid var(--border-color);
             border-radius: 12px 12px 0 0;
             padding: 16px;
-            max-height: 80vh;
+            max-height: 85vh;
             overflow-y: auto;
             display: none;
         }
 
-        .menu-panel.active, .menu-overlay.active {
+        .drawer.active, .drawer-overlay.active {
             display: block;
         }
 
-        .menu-header {
+        .drawer-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            font-size: 15px;
+            font-size: 14px;
             font-weight: 600;
-            padding-bottom: 12px;
-            border-bottom: 1px solid #2a2a2a;
+            padding-bottom: 10px;
+            border-bottom: 1px solid var(--border-color);
             margin-bottom: 12px;
         }
 
-        .group-title {
+        .section-label {
             font-size: 11px;
-            color: #888;
+            color: var(--text-muted);
             text-transform: uppercase;
             font-weight: 600;
-            margin: 12px 0 6px 0;
+            margin: 14px 0 6px 0;
         }
 
-        .row-item {
+        .control-row {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            padding: 8px 0;
-            font-size: 14px;
+            padding: 6px 0;
+            font-size: 13px;
         }
 
-        /* Стандартный Чекбокс / Переключатель */
-        .checkbox-custom {
-            width: 18px;
-            height: 18px;
-            accent-color: #2563eb;
-            cursor: pointer;
-        }
-
-        /* Сетка кнопок подложки */
-        .base-grid {
+        .grid-selector {
             display: grid;
             grid-template-columns: repeat(4, 1fr);
             gap: 6px;
-            margin-top: 6px;
+            margin-top: 4px;
         }
 
-        .btn-base {
-            background: #2a2a2a;
-            border: 1px solid #333;
-            color: #fff;
-            padding: 8px 0;
-            border-radius: 6px;
+        .btn-option {
+            background: #141416;
+            border: 1px solid var(--border-color);
+            color: var(--text-main);
+            padding: 6px 0;
+            border-radius: 4px;
             font-size: 12px;
             text-align: center;
             cursor: pointer;
         }
 
-        .btn-base.active {
-            border-color: #2563eb;
-            background: #333;
+        .btn-option.active {
+            border-color: var(--accent);
+            background: #27272a;
         }
 
-        /* Сетка заглушек функций */
-        .stubs-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 6px;
-            margin-top: 6px;
-        }
-
-        .btn-stub {
-            background: #2a2a2a;
-            border: 1px solid #333;
-            color: #ddd;
-            padding: 8px;
-            border-radius: 6px;
-            font-size: 12px;
-            text-align: left;
+        .checkbox {
+            width: 16px;
+            height: 16px;
+            accent-color: var(--accent);
             cursor: pointer;
-            display: flex;
-            align-items: center;
-            gap: 6px;
         }
 
-        .btn-stub:active {
-            background: #3a3a3a;
-        }
-
-        /* Градиент шкалы осадков */
-        .legend-line {
-            height: 6px;
-            border-radius: 3px;
-            background: linear-gradient(to right, #00e676, #ffeb3b, #ff9800, #f44336, #9c27b0);
-            margin-top: 8px;
-        }
-
-        /* Адаптация под десктоп */
-        @media (min-width: 650px) {
-            .menu-panel {
-                top: 62px;
-                right: 12px;
+        /* Десктоп адаптация панели */
+        @media (min-width: 640px) {
+            .drawer {
+                top: 54px;
+                right: 10px;
                 left: auto;
                 bottom: auto;
                 width: 320px;
-                border-radius: 8px;
-                border: 1px solid #333;
-                max-height: calc(100vh - 150px);
+                border-radius: 6px;
+                border: 1px solid var(--border-color);
             }
-            .menu-overlay {
+            .drawer-overlay {
                 display: none !important;
             }
         }
@@ -321,216 +318,204 @@
 </head>
 <body>
 
-<!-- Карта Leaflet -->
 <div id="map"></div>
 
-<!-- Верхний Бар -->
-<div class="top-bar">
-    <div class="search-form">
-        <i class="fa-solid fa-magnifying-glass" style="color: #666;"></i>
-        <input type="text" id="cityInput" placeholder="Поиск города..." onkeydown="if(event.key==='Enter') searchCity()">
+<!-- Верхнее меню -->
+<header class="app-header">
+    <div class="search-box">
+        <i class="fa-solid fa-magnifying-glass" style="color: #71717a; font-size: 12px;"></i>
+        <input type="text" id="searchInput" placeholder="Поиск (напр. Москва)..." onkeydown="if(event.key==='Enter') searchLocation()">
     </div>
-    <button class="btn-icon" onclick="toggleMenu()" title="Слои">
+    <button class="btn-tool" onclick="locateUser()" title="Моя геопозиция">
+        <i class="fa-solid fa-crosshairs"></i>
+    </button>
+    <button class="btn-tool" id="rulerBtn" onclick="toggleRuler()" title="Линейка расстояний">
+        <i class="fa-solid fa-ruler-combined"></i>
+    </button>
+    <button class="btn-tool" onclick="toggleDrawer()" title="Слои и настройки">
         <i class="fa-solid fa-layer-group"></i>
     </button>
+</header>
+
+<!-- Информатор линейки -->
+<div class="ruler-bar" id="rulerBar">
+    <span>Дистанция: <b id="rulerDist">0 км</b></span>
+    <button style="background:none; border:none; color:#ef4444; cursor:pointer; font-size:12px;" onclick="clearRuler()">Сброс</button>
 </div>
 
-<!-- Нижний Плеер -->
-<div class="bottom-player">
-    <div class="player-info">
-        <span>Радар осадков (2 часа)</span>
-        <span class="time-val" id="timeLabel">Загрузка...</span>
+<!-- Нижний плеер -->
+<footer class="player-bar">
+    <div class="player-status">
+        <span id="frameTypeLabel">Архив осадков</span>
+        <span class="time-display" id="timeDisplay">Загрузка...</span>
     </div>
     <div class="player-controls">
-        <button class="play-btn" id="playBtn" onclick="togglePlay()">
+        <button class="play-btn" id="playBtn" onclick="togglePlayback()">
             <i class="fa-solid fa-play"></i>
         </button>
-        <div style="flex: 1;">
-            <input type="range" id="timeSlider" min="0" max="100" value="100" oninput="onSeek(this.value)">
+        <div style="flex:1;">
+            <input type="range" id="timeline" min="0" max="100" value="0" oninput="onSeek(this.value)">
         </div>
-        <button class="btn-icon" style="width: 32px; height: 32px; font-size: 11px; border-radius: 50%;" onclick="changeSpeed()">
-            <span id="speedLabel">1x</span>
+        <button class="btn-tool" style="height: 32px; padding: 0 8px; font-size: 11px;" onclick="cycleSpeed()">
+            <span id="speedDisplay">1x</span>
         </button>
     </div>
-</div>
+</footer>
 
-<!-- Меню / Шторка -->
-<div class="menu-overlay" id="overlay" onclick="toggleMenu()"></div>
-<div class="menu-panel" id="menuPanel">
-    <div class="menu-header">
-        <span>Настройки и слои</span>
-        <i class="fa-solid fa-xmark" style="cursor: pointer;" onclick="toggleMenu()"></i>
+<!-- Панель настроек -->
+<div class="drawer-overlay" id="drawerOverlay" onclick="toggleDrawer()"></div>
+<aside class="drawer" id="drawer">
+    <div class="drawer-header">
+        <span>Слои и параметры</span>
+        <i class="fa-solid fa-xmark" style="cursor:pointer;" onclick="toggleDrawer()"></i>
     </div>
 
-    <!-- Настройки радара -->
-    <div class="group-title">Основной слой</div>
-    <div class="row-item">
-        <span>Отображать радар</span>
-        <input type="checkbox" class="checkbox-custom" id="radarCheck" checked onchange="toggleRadar(this.checked)">
+    <div class="section-label">Слой осадков</div>
+    <div class="control-row">
+        <span>Включить радар</span>
+        <input type="checkbox" class="checkbox" id="radarToggle" checked onchange="toggleRadarLayer(this.checked)">
     </div>
-    <div style="margin: 6px 0;">
-        <div style="display:flex; justify-content:space-between; font-size:12px; color:#aaa; margin-bottom: 4px;">
+    <div style="margin-top: 6px;">
+        <div class="control-row" style="font-size: 11px; color: var(--text-muted);">
             <span>Прозрачность</span>
-            <span id="opVal">70%</span>
+            <span id="opacityVal">70%</span>
         </div>
-        <input type="range" min="0" max="100" value="70" oninput="setOpacity(this.value)">
+        <input type="range" min="0" max="100" value="70" oninput="updateOpacity(this.value)">
     </div>
 
-    <div class="legend-line"></div>
-    <div style="display:flex; justify-content:space-between; font-size:10px; color:#777; margin-top:2px;">
-        <span>Слабый</span>
-        <span>Умеренный</span>
-        <span>Сильный</span>
+    <div class="section-label">Базовая карта</div>
+    <div class="grid-selector">
+        <div class="btn-option active" onclick="switchBaseMap('dark', this)">Темная</div>
+        <div class="btn-option" onclick="switchBaseMap('sat', this)">Спутник</div>
+        <div class="btn-option" onclick="switchBaseMap('light', this)">Светлая</div>
+        <div class="btn-option" onclick="switchBaseMap('osm', this)">Схема</div>
     </div>
-
-    <!-- Выбор подложки карты -->
-    <div class="group-title">Карта-основа</div>
-    <div class="base-grid">
-        <div class="btn-base active" onclick="setBase('dark', this)">Темная</div>
-        <div class="btn-base" onclick="setBase('sat', this)">Спутник</div>
-        <div class="btn-base" onclick="setBase('light', this)">Светлая</div>
-        <div class="btn-base" onclick="setBase('osm', this)">Схема</div>
-    </div>
-
-    <!-- Заглушки доп. функций -->
-    <div class="group-title">Дополнительные слои</div>
-    <div class="row-item">
-        <span>Ветровые потоки</span>
-        <input type="checkbox" class="checkbox-custom" onchange="stub('Карта ветров')">
-    </div>
-    <div class="row-item">
-        <span>Грозы и молнии</span>
-        <input type="checkbox" class="checkbox-custom" onchange="stub('Детектор молний')">
-    </div>
-    <div class="row-item">
-        <span>Предупреждения МЧС</span>
-        <input type="checkbox" class="checkbox-custom" onchange="stub('Предупреждения МЧС')">
-    </div>
-
-    <div class="group-title">Инструменты анализа</div>
-    <div class="stubs-grid">
-        <button class="btn-stub" onclick="stub('Метеостанции РФ')"><i class="fa-solid fa-tower-cell"></i> Станции</button>
-        <button class="btn-stub" onclick="stub('METAR Аэропорты')"><i class="fa-solid fa-plane"></i> Аэропорты</button>
-        <button class="btn-stub" onclick="stub('Замер расстояний')"><i class="fa-solid fa-ruler"></i> Линейка</button>
-        <button class="btn-stub" onclick="stub('Экспорт кадра PNG')"><i class="fa-solid fa-download"></i> Экспорт</button>
-        <button class="btn-stub" onclick="stub('Профиль высот 3D')"><i class="fa-solid fa-chart-area"></i> Разрез 3D</button>
-        <button class="btn-stub" onclick="stub('Суточный архив')"><i class="fa-solid fa-clock"></i> Архив 24ч</button>
-    </div>
-</div>
+</aside>
 
 <script>
-    // ----- LEAFLET MAP -----
+    // ----- КАРТА LEAFLET -----
     const map = L.map('map', {
-        center: [55.7512, 37.6184], // Москва
-        zoom: 5,
+        center: [55.7558, 37.6173], // Москва
+        zoom: 6,
         zoomControl: false
     });
 
-    // Кнопки зума справа внизу
     L.control.zoom({ position: 'bottomright' }).addTo(map);
 
-    const basemaps = {
+    const baseLayers = {
         dark: L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { maxZoom: 18 }),
         sat: L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 18 }),
         light: L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', { maxZoom: 18 }),
         osm: L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 18 })
     };
 
-    let activeBase = basemaps.dark;
-    activeBase.addTo(map);
+    let currentBase = baseLayers.dark;
+    currentBase.addTo(map);
 
-    function setBase(type, btn) {
-        map.removeLayer(activeBase);
-        activeBase = basemaps[type];
-        activeBase.addTo(map);
+    function switchBaseMap(type, btn) {
+        map.removeLayer(currentBase);
+        currentBase = baseLayers[type];
+        currentBase.addTo(map);
 
-        document.querySelectorAll('.btn-base').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.btn-option').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
     }
 
-    // ----- RADAR (RainViewer API) -----
+    // ----- РАДАР (RainViewer API past + nowcast) -----
     let frames = [];
     let radarLayers = {};
     let currentIndex = 0;
     let isPlaying = false;
-    let playTimer = null;
-    let animSpeed = 500;
+    let playInterval = null;
+    let animSpeed = 600;
+    let radarOpacity = 0.7;
 
-    async function initRadar() {
+    async function loadRadarData() {
         try {
-            const res = await fetch('https://api.rainviewer.com/public/weather-maps.json');
-            const data = await res.json();
-            
-            frames = data.radar.past;
-            
+            const response = await fetch('https://api.rainviewer.com/public/weather-maps.json');
+            const data = await response.json();
+
+            // Объединяем прошедшие кадры и прогноз
+            const past = data.radar.past || [];
+            const nowcast = data.radar.nowcast || [];
+            frames = [...past, ...nowcast];
+
+            if (frames.length === 0) return;
+
             frames.forEach((f, idx) => {
                 radarLayers[idx] = L.tileLayer(`https://tilecache.rainviewer.com/v2/radar/${f.time}/256/{z}/{x}/{y}/2/1_1.png`, {
-                    opacity: 0.7,
+                    opacity: radarOpacity,
                     zIndex: 100 + idx
                 });
             });
 
-            currentIndex = frames.length - 1;
-            showFrame(currentIndex);
+            // Начинаем с последнего реального кадра осадков
+            currentIndex = past.length > 0 ? past.length - 1 : 0;
+            renderFrame(currentIndex);
         } catch (e) {
-            document.getElementById('timeLabel').innerText = "Ошибка API";
+            document.getElementById('timeDisplay').innerText = "Ошибка загрузки данных";
         }
     }
 
-    function showFrame(idx) {
+    function renderFrame(idx) {
         Object.keys(radarLayers).forEach(i => {
             if (map.hasLayer(radarLayers[i])) map.removeLayer(radarLayers[i]);
         });
 
-        if (radarLayers[idx] && document.getElementById('radarCheck').checked) {
+        if (document.getElementById('radarToggle').checked && radarLayers[idx]) {
             map.addLayer(radarLayers[idx]);
         }
 
         if (frames[idx]) {
             const date = new Date(frames[idx].time * 1000);
-            document.getElementById('timeLabel').innerText = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            document.getElementById('timeDisplay').innerText = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+            // Определяем тип кадра (архив или прогноз)
+            const nowSec = Math.floor(Date.now() / 1000);
+            document.getElementById('frameTypeLabel').innerText = frames[idx].time > nowSec ? "Прогноз осадков" : "Архив радара";
         }
 
-        document.getElementById('timeSlider').value = (idx / (frames.length - 1)) * 100;
+        document.getElementById('timeline').value = Math.round((idx / (frames.length - 1)) * 100);
     }
 
-    function togglePlay() {
+    function togglePlayback() {
         isPlaying = !isPlaying;
         const btn = document.getElementById('playBtn');
+
         if (isPlaying) {
             btn.innerHTML = '<i class="fa-solid fa-pause"></i>';
-            playTimer = setInterval(() => {
+            playInterval = setInterval(() => {
                 currentIndex = (currentIndex + 1) % frames.length;
-                showFrame(currentIndex);
+                renderFrame(currentIndex);
             }, animSpeed);
         } else {
             btn.innerHTML = '<i class="fa-solid fa-play"></i>';
-            clearInterval(playTimer);
+            clearInterval(playInterval);
         }
     }
 
     function onSeek(val) {
         if (!frames.length) return;
         currentIndex = Math.round((val / 100) * (frames.length - 1));
-        showFrame(currentIndex);
+        renderFrame(currentIndex);
     }
 
-    function changeSpeed() {
-        const speeds = [500, 250, 1000];
+    function cycleSpeed() {
+        const speeds = [600, 300, 1000];
         const labels = ['1x', '2x', '0.5x'];
-        let i = speeds.indexOf(animSpeed);
-        i = (i + 1) % speeds.length;
-        animSpeed = speeds[i];
-        document.getElementById('speedLabel').innerText = labels[i];
+        let idx = speeds.indexOf(animSpeed);
+        idx = (idx + 1) % speeds.length;
+        animSpeed = speeds[idx];
+        document.getElementById('speedDisplay').innerText = labels[idx];
 
         if (isPlaying) {
-            togglePlay();
-            togglePlay();
+            togglePlayback();
+            togglePlayback();
         }
     }
 
-    function toggleRadar(show) {
-        if (show) showFrame(currentIndex);
+    function toggleRadarLayer(visible) {
+        if (visible) renderFrame(currentIndex);
         else {
             Object.keys(radarLayers).forEach(i => {
                 if (map.hasLayer(radarLayers[i])) map.removeLayer(radarLayers[i]);
@@ -538,49 +523,143 @@
         }
     }
 
-    function setOpacity(val) {
-        document.getElementById('opVal').innerText = val + '%';
-        const opacity = val / 100;
-        Object.values(radarLayers).forEach(l => l.setOpacity(opacity));
+    function updateOpacity(val) {
+        document.getElementById('opacityVal').innerText = val + '%';
+        radarOpacity = val / 100;
+        Object.values(radarLayers).forEach(l => l.setOpacity(radarOpacity));
     }
 
-    // ----- UI TOGGLES & SEARCH -----
-    function toggleMenu() {
-        document.getElementById('menuPanel').classList.toggle('active');
-        document.getElementById('overlay').classList.toggle('active');
-    }
+    // ----- РЕАЛЬНЫЙ МЕТЕОПРОГНОЗ ПО КЛИКУ (Open-Meteo API) -----
+    map.on('click', async (e) => {
+        if (rulerActive) {
+            addRulerPoint(e.latlng);
+            return;
+        }
 
-    async function searchCity() {
-        const q = document.getElementById('cityInput').value;
-        if (!q) return;
+        const lat = e.latlng.lat.toFixed(4);
+        const lon = e.latlng.lng.toFixed(4);
+
+        const popup = L.popup()
+            .setLatLng(e.latlng)
+            .setContent(`<div style="font-size:12px;">Загрузка погоды...</div>`)
+            .openOn(map);
 
         try {
-            const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}`);
+            const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true&windspeed_unit=ms`);
+            const data = await res.json();
+            const w = data.current_weather;
+
+            const weatherDesc = translateWmoCode(w.weathercode);
+
+            popup.setContent(`
+                <div style="font-size:12px; color:#111; line-height:1.5;">
+                    <b style="font-size:13px;">${weatherDesc}</b><br>
+                    <b>Температура:</b> ${w.temperature > 0 ? '+' : ''}${w.temperature} °C<br>
+                    <b>Ветер:</b> ${w.windspeed} м/с<br>
+                    <span style="color:#666; font-size:10px;">Координаты: ${lat}, ${lon}</span>
+                </div>
+            `);
+        } catch (err) {
+            popup.setContent(`<div style="font-size:12px; color:#111;">Ошибка получения данных погоды</div>`);
+        }
+    });
+
+    function translateWmoCode(code) {
+        const codes = {
+            0: 'Ясно', 1: 'Преимущественно ясно', 2: 'Переменная облачность', 3: 'Пасмурно',
+            45: 'Туман', 48: 'Изморозь', 51: 'Морось', 53: 'Умеренная морось', 55: 'Плотная морось',
+            61: 'Слабый дождь', 63: 'Умеренный дождь', 65: 'Сильный дождь',
+            71: 'Слабый снег', 73: 'Умеренный снег', 75: 'Сильный снег',
+            80: 'Ливень', 81: 'Сильный ливень', 82: 'Шквальный ливень',
+            95: 'Гроза', 96: 'Гроза с градом'
+        };
+        return codes[code] || 'Облачно с осадками';
+    }
+
+    // ----- ИНСТРУМЕНТ "ЛИНЕЙКА" -----
+    let rulerActive = false;
+    let rulerPoints = [];
+    let rulerPolyline = null;
+    let rulerMarkers = [];
+
+    function toggleRuler() {
+        rulerActive = !rulerActive;
+        const btn = document.getElementById('rulerBtn');
+        const bar = document.getElementById('rulerBar');
+
+        if (rulerActive) {
+            btn.classList.add('active');
+            bar.style.display = 'flex';
+        } else {
+            btn.classList.remove('active');
+            bar.style.display = 'none';
+            clearRuler();
+        }
+    }
+
+    function addRulerPoint(latlng) {
+        rulerPoints.push(latlng);
+
+        const marker = L.circleMarker(latlng, { radius: 4, color: '#ef4444', fillColor: '#ef4444', fillOpacity: 1 }).addTo(map);
+        rulerMarkers.push(marker);
+
+        if (rulerPoints.length > 1) {
+            if (rulerPolyline) map.removeLayer(rulerPolyline);
+            rulerPolyline = L.polyline(rulerPoints, { color: '#ef4444', weight: 3, dashArray: '5, 5' }).addTo(map);
+
+            let totalDist = 0;
+            for (let i = 0; i < rulerPoints.length - 1; i++) {
+                totalDist += rulerPoints[i].distanceTo(rulerPoints[i + 1]);
+            }
+            document.getElementById('rulerDist').innerText = (totalDist / 1000).toFixed(1) + ' км';
+        }
+    }
+
+    function clearRuler() {
+        rulerPoints = [];
+        if (rulerPolyline) map.removeLayer(rulerPolyline);
+        rulerMarkers.forEach(m => map.removeLayer(m));
+        rulerMarkers = [];
+        document.getElementById('rulerDist').innerText = '0 км';
+    }
+
+    // ----- ПОИСК И ГЕОЛОКАЦИЯ -----
+    async function searchLocation() {
+        const query = document.getElementById('searchInput').value;
+        if (!query) return;
+
+        try {
+            const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}`);
             const data = await res.json();
             if (data.length > 0) {
                 map.flyTo([data[0].lat, data[0].lon], 9);
+            } else {
+                alert('Город не найден');
             }
         } catch (e) {}
     }
 
-    function stub(text) {
-        alert(`Модуль "${text}" готов к привязке бэкенда.`);
+    function locateUser() {
+        if (!navigator.geolocation) {
+            alert('Геолокация не поддерживается вашим браузером');
+            return;
+        }
+        navigator.geolocation.getCurrentPosition(
+            pos => {
+                map.flyTo([pos.coords.latitude, pos.coords.longitude], 10);
+                L.circle([pos.coords.latitude, pos.coords.longitude], { radius: 2000, color: '#2563eb' }).addTo(map);
+            },
+            () => alert('Не удалось определить местоположение')
+        );
     }
 
-    // Попап по клику
-    map.on('click', (e) => {
-        L.popup()
-            .setLatLng(e.latlng)
-            .setContent(`
-                <div style="font-size:12px; color:#000;">
-                    <b>Координаты:</b> ${e.latlng.lat.toFixed(3)}, ${e.latlng.lng.toFixed(3)}<br>
-                    <b>Интенсивность:</b> ~${(Math.random() * 2).toFixed(1)} мм/ч
-                </div>
-            `)
-            .openOn(map);
-    });
+    function toggleDrawer() {
+        document.getElementById('drawer').classList.toggle('active');
+        document.getElementById('drawerOverlay').classList.toggle('active');
+    }
 
-    initRadar();
+    // Старт
+    loadRadarData();
 </script>
 </body>
 </html>

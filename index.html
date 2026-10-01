@@ -2,23 +2,24 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Настоящий Метеорадар ДМРЛ-С</title>
     
-    <!-- Подключаем карту Leaflet строго по HTTPS -->
+    <!-- Скрипты Leaflet -->
     <link rel="stylesheet" href="https://unpkg.com" />
     <script src="https://unpkg.com"></script>
 
     <style>
-        /* Задаем жесткие размеры, чтобы карта не схлопывалась */
+        /* Принудительно растягиваем карту во весь экран */
         html, body, #map {
             margin: 0;
             padding: 0;
-            width: 100%;
-            height: 100%;
-            background: #111; /* Если карта не загрузится, экран будет темным */
+            width: 100vw;
+            height: 100vh;
+            background-color: #111;
         }
         
-        /* Секретный трюк: заставляем браузер показывать радарные пиксели четко, без мыла */
+        /* Стили для пикселей радара, чтобы они были четкими и не мылились */
         .radar-pixelated {
             image-rendering: pixelated;
             image-rendering: crisp-edges;
@@ -27,42 +28,68 @@
         .map-label {
             position: absolute;
             top: 15px;
-            left: 50px;
+            right: 15px;
             z-index: 1000;
-            background: rgba(0,0,0,0.8);
+            background: rgba(0, 0, 0, 0.85);
             color: #fff;
-            padding: 8px 12px;
-            border-radius: 4px;
+            padding: 10px 15px;
+            border-radius: 6px;
             font-family: sans-serif;
-            pointer-events: none;
+            font-size: 13px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
         }
     </style>
 </head>
 <body>
 
+    <!-- Важно: этот блок должен быть выше скрипта -->
     <div id="map"></div>
-    <div class="map-label">📡 Живые данные ДМРЛ-С радаров</div>
+    
+    <div class="map-label">
+        <b style="font-size: 14px; display:block; margin-bottom:3px;">📡 Радары ДМРЛ-С (Росгидромет)</b>
+        <div id="time-display">Загрузка данных...</div>
+    </div>
 
     <script>
-        // Создаем карту. Центр — Европейская часть (Москва), масштаб 5.
-        const map = L.map('map', {
-            minZoom: 3,
-            maxZoom: 12
-        }).setView([55.7558, 37.6173], 5);
+        // Ждем, пока браузер полностью построит HTML-дерево
+        document.addEventListener("DOMContentLoaded", function() {
+            
+            // 1. Инициализируем карту (Центр — Москва)
+            const map = L.map('map').setView([55.7558, 37.6173], 5);
 
-        // 1. Стандартная подложка OpenStreetMap (работает везде без ключей)
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '&copy; OpenStreetMap'
-        }).addTo(map);
+            // 2. Добавляем базовую темную карту (чтобы радар было круто видно)
+            L.tileLayer('https://{s}://{z}/{x}/{y}{r}.png', {
+                maxZoom: 19,
+                attribution: '&copy; OpenStreetMap'
+            }).addTo(map);
 
-        // 2. Добавляем слой реального РАДАРНОГО НАУКАСТА
-        // Последние цифры '1_1.png' отвечают за сглаженную цветовую схему наукаста
-        const radarLayer = L.tileLayer('https://rainviewer.com{z}/{x}/{y}/2/1_1.png', {
-            opacity: 0.65,
-            transparent: true,
-            className: 'radar-pixelated', // Применяем наш стиль четких пикселей
-            attribution: 'Радары &copy; Росгидромет'
-        }).addTo(map);
+            // 3. Стучимся в API RainViewer за актуальным хэшем радарных данных
+            fetch('https://rainviewer.com')
+                .then(response => response.json())
+                .then(data => {
+                    // Берем самый последний реальный кадр из прошлых (past)
+                    const latestRadar = data.radar.past[data.radar.past.length - 1];
+                    
+                    // Выводим время снимка
+                    const radarDate = new Date(latestRadar.time * 1000);
+                    const timeString = radarDate.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+                    document.getElementById('time-display').innerHTML = `⏱️ Время осадков: <b>${timeString}</b>`;
+
+                    // 4. Накладываем радар поверх карты.
+                    // '/2/1_1.png' в конце ссылки задает фирменную палитру наукаста
+                    L.tileLayer(`https://rainviewer.com${latestRadar.path}/256/{z}/{x}/{y}/2/1_1.png`, {
+                        tileSize: 256,
+                        opacity: 0.65,
+                        transparent: true,
+                        className: 'radar-pixelated',
+                        attribution: 'Данные &copy; Росгидромет'
+                    }).addTo(map);
+                })
+                .catch(error => {
+                    console.error("Ошибка API радара:", error);
+                    document.getElementById('time-display').innerText = "Ошибка загрузки осадков";
+                });
+        });
     </script>
 
 </body>

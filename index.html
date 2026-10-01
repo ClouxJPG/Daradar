@@ -14,18 +14,23 @@
 
     <style>
         :root {
-            --bg-glass: rgba(18, 22, 31, 0.78);
-            --bg-glass-hover: rgba(28, 34, 48, 0.88);
+            --bg-glass: rgba(18, 22, 31, 0.82);
+            --bg-glass-hover: rgba(28, 34, 48, 0.92);
             --bg-card: #161b26;
             --border: rgba(255, 255, 255, 0.08);
-            --border-light: rgba(255, 255, 255, 0.15);
+            --border-light: rgba(255, 255, 255, 0.16);
             --text-primary: #f8fafc;
             --text-secondary: #94a3b8;
             --accent: #3b82f6;
-            --accent-glow: rgba(59, 130, 246, 0.35);
+            --accent-glow: rgba(59, 130, 246, 0.4);
             --danger: #ef4444;
             --warning: #f59e0b;
-            --shadow: 0 16px 36px rgba(0, 0, 0, 0.45);
+            --shadow: 0 16px 36px rgba(0, 0, 0, 0.5);
+            
+            /* Единые функции плавности */
+            --ease-spring: cubic-bezier(0.16, 1, 0.3, 1);
+            --ease-bounce: cubic-bezier(0.34, 1.56, 0.64, 1);
+            --ease-std: cubic-bezier(0.4, 0, 0.2, 1);
         }
 
         * {
@@ -57,21 +62,31 @@
             touch-action: auto;
         }
 
-        /* --- КАСТОМНЫЕ ПОПАПЫ LEAFLET --- */
+        /* --- КАСТОМНЫЕ ПОПАПЫ C АНИМАЦИЕЙ --- */
         .leaflet-popup-content-wrapper, .leaflet-popup-tip {
             background: var(--bg-card) !important;
             color: var(--text-primary) !important;
-            border: 1px solid var(--border) !important;
+            border: 1px solid var(--border-light) !important;
             box-shadow: var(--shadow) !important;
-            border-radius: 12px !important;
+            border-radius: 14px !important;
             backdrop-filter: blur(12px);
         }
+        
+        .leaflet-popup {
+            animation: popupSpring 0.35s var(--ease-spring) forwards;
+        }
+
+        @keyframes popupSpring {
+            0% { opacity: 0; transform: scale(0.85) translateY(12px); }
+            100% { opacity: 1; transform: scale(1) translateY(0); }
+        }
+
         .leaflet-popup-content {
             margin: 12px 14px !important;
             line-height: 1.5 !important;
         }
 
-        /* --- LEAFLET ZOOM --- */
+        /* --- LEAFLET ZOOM С ПЛАВНЫМ ХОВЕРОМ --- */
         .leaflet-control-zoom {
             border: none !important;
             margin-bottom: 100px !important;
@@ -83,16 +98,21 @@
             backdrop-filter: blur(16px);
             color: var(--text-primary) !important;
             border: 1px solid var(--border) !important;
-            border-radius: 10px !important;
-            width: 36px !important;
-            height: 36px !important;
-            line-height: 36px !important;
+            border-radius: 12px !important;
+            width: 38px !important;
+            height: 38px !important;
+            line-height: 38px !important;
             margin-top: 6px;
             font-size: 15px !important;
-            transition: all 0.2s ease;
+            transition: all 0.25s var(--ease-std) !important;
+        }
+        .leaflet-control-zoom a:hover {
+            background: var(--bg-glass-hover) !important;
+            border-color: var(--border-light) !important;
+            transform: scale(1.05);
         }
         .leaflet-control-zoom a:active {
-            background: var(--bg-glass-hover) !important;
+            transform: scale(0.92);
             border-color: var(--accent) !important;
         }
 
@@ -108,6 +128,12 @@
             justify-content: space-between;
             gap: 10px;
             pointer-events: none;
+            animation: fadeInDown 0.6s var(--ease-spring);
+        }
+
+        @keyframes fadeInDown {
+            from { opacity: 0; transform: translateY(-16px); }
+            to { opacity: 1; transform: translateY(0); }
         }
 
         .glass-pill {
@@ -115,14 +141,15 @@
             background: var(--bg-glass);
             backdrop-filter: blur(20px);
             border: 1px solid var(--border);
-            border-radius: 14px;
+            border-radius: 16px;
             box-shadow: var(--shadow);
             display: flex;
             align-items: center;
+            transition: border-color 0.3s ease, box-shadow 0.3s ease, transform 0.3s var(--ease-spring);
         }
 
         .brand-pill {
-            padding: 0 14px;
+            padding: 0 16px;
             height: 44px;
             font-size: 13px;
             font-weight: 700;
@@ -136,14 +163,26 @@
             color: var(--accent);
             font-size: 15px;
             filter: drop-shadow(0 0 8px var(--accent-glow));
+            transition: transform 0.4s var(--ease-bounce);
+        }
+
+        .brand-pill:hover i {
+            transform: rotate(15deg) scale(1.15);
         }
 
         .search-pill {
             flex: 1;
             max-width: 380px;
             height: 44px;
-            padding: 0 12px;
+            padding: 0 14px;
             gap: 10px;
+            transition: all 0.3s var(--ease-spring);
+        }
+
+        .search-pill:focus-within {
+            border-color: var(--accent);
+            box-shadow: 0 0 20px var(--accent-glow);
+            transform: translateY(-1px);
         }
 
         .search-pill input {
@@ -179,10 +218,18 @@
             font-size: 14px;
             cursor: pointer;
             box-shadow: var(--shadow);
-            transition: all 0.2s ease;
+            transition: all 0.25s var(--ease-spring);
+        }
+
+        .btn-glass:hover {
+            background: var(--bg-glass-hover);
+            border-color: var(--border-light);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.4);
         }
 
         .btn-glass:active, .btn-glass.active {
+            transform: scale(0.92) translateY(0);
             background: var(--bg-glass-hover);
             border-color: var(--accent);
             color: var(--accent);
@@ -199,6 +246,12 @@
             pointer-events: auto;
             flex-direction: column;
             gap: 4px;
+            animation: fadeInLeft 0.6s var(--ease-spring);
+        }
+
+        @keyframes fadeInLeft {
+            from { opacity: 0; transform: translateX(-16px); }
+            to { opacity: 1; transform: translateX(0); }
         }
 
         .legend-bar {
@@ -217,8 +270,17 @@
             padding: 8px 14px;
             font-size: 12px;
             gap: 10px;
-            display: none;
             pointer-events: auto;
+            opacity: 0;
+            transform: translateY(-10px) scale(0.9);
+            visibility: hidden;
+            transition: all 0.3s var(--ease-spring);
+        }
+
+        .ruler-badge.active {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+            visibility: visible;
         }
 
         /* --- НИЖНИЙ ПЛЕЕР ХРОНОЛОГИИ --- */
@@ -234,6 +296,12 @@
             flex-direction: column;
             gap: 8px;
             pointer-events: auto;
+            animation: fadeInUp 0.6s var(--ease-spring);
+        }
+
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
         }
 
         .player-top {
@@ -252,9 +320,21 @@
             color: var(--warning);
             background: rgba(245, 158, 11, 0.12);
             border: 1px solid rgba(245, 158, 11, 0.25);
-            padding: 3px 8px;
+            padding: 3px 10px;
             border-radius: 20px;
             text-transform: uppercase;
+            transition: all 0.3s ease;
+        }
+
+        .pulse-dot {
+            font-size: 6px;
+            animation: pulseGlow 1.8s infinite;
+        }
+
+        @keyframes pulseGlow {
+            0% { opacity: 0.3; transform: scale(0.8); }
+            50% { opacity: 1; transform: scale(1.3); }
+            100% { opacity: 0.3; transform: scale(0.8); }
         }
 
         .time-readout {
@@ -262,6 +342,7 @@
             font-weight: 700;
             color: #60a5fa;
             letter-spacing: 0.5px;
+            transition: color 0.3s ease;
         }
 
         .player-body {
@@ -272,8 +353,8 @@
         }
 
         .play-btn-main {
-            width: 38px;
-            height: 38px;
+            width: 40px;
+            height: 40px;
             border-radius: 12px;
             background: var(--accent);
             border: none;
@@ -285,40 +366,64 @@
             cursor: pointer;
             box-shadow: 0 0 16px var(--accent-glow);
             flex-shrink: 0;
+            transition: all 0.25s var(--ease-spring);
+        }
+
+        .play-btn-main:hover {
+            transform: scale(1.08);
+            box-shadow: 0 0 24px var(--accent-glow);
         }
 
         .play-btn-main:active {
-            transform: scale(0.96);
+            transform: scale(0.92);
         }
 
-        /* Кастомный Range Input */
+        /* Кастомный Range Input с анимацией thumb */
         input[type="range"] {
             -webkit-appearance: none;
             width: 100%;
-            height: 5px;
+            height: 6px;
             border-radius: 3px;
             background: rgba(255, 255, 255, 0.12);
             outline: none;
+            transition: background 0.3s ease;
         }
 
         input[type="range"]::-webkit-slider-thumb {
             -webkit-appearance: none;
-            width: 16px;
-            height: 16px;
+            width: 18px;
+            height: 18px;
             border-radius: 50%;
             background: var(--accent);
-            box-shadow: 0 0 10px var(--accent);
+            box-shadow: 0 0 12px var(--accent);
             cursor: pointer;
+            transition: transform 0.2s var(--ease-spring), box-shadow 0.2s ease;
         }
 
-        /* --- ВЫДВИЖНОЕ МЕНЮ / DRAWER SHEET --- */
+        input[type="range"]::-webkit-slider-thumb:hover {
+            transform: scale(1.25);
+            box-shadow: 0 0 18px var(--accent);
+        }
+
+        input[type="range"]::-webkit-slider-thumb:active {
+            transform: scale(1.1);
+        }
+
+        /* --- ВЫДВИЖНОЕ МЕНЮ С БЕСШОВНОЙ CSS-АНИМАЦИЕЙ --- */
         .drawer-overlay {
             position: absolute;
             top: 0; left: 0; right: 0; bottom: 0;
             background: rgba(0, 0, 0, 0.65);
-            backdrop-filter: blur(4px);
+            backdrop-filter: blur(6px);
             z-index: 20;
-            display: none;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.35s var(--ease-std);
+        }
+
+        .drawer-overlay.active {
+            opacity: 1;
+            pointer-events: auto;
         }
 
         .drawer-sheet {
@@ -329,16 +434,17 @@
             z-index: 21;
             background: var(--bg-card);
             border-top: 1px solid var(--border-light);
-            border-radius: 20px 20px 0 0;
-            padding: 18px 20px;
+            border-radius: 24px 24px 0 0;
+            padding: 20px;
             max-height: 82vh;
             overflow-y: auto;
-            display: none;
             box-shadow: var(--shadow);
+            transform: translateY(100%);
+            transition: transform 0.4s var(--ease-spring);
         }
 
-        .drawer-sheet.active, .drawer-overlay.active {
-            display: block;
+        .drawer-sheet.active {
+            transform: translateY(0);
         }
 
         .drawer-header {
@@ -371,12 +477,12 @@
             font-size: 13px;
         }
 
-        /* Кастомные iOS Переключатели */
+        /* Переключатели iOS с плавным переливом */
         .toggle-switch {
             position: relative;
             display: inline-block;
-            width: 40px;
-            height: 22px;
+            width: 42px;
+            height: 24px;
         }
         .toggle-switch input {
             opacity: 0;
@@ -388,19 +494,20 @@
             cursor: pointer;
             top: 0; left: 0; right: 0; bottom: 0;
             background-color: rgba(255, 255, 255, 0.15);
-            transition: .2s;
-            border-radius: 22px;
+            transition: background-color 0.3s var(--ease-std);
+            border-radius: 24px;
         }
         .slider:before {
             position: absolute;
             content: "";
-            height: 16px;
-            width: 16px;
+            height: 18px;
+            width: 18px;
             left: 3px;
             bottom: 3px;
             background-color: white;
-            transition: .2s;
+            transition: transform 0.3s var(--ease-spring);
             border-radius: 50%;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.4);
         }
         input:checked + .slider {
             background-color: var(--accent);
@@ -409,7 +516,7 @@
             transform: translateX(18px);
         }
 
-        /* Сетка кнопок выбора карты */
+        /* Сетка кнопок подложки карты */
         .base-grid {
             display: grid;
             grid-template-columns: repeat(4, 1fr);
@@ -421,19 +528,30 @@
             background: rgba(255, 255, 255, 0.04);
             border: 1px solid var(--border);
             color: var(--text-primary);
-            padding: 8px 0;
-            border-radius: 8px;
+            padding: 9px 0;
+            border-radius: 10px;
             font-size: 11px;
             text-align: center;
             cursor: pointer;
-            transition: all 0.2s ease;
+            transition: all 0.25s var(--ease-spring);
+        }
+
+        .btn-card:hover {
+            background: rgba(255, 255, 255, 0.08);
+            border-color: var(--border-light);
+            transform: translateY(-2px);
+        }
+
+        .btn-card:active {
+            transform: scale(0.94);
         }
 
         .btn-card.active {
             border-color: var(--accent);
-            background: rgba(59, 130, 246, 0.15);
+            background: rgba(59, 130, 246, 0.18);
             color: #60a5fa;
             font-weight: 600;
+            box-shadow: 0 0 12px var(--accent-glow);
         }
 
         .stubs-grid {
@@ -447,36 +565,49 @@
             background: rgba(255, 255, 255, 0.04);
             border: 1px solid var(--border);
             color: var(--text-primary);
-            padding: 10px;
-            border-radius: 8px;
+            padding: 10px 12px;
+            border-radius: 10px;
             font-size: 11.5px;
             text-align: left;
             cursor: pointer;
             display: flex;
             align-items: center;
             gap: 8px;
-            transition: background 0.2s ease;
+            transition: all 0.25s var(--ease-spring);
+        }
+
+        .btn-stub:hover {
+            background: rgba(255, 255, 255, 0.08);
+            border-color: var(--border-light);
+            transform: translateY(-2px);
         }
 
         .btn-stub:active {
-            background: rgba(255, 255, 255, 0.1);
+            transform: scale(0.95);
         }
 
-        /* Тосты */
+        /* ПЛАВАЮЩИЕ УВЕДОМЛЕНИЯ (TOAST) С ПРУЖИНОЙ */
         .toast {
             position: absolute;
             top: 68px;
             left: 50%;
-            transform: translateX(-50%);
             z-index: 30;
             background: var(--accent);
             color: #fff;
-            padding: 8px 16px;
+            padding: 9px 18px;
             border-radius: 20px;
             font-size: 12px;
             font-weight: 600;
-            display: none;
             box-shadow: 0 8px 24px var(--accent-glow);
+            pointer-events: none;
+            opacity: 0;
+            transform: translate(-50%, -20px) scale(0.85);
+            transition: all 0.35s var(--ease-bounce);
+        }
+
+        .toast.active {
+            opacity: 1;
+            transform: translate(-50%, 0) scale(1);
         }
 
         @media (min-width: 640px) {
@@ -486,8 +617,17 @@
                 left: auto;
                 bottom: auto;
                 width: 340px;
-                border-radius: 16px;
-                border: 1px solid var(--border);
+                border-radius: 20px;
+                border: 1px solid var(--border-light);
+                transform: translateX(30px) scale(0.95);
+                opacity: 0;
+                pointer-events: none;
+                transition: all 0.35s var(--ease-spring);
+            }
+            .drawer-sheet.active {
+                transform: translateX(0) scale(1);
+                opacity: 1;
+                pointer-events: auto;
             }
             .drawer-overlay {
                 display: none !important;
@@ -499,10 +639,10 @@
 
 <div id="map"></div>
 
-<!-- Всплывающие уведомители -->
+<!-- Уведомления -->
 <div class="toast" id="toast"></div>
 
-<!-- Верхняя панель "Островов" -->
+<!-- Верхняя панель управления -->
 <div class="top-deck">
     <div class="glass-pill brand-pill">
         <i class="fa-solid fa-cloud-bolt"></i> МЕТЕО РАДАР
@@ -535,14 +675,14 @@
 <!-- Информатор линейки -->
 <div class="glass-pill ruler-badge" id="rulerBadge">
     <span>Дистанция: <b id="rulerDist" style="color:var(--accent);">0 км</b></span>
-    <i class="fa-solid fa-xmark" style="cursor:pointer; color:var(--danger);" onclick="clearRuler()"></i>
+    <i class="fa-solid fa-xmark" style="cursor:pointer; color:var(--danger); transition: transform 0.2s ease;" onclick="clearRuler()" onmouseover="this.style.transform='scale(1.2)'" onmouseout="this.style.transform='scale(1)'"></i>
 </div>
 
 <!-- Нижний плеер -->
 <div class="glass-pill player-deck">
     <div class="player-top">
         <div class="status-badge" id="statusBadge">
-            <i class="fa-solid fa-circle" style="font-size:6px;"></i> <span id="statusText">АРХИВ (2Ч)</span>
+            <i class="fa-solid fa-circle pulse-dot"></i> <span id="statusText">АРХИВ (2Ч)</span>
         </div>
         <div class="time-readout" id="timeReadout">--:--</div>
     </div>
@@ -553,7 +693,7 @@
         <div style="flex:1;">
             <input type="range" id="timeSlider" min="0" max="100" value="0" oninput="onSeek(this.value)">
         </div>
-        <button class="btn-glass" style="width:34px; height:34px; font-size:11px;" onclick="changeSpeed()">
+        <button class="btn-glass" style="width:36px; height:36px; font-size:11px;" onclick="changeSpeed()">
             <span id="speedVal">1x</span>
         </button>
     </div>
@@ -564,7 +704,7 @@
 <div class="drawer-sheet" id="drawerSheet">
     <div class="drawer-header">
         <span>Настройки и слои</span>
-        <i class="fa-solid fa-xmark" style="cursor:pointer;" onclick="toggleDrawer()"></i>
+        <i class="fa-solid fa-xmark" style="cursor:pointer; transition: transform 0.2s ease;" onclick="toggleDrawer()" onmouseover="this.style.transform='scale(1.2)'" onmouseout="this.style.transform='scale(1)'"></i>
     </div>
 
     <!-- Основной радар -->
@@ -721,12 +861,18 @@
 
             const nowSec = Math.floor(Date.now() / 1000);
             const statusText = document.getElementById('statusText');
+            const statusBadge = document.getElementById('statusBadge');
+            
             if (frames[idx].time > nowSec) {
                 statusText.innerText = "ПРОГНОЗ";
-                document.getElementById('statusBadge').style.color = "#60a5fa";
+                statusBadge.style.color = "#60a5fa";
+                statusBadge.style.background = "rgba(96, 165, 250, 0.12)";
+                statusBadge.style.borderColor = "rgba(96, 165, 250, 0.25)";
             } else {
                 statusText.innerText = "АРХИВ (2Ч)";
-                document.getElementById('statusBadge').style.color = "var(--warning)";
+                statusBadge.style.color = "var(--warning)";
+                statusBadge.style.background = "rgba(245, 158, 11, 0.12)";
+                statusBadge.style.borderColor = "rgba(245, 158, 11, 0.25)";
             }
         }
 
@@ -838,11 +984,11 @@
 
         if (rulerActive) {
             btn.classList.add('active');
-            badge.style.display = 'flex';
+            badge.classList.add('active');
             showToast("Кликайте по карте для замера");
         } else {
             btn.classList.remove('active');
-            badge.style.display = 'none';
+            badge.classList.remove('active');
             clearRuler();
         }
     }
@@ -881,7 +1027,7 @@
             const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}`);
             const data = await res.json();
             if (data.length > 0) {
-                map.flyTo([data[0].lat, data[0].lon], 9);
+                map.flyTo([data[0].lat, data[0].lon], 9, { duration: 1.5 });
             } else {
                 showToast("Город не найден");
             }
@@ -892,27 +1038,32 @@
         if (!navigator.geolocation) return;
         navigator.geolocation.getCurrentPosition(
             pos => {
-                map.flyTo([pos.coords.latitude, pos.coords.longitude], 10);
+                map.flyTo([pos.coords.latitude, pos.coords.longitude], 10, { duration: 1.5 });
             },
             () => showToast("Геолокация недоступна")
         );
     }
 
-    // ----- UTILS -----
+    // ----- ВЫДВИЖНОЕ МЕНЮ И УВЕДОМЛЕНИЯ -----
     function toggleDrawer() {
         document.getElementById('drawerSheet').classList.toggle('active');
         document.getElementById('drawerOverlay').classList.toggle('active');
     }
 
+    let toastTimer = null;
     function showToast(msg) {
         const t = document.getElementById('toast');
         t.innerText = msg;
-        t.style.display = 'block';
-        setTimeout(() => { t.style.display = 'none'; }, 2800);
+        t.classList.add('active');
+        
+        clearTimeout(toastTimer);
+        toastTimer = setTimeout(() => { 
+            t.classList.remove('active'); 
+        }, 2800);
     }
 
     function stub(name) {
-        showToast(`Модуль "${name}" готов к привязке API.`);
+        showToast(`Модуль "${name}" готов к привязке API`);
     }
 
     initRadar();

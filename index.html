@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>METEO QUANTUM COMMAND</title>
+    <title>QUANTUM METEO COMMAND CENTER</title>
 
     <!-- Leaflet & FontAwesome & Chart.js -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -14,9 +14,9 @@
     <style>
         :root {
             --bg-dark: #05070c;
-            --bg-glass: rgba(10, 15, 26, 0.72);
-            --bg-card: rgba(16, 24, 40, 0.85);
-            --border: rgba(255, 255, 255, 0.08);
+            --bg-glass: rgba(10, 15, 26, 0.78);
+            --bg-card: rgba(16, 24, 40, 0.88);
+            --border: rgba(255, 255, 255, 0.1);
             --border-glow: rgba(59, 130, 246, 0.5);
             --accent: #3b82f6;
             --accent-cyan: #06b6d4;
@@ -24,7 +24,6 @@
             --accent-pink: #ec4899;
             --danger: #ef4444;
             --success: #10b981;
-            --warning: #f59e0b;
             --text-main: #f8fafc;
             --text-muted: #64748b;
             --font-mono: 'JetBrains Mono', monospace;
@@ -46,12 +45,10 @@
             color: var(--text-main);
         }
 
-        /* КАРТА С ЭФФЕКТОМ 3D ТИЛТА */
         #map-container {
             width: 100%; height: 100%;
             position: absolute;
             perspective: 1000px;
-            transition: transform 0.6s var(--ease-out);
         }
 
         #map {
@@ -72,7 +69,6 @@
             z-index: 2;
         }
 
-        /* GLASS UI COMPONENTS */
         .glass {
             background: var(--bg-glass);
             backdrop-filter: blur(24px);
@@ -81,10 +77,6 @@
             border-radius: 16px;
             box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
             transition: all 0.3s var(--ease-out);
-        }
-
-        .glass:hover {
-            border-color: rgba(255, 255, 255, 0.15);
         }
 
         /* ВЕРХНИЙ КОМАНДНЫЙ БАР */
@@ -112,10 +104,7 @@
             border: 1px solid var(--border-glow);
         }
 
-        .brand-badge i {
-            color: var(--accent-cyan);
-            animation: pulse-glow 2s infinite alternate;
-        }
+        .brand-badge i { color: var(--accent-cyan); }
 
         .search-box {
             position: relative;
@@ -155,8 +144,7 @@
             border-bottom: 1px solid var(--border);
             transition: background 0.2s;
         }
-
-        .search-item:hover { background: rgba(59, 130, 246, 0.15); }
+        .search-item:hover { background: rgba(59, 130, 246, 0.2); }
 
         .top-actions {
             display: flex;
@@ -185,20 +173,12 @@
 
         .icon-btn.active {
             border-color: var(--accent);
-            background: rgba(59, 130, 246, 0.2);
+            background: rgba(59, 130, 246, 0.25);
             color: var(--accent-cyan);
-            box-shadow: 0 0 20px rgba(59, 130, 246, 0.3);
+            box-shadow: 0 0 20px rgba(59, 130, 246, 0.4);
         }
 
-        .icon-btn .badge-dot {
-            position: absolute;
-            top: 8px; right: 8px;
-            width: 7px; height: 7px;
-            border-radius: 50%;
-            background: var(--accent-pink);
-        }
-
-        /* ЛЕВАЯ ПАНЕЛЬ ИНСТРУМЕНТОВ (QUICK DOCK) */
+        /* ЛЕВАЯ ПАНЕЛЬ */
         .left-dock {
             position: absolute;
             top: 78px; left: 16px;
@@ -209,11 +189,11 @@
             pointer-events: auto;
         }
 
-        /* ПРАВАЯ ПАНЕЛЬ - АНАЛИТИЧЕСКИЙ МЕТЕО-ЦЕНТР */
+        /* ПРАВЫЙ HUD */
         .right-hud {
             position: absolute;
             top: 78px; right: 16px; bottom: 100px;
-            width: 340px;
+            width: 350px;
             z-index: 9;
             padding: 20px;
             display: flex;
@@ -221,70 +201,39 @@
             gap: 16px;
             pointer-events: auto;
             overflow-y: auto;
-            transform: translateX(0);
-            opacity: 1;
             transition: transform 0.4s var(--ease-out), opacity 0.4s var(--ease-out);
         }
 
         .right-hud.collapsed {
-            transform: translateX(380px);
+            transform: translateX(390px);
             opacity: 0;
             pointer-events: none;
         }
 
-        /* Скрыть скроллбар */
         .right-hud::-webkit-scrollbar { width: 0; }
 
-        .hud-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
         .hud-title {
-            font-size: 11px;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 1.2px;
+            font-size: 11px; font-weight: 700;
+            text-transform: uppercase; letter-spacing: 1.2px;
             color: var(--text-muted);
-        }
-
-        .location-card {
-            display: flex;
-            flex-direction: column;
-            gap: 4px;
-        }
-
-        .loc-title-row {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
         }
 
         .loc-name { font-size: 18px; font-weight: 800; color: #fff; }
         .loc-coords { font-size: 11px; font-family: var(--font-mono); color: var(--accent-cyan); }
 
-        /* ИНДЕКС УГРОЗЫ / SEVERE MATRIX */
         .threat-gauge {
             background: rgba(239, 68, 68, 0.1);
             border: 1px solid rgba(239, 68, 68, 0.3);
             border-radius: 12px;
             padding: 10px 14px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
+            display: flex; align-items: center; justify-content: space-between;
         }
 
         .threat-level {
-            font-size: 12px;
-            font-weight: 700;
-            color: var(--danger);
-            display: flex;
-            align-items: center;
-            gap: 8px;
+            font-size: 12px; font-weight: 700; color: var(--danger);
+            display: flex; align-items: center; gap: 8px;
         }
 
-        /* 2x2 GRID МЕТРИК */
         .metrics-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
@@ -296,169 +245,70 @@
             border: 1px solid var(--border);
             border-radius: 12px;
             padding: 12px;
-            display: flex;
-            flex-direction: column;
-            gap: 6px;
-            transition: border 0.2s;
+            display: flex; flex-direction: column; gap: 6px;
         }
 
-        .m-card:hover { border-color: rgba(255,255,255,0.15); }
-
         .m-label {
-            font-size: 10px;
-            font-weight: 600;
-            color: var(--text-muted);
-            display: flex;
-            align-items: center;
-            gap: 6px;
+            font-size: 10px; font-weight: 600; color: var(--text-muted);
+            display: flex; align-items: center; gap: 6px;
         }
 
         .m-value {
-            font-size: 17px;
-            font-weight: 800;
-            font-family: var(--font-mono);
-            color: #fff;
-        }
-
-        /* ВЫСОТНЫЕ ЭШЕЛОНЫ (ALTITUDE SLIDER) */
-        .altitude-selector {
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
+            font-size: 16px; font-weight: 800; font-family: var(--font-mono); color: #fff;
         }
 
         .alt-pills {
             display: flex;
-            background: rgba(0,0,0,0.3);
+            background: rgba(0,0,0,0.4);
             padding: 3px;
             border-radius: 10px;
             border: 1px solid var(--border);
         }
 
         .alt-btn {
-            flex: 1;
-            padding: 6px 0;
-            border: none;
-            background: transparent;
-            color: var(--text-muted);
-            font-size: 10px;
-            font-weight: 700;
-            border-radius: 8px;
-            cursor: pointer;
-            transition: all 0.2s;
+            flex: 1; padding: 6px 0; border: none; background: transparent;
+            color: var(--text-muted); font-size: 10px; font-weight: 700;
+            border-radius: 8px; cursor: pointer; transition: all 0.2s;
         }
 
         .alt-btn.active {
-            background: var(--accent);
-            color: #fff;
+            background: var(--accent); color: #fff;
             box-shadow: 0 0 10px rgba(59, 130, 246, 0.4);
         }
 
-        /* ПЛЕЕР ВРЕМЕННОЙ ШКАЛЫ (TIME MACHINE) */
+        /* ТАЙМЛАЙН ПЛЕЕР */
         .time-deck {
-            position: absolute;
-            bottom: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            z-index: 10;
-            width: calc(100% - 32px);
-            max-width: 760px;
-            padding: 14px 20px;
-            border-radius: 20px;
-            display: flex;
-            align-items: center;
-            gap: 16px;
+            position: absolute; bottom: 20px; left: 50%;
+            transform: translateX(-50%); z-index: 10;
+            width: calc(100% - 32px); max-width: 760px;
+            padding: 14px 20px; border-radius: 20px;
+            display: flex; align-items: center; gap: 16px;
             pointer-events: auto;
         }
 
         .play-master-btn {
-            width: 44px; height: 44px;
-            border-radius: 14px;
+            width: 44px; height: 44px; border-radius: 14px;
             background: linear-gradient(135deg, var(--accent), var(--accent-purple));
-            border: none;
-            color: #fff;
-            font-size: 16px;
-            cursor: pointer;
-            display: flex; align-items: center; justify-content: center;
-            flex-shrink: 0;
+            border: none; color: #fff; font-size: 16px; cursor: pointer;
+            display: flex; align-items: center; justify-content: center; flex-shrink: 0;
             box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4);
-            transition: transform 0.2s;
         }
 
-        .play-master-btn:hover { transform: scale(1.05); }
-
-        .timeline-body {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            gap: 6px;
-        }
-
-        .time-info-row {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            font-size: 11px;
-            font-family: var(--font-mono);
-        }
-
-        .time-mode-badge {
-            padding: 2px 8px;
-            border-radius: 6px;
-            background: rgba(16, 185, 129, 0.2);
-            color: var(--success);
-            font-weight: 700;
-            font-size: 9px;
-            display: flex;
-            align-items: center;
-            gap: 4px;
-        }
+        .timeline-body { flex: 1; display: flex; flex-direction: column; gap: 6px; }
 
         input[type="range"] {
-            -webkit-appearance: none;
-            width: 100%;
-            height: 5px;
-            border-radius: 3px;
-            background: rgba(255, 255, 255, 0.12);
-            outline: none;
+            -webkit-appearance: none; width: 100%; height: 5px;
+            border-radius: 3px; background: rgba(255, 255, 255, 0.15); outline: none;
         }
 
         input[type="range"]::-webkit-slider-thumb {
-            -webkit-appearance: none;
-            width: 16px; height: 16px;
-            border-radius: 50%;
-            background: #fff;
-            border: 3px solid var(--accent-cyan);
-            cursor: pointer;
+            -webkit-appearance: none; width: 16px; height: 16px;
+            border-radius: 50%; background: #fff;
+            border: 3px solid var(--accent-cyan); cursor: pointer;
             box-shadow: 0 0 10px var(--accent-cyan);
-            transition: transform 0.1s;
         }
 
-        input[type="range"]::-webkit-slider-thumb:hover { transform: scale(1.2); }
-
-        .speed-selector {
-            display: flex;
-            gap: 4px;
-        }
-
-        .speed-btn {
-            background: transparent;
-            border: 1px solid var(--border);
-            color: var(--text-muted);
-            padding: 4px 8px;
-            border-radius: 6px;
-            font-size: 10px;
-            font-family: var(--font-mono);
-            cursor: pointer;
-        }
-
-        .speed-btn.active {
-            color: var(--accent-cyan);
-            border-color: var(--accent-cyan);
-            background: rgba(6, 182, 212, 0.1);
-        }
-
-        /* МИНИМАЛИСТИЧНЫЙ ЦЕНТР СЛОЕВ (MODAL DRAWER) */
+        /* DRAWER СЛОЕВ И КАРТ */
         .drawer-overlay {
             position: fixed; inset: 0;
             background: rgba(0, 0, 0, 0.6);
@@ -470,179 +320,137 @@
         .drawer-overlay.active { opacity: 1; visibility: visible; }
 
         .drawer-panel {
-            position: fixed;
-            bottom: 0; left: 0; right: 0;
+            position: fixed; bottom: 0; left: 0; right: 0;
             z-index: 101;
             background: var(--bg-card);
             border-top: 1px solid var(--border-glow);
             border-radius: 28px 28px 0 0;
-            padding: 24px;
-            max-width: 640px;
-            margin: 0 auto;
+            padding: 24px; max-width: 680px; margin: 0 auto;
             transform: translateY(100%);
             transition: transform 0.4s var(--ease-out);
+            max-height: 80vh; overflow-y: auto;
         }
         .drawer-panel.active { transform: translateY(0); }
 
-        .drawer-head {
-            display: flex; justify-content: space-between; align-items: center;
-            margin-bottom: 20px;
+        .map-style-grid {
+            display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 20px;
         }
 
-        .layers-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 12px;
+        .map-style-card {
+            background: rgba(255,255,255,0.03);
+            border: 1px solid var(--border);
+            border-radius: 12px; padding: 10px;
+            text-align: center; cursor: pointer; font-size: 11px; font-weight: 700;
+            transition: all 0.2s;
         }
+
+        .map-style-card:hover, .map-style-card.active {
+            border-color: var(--accent-cyan);
+            background: rgba(6, 182, 212, 0.15);
+            color: var(--accent-cyan);
+        }
+
+        .layers-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 
         .layer-card {
             background: rgba(255, 255, 255, 0.02);
             border: 1px solid var(--border);
-            border-radius: 14px;
-            padding: 12px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
+            border-radius: 12px; padding: 12px;
+            display: flex; align-items: center; justify-content: space-between;
         }
 
-        .layer-card-info {
-            display: flex; align-items: center; gap: 10px;
-            font-size: 12px; font-weight: 600;
-        }
-
-        .layer-card-info i {
-            width: 28px; height: 28px;
-            border-radius: 8px;
-            background: rgba(59, 130, 246, 0.15);
-            color: var(--accent);
-            display: flex; align-items: center; justify-content: center;
-        }
-
-        /* Switch UI */
         .switch { position: relative; width: 38px; height: 22px; }
         .switch input { opacity: 0; width: 0; height: 0; }
         .slider-round {
-            position: absolute; inset: 0;
-            background: rgba(255, 255, 255, 0.15);
-            border-radius: 22px; cursor: pointer;
-            transition: 0.2s;
+            position: absolute; inset: 0; background: rgba(255, 255, 255, 0.15);
+            border-radius: 22px; cursor: pointer; transition: 0.2s;
         }
         .slider-round:before {
-            position: absolute; content: "";
-            height: 16px; width: 16px; left: 3px; bottom: 3px;
-            background: #fff; border-radius: 50%;
-            transition: 0.2s;
+            position: absolute; content: ""; height: 16px; width: 16px; left: 3px; bottom: 3px;
+            background: #fff; border-radius: 50%; transition: 0.2s;
         }
         input:checked + .slider-round { background: var(--accent); }
         input:checked + .slider-round:before { transform: translateX(16px); }
 
-        /* TOAST NOTIFICATION */
         .toast-banner {
             position: fixed; top: 76px; left: 50%;
-            transform: translate(-50%, -20px);
-            z-index: 200;
-            background: rgba(16, 24, 40, 0.9);
+            transform: translate(-50%, -20px); z-index: 200;
+            background: rgba(16, 24, 40, 0.95);
             border: 1px solid var(--accent);
-            color: #fff;
-            padding: 10px 20px;
-            border-radius: 30px;
-            font-size: 12px; font-weight: 600;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-            opacity: 0; pointer-events: none;
-            transition: all 0.3s var(--ease-out);
+            color: #fff; padding: 10px 20px; border-radius: 30px;
+            font-size: 12px; font-weight: 600; box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            opacity: 0; pointer-events: none; transition: all 0.3s var(--ease-out);
             display: flex; align-items: center; gap: 8px;
         }
         .toast-banner.active { opacity: 1; transform: translate(-50%, 0); }
 
-        @keyframes pulse-glow {
-            from { filter: drop-shadow(0 0 2px var(--accent-cyan)); }
-            to { filter: drop-shadow(0 0 8px var(--accent-cyan)); }
-        }
-
         @media (max-width: 768px) {
             .right-hud { width: calc(100% - 32px); top: auto; bottom: 95px; height: 280px; }
+            .map-style-grid { grid-template-columns: 1fr 1fr; }
             .layers-grid { grid-template-columns: 1fr; }
         }
     </style>
 </head>
 <body>
 
-<div id="map-container">
-    <div id="map"></div>
-</div>
+<div id="map-container"><div id="map"></div></div>
 <canvas id="canvasOverlay"></canvas>
 
-<div class="toast-banner" id="toast"><i class="fa-solid fa-circle-info" style="color:var(--accent-cyan);"></i> <span id="toastMsg">Готово</span></div>
+<div class="toast-banner" id="toast"><i class="fa-solid fa-circle-info" style="color:var(--accent-cyan);"></i> <span id="toastMsg">Синхронизация данных...</span></div>
 
-<!-- ВЕРХНИЙ КОМАНДНЫЙ БАР -->
+<!-- ВЕРХНИЙ БАР -->
 <div class="top-bar">
-    <div class="glass brand-badge">
-        <i class="fa-solid fa-atom"></i> QUANTUM METEO
-    </div>
+    <div class="glass brand-badge"><i class="fa-solid fa-atom"></i> QUANTUM METEO</div>
 
     <div class="search-box">
         <div class="glass search-input-wrap">
             <i class="fa-solid fa-magnifying-glass" style="color: var(--text-muted);"></i>
-            <input type="text" id="searchInput" placeholder="Поиск координат или городов..." oninput="QuantumEngine.searchLocation(this.value)">
+            <input type="text" id="searchInput" placeholder="Поиск городов и гео-координат..." oninput="QuantumEngine.searchLocation(this.value)">
         </div>
         <div class="search-dropdown" id="searchResults"></div>
     </div>
 
     <div class="top-actions">
-        <button class="icon-btn" onclick="QuantumEngine.toggle3D()" id="btn3d" title="3D Перспектива">
-            <i class="fa-solid fa-cube"></i>
-        </button>
-        <button class="icon-btn" onclick="AudioSynth.toggle()" id="btnAudio" title="Звуковой атмосферный эмбиент">
-            <i class="fa-solid fa-volume-high"></i>
-        </button>
-        <button class="icon-btn" onclick="VoiceBriefing.speak()" title="Голосовая метео-сводка AI">
-            <i class="fa-solid fa-bullhorn"></i>
-        </button>
-        <button class="icon-btn active" onclick="UIController.toggleHUD()" id="btnHud" title="Аналитическая панель">
-            <i class="fa-solid fa-chart-pie"></i>
-        </button>
-        <button class="icon-btn" onclick="UIController.toggleDrawer()" title="Центр слоев">
-            <i class="fa-solid fa-layer-group"></i>
-            <span class="badge-dot"></span>
-        </button>
+        <button class="icon-btn" onclick="QuantumEngine.toggle3D()" id="btn3d" title="3D Перспектива"><i class="fa-solid fa-cube"></i></button>
+        <button class="icon-btn" onclick="AudioSynth.toggle()" id="btnAudio" title="Акустический эмбиент ветра"><i class="fa-solid fa-volume-high"></i></button>
+        <button class="icon-btn" onclick="VoiceBriefing.speak()" title="AI Озвучка сводки"><i class="fa-solid fa-bullhorn"></i></button>
+        <button class="icon-btn active" onclick="UIController.toggleHUD()" id="btnHud" title="Аналитика"><i class="fa-solid fa-chart-pie"></i></button>
+        <button class="icon-btn" onclick="UIController.toggleDrawer()" title="Выбор карты и слоев"><i class="fa-solid fa-layer-group"></i></button>
     </div>
 </div>
 
-<!-- ЛЕВАЯ ПАНЕЛЬ БЫСТРЫХ ИНСТРУМЕНТОВ -->
+<!-- ЛЕВАЯ ПАНЕЛЬ -->
 <div class="left-dock">
     <button class="icon-btn" onclick="QuantumEngine.locateUser()" title="Моя локация"><i class="fa-solid fa-crosshairs"></i></button>
-    <button class="icon-btn" onclick="LayerManager.toggleFlights()" id="btnFlights" title="Авиарейсы Live"><i class="fa-solid fa-plane"></i></button>
-    <button class="icon-btn" onclick="LayerManager.toggleAurora()" id="btnAurora" title="Овал Полярных Сияний"><i class="fa-solid fa-sun"></i></button>
-    <button class="icon-btn" onclick="LayerManager.toggleTerminator()" id="btnTerminator" title="Линия Ночи/Солнца"><i class="fa-solid fa-moon"></i></button>
+    <button class="icon-btn" onclick="LayerManager.toggleFlights()" id="btnFlights" title="Самолеты Live (OpenSky)"><i class="fa-solid fa-plane"></i></button>
+    <button class="icon-btn" onclick="LayerManager.toggleTerminator()" id="btnTerminator" title="Терминатор День/Ночь"><i class="fa-solid fa-moon"></i></button>
 </div>
 
-<!-- ПРАВЫЙ АНАЛИТИЧЕСКИЙ HUD -->
+<!-- ПРАВЫЙ HUD -->
 <div class="glass right-hud" id="rightHud">
-    <div class="hud-header">
+    <div class="hud-header" style="display:flex; justify-content:space-between; align-items:center;">
         <span class="hud-title">Квантовый скрининг</span>
         <i class="fa-solid fa-xmark" style="cursor:pointer; color:var(--text-muted);" onclick="UIController.toggleHUD()"></i>
     </div>
 
-    <div class="location-card">
-        <div class="loc-title-row">
-            <span class="loc-name" id="locName">Москва</span>
-            <span class="loc-coords" id="locCoords">55.751 N, 37.618 E</span>
-        </div>
+    <div>
+        <div class="loc-name" id="locName">Москва</div>
+        <div class="loc-coords" id="locCoords">55.751 N, 37.618 E</div>
     </div>
 
     <div class="threat-gauge">
-        <div class="threat-level"><i class="fa-solid fa-triangle-exclamation"></i> Риск шторма: <span id="threatVal">Минимальный</span></div>
-        <span style="font-size:10px; font-family:var(--font-mono); color:var(--text-muted);" id="capeVal">CAPE: 120 J/kg</span>
+        <div class="threat-level"><i class="fa-solid fa-shield-halved"></i> Статус погоды: <span id="threatVal">Штиль</span></div>
+        <span style="font-size:10px; font-family:var(--font-mono); color:var(--text-muted);" id="weatherCodeDesc">Ясно</span>
     </div>
 
     <!-- ВЫСОТНЫЕ ЭШЕЛОНЫ -->
-    <div class="altitude-selector">
-        <span class="hud-title" style="font-size:9px;">Атмосферный срез</span>
+    <div>
+        <span class="hud-title" style="font-size:9px; display:block; margin-bottom:6px;">Атмосферный срез (Изобары)</span>
         <div class="alt-pills">
             <button class="alt-btn active" onclick="QuantumEngine.setAltitude('surface', this)">Поверхность</button>
             <button class="alt-btn" onclick="QuantumEngine.setAltitude('850hpa', this)">850 hPa</button>
             <button class="alt-btn" onclick="QuantumEngine.setAltitude('500hpa', this)">500 hPa</button>
-            <button class="alt-btn" onclick="QuantumEngine.setAltitude('jetstream', this)">Jet Stream</button>
+            <button class="alt-btn" onclick="QuantumEngine.setAltitude('jetstream', this)">250 hPa (Jet)</button>
         </div>
     </div>
 
@@ -656,7 +464,7 @@
             <div class="m-value" id="valDew">-- °C</div>
         </div>
         <div class="m-card">
-            <div class="m-label"><i class="fa-solid fa-wind" style="color:var(--accent);"></i> Порывы ветра</div>
+            <div class="m-label"><i class="fa-solid fa-wind" style="color:var(--accent);"></i> Скорость ветра</div>
             <div class="m-value" id="valWind">-- м/с</div>
         </div>
         <div class="m-card">
@@ -665,85 +473,101 @@
         </div>
     </div>
 
-    <div style="flex:1; min-height:80px;">
-        <span class="hud-title" style="font-size:9px; margin-bottom:6px; display:block;">Тренд давления & Осадков (24ч)</span>
+    <div style="flex:1; min-height:90px;">
+        <span class="hud-title" style="font-size:9px; margin-bottom:6px; display:block;">График давления (24ч)</span>
         <canvas id="hudChart"></canvas>
     </div>
 </div>
 
-<!-- ВРЕМЕННАЯ ШКАЛА / TIME MACHINE -->
+<!-- ТАЙМЛАЙН -->
 <div class="glass time-deck">
-    <button class="play-master-btn" id="playBtn" onclick="TimeMachine.togglePlay()">
-        <i class="fa-solid fa-play"></i>
-    </button>
+    <button class="play-master-btn" id="playBtn" onclick="TimeMachine.togglePlay()"><i class="fa-solid fa-play"></i></button>
     <div class="timeline-body">
-        <div class="time-info-row">
-            <div class="time-mode-badge"><i class="fa-solid fa-satellite"></i> <span id="timeModeText">LIVE РАДАР</span></div>
+        <div style="display:flex; justify-content:space-between; align-items:center; font-size:11px; font-family:var(--font-mono);">
+            <span style="color:var(--success); font-weight:700;"><i class="fa-solid fa-satellite"></i> RAINVIEWER LIVE</span>
             <span id="timeDisplay" style="color:#fff; font-weight:700;">--:--</span>
         </div>
         <input type="range" id="timeSlider" min="0" max="100" value="100" oninput="TimeMachine.onSeek(this.value)">
     </div>
-    <div class="speed-selector">
-        <button class="speed-btn active" onclick="TimeMachine.setSpeed(1, this)">1x</button>
-        <button class="speed-btn" onclick="TimeMachine.setSpeed(3, this)">3x</button>
-        <button class="speed-btn" onclick="TimeMachine.setSpeed(8, this)">8x</button>
-    </div>
 </div>
 
-<!-- МИНИМАЛИСТИЧНЫЙ DRAWER СЛОЕВ -->
+<!-- DRAWER СЛОЕВ И ВЫБОРА КАРТЫ -->
 <div class="drawer-overlay" id="drawerOverlay" onclick="UIController.toggleDrawer()"></div>
 <div class="drawer-panel" id="drawerPanel">
-    <div class="drawer-head">
-        <span class="hud-title" style="font-size:13px; color:#fff;">Управление Квантовыми Слоями</span>
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+        <span class="hud-title" style="font-size:12px; color:#fff;">Выбор картографической подложки</span>
         <i class="fa-solid fa-xmark" style="cursor:pointer;" onclick="UIController.toggleDrawer()"></i>
     </div>
 
+    <!-- ВЫБОР СТИЛЯ КАРТЫ -->
+    <div class="map-style-grid">
+        <div class="map-style-card active" onclick="MapStyles.set('dark', this)"><i class="fa-solid fa-moon"></i><br>CARTO Cyber</div>
+        <div class="map-style-card" onclick="MapStyles.set('satellite', this)"><i class="fa-solid fa-globe"></i><br>Esri Satellite</div>
+        <div class="map-style-card" onclick="MapStyles.set('topo', this)"><i class="fa-solid fa-mountain"></i><br>OpenTopoMap</div>
+        <div class="map-style-card" onclick="MapStyles.set('light', this)"><i class="fa-solid fa-sun"></i><br>CARTO Light</div>
+        <div class="map-style-card" onclick="MapStyles.set('osm', this)"><i class="fa-solid fa-map"></i><br>OSM Standard</div>
+    </div>
+
+    <span class="hud-title" style="font-size:12px; color:#fff; margin-bottom:12px; display:block;">Оверлеи и Покилометровые слои</span>
     <div class="layers-grid">
         <div class="layer-card">
-            <div class="layer-card-info"><i class="fa-solid fa-cloud-showers-heavy"></i> Радар Осадков</div>
+            <span><i class="fa-solid fa-cloud-showers-heavy" style="color:var(--accent);"></i> Осадки (Радар)</span>
             <label class="switch"><input type="checkbox" checked onchange="LayerManager.toggle('radar', this.checked)"><span class="slider-round"></span></label>
         </div>
         <div class="layer-card">
-            <div class="layer-card-info"><i class="fa-solid fa-wind"></i> Векторы Ветера</div>
-            <label class="switch"><input type="checkbox" id="chkWind" checked onchange="LayerManager.toggle('wind', this.checked)"><span class="slider-round"></span></label>
-        </div>
-        <div class="layer-card">
-            <div class="layer-card-info"><i class="fa-solid fa-bolt"></i> Детектор Гроз (Live)</div>
-            <label class="switch"><input type="checkbox" checked onchange="LayerManager.toggle('lightning', this.checked)"><span class="slider-round"></span></label>
-        </div>
-        <div class="layer-card">
-            <div class="layer-card-info"><i class="fa-solid fa-temperature-high"></i> Тепловое Поле</div>
-            <label class="switch"><input type="checkbox" onchange="LayerManager.toggle('thermal', this.checked)"><span class="slider-round"></span></label>
+            <span><i class="fa-solid fa-wind" style="color:var(--accent-cyan);"></i> Векторы ветра</span>
+            <label class="switch"><input type="checkbox" checked onchange="LayerManager.toggle('wind', this.checked)"><span class="slider-round"></span></label>
         </div>
     </div>
 </div>
 
 <script>
 /**
- * 1. QUANTUM MAP ENGINE
+ * 1. КАРТЫ И ПОДЛОЖКИ
+ */
+const MapStyles = {
+    providers: {
+        dark: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+        satellite: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+        topo: 'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',
+        light: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
+        osm: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png'
+    },
+    currentTileLayer: null,
+
+    set(type, elem) {
+        document.querySelectorAll('.map-style-card').forEach(c => c.classList.remove('active'));
+        if(elem) elem.classList.add('active');
+
+        if(this.currentTileLayer) QuantumEngine.map.removeLayer(this.currentTileLayer);
+        this.currentTileLayer = L.tileLayer(this.providers[type], { maxZoom: 18 }).addTo(QuantumEngine.map);
+        UIController.showToast(`Подложка карты изменена: ${type.toUpperCase()}`);
+    }
+};
+
+/**
+ * 2. ЯДРО КАРТЫ & НАСТОЯЩИЕ ДАННЫЕ OPEN-METEO
  */
 const QuantumEngine = {
     map: null,
     is3D: false,
     activeLocation: [55.751, 37.618],
     activeAltitude: 'surface',
+    lastWeatherData: null,
 
     init() {
-        this.map = L.map('map', {
-            center: this.activeLocation,
-            zoom: 6,
-            zoomControl: false,
-            attributionControl: false
+        this.map = L.map('map', { center: this.activeLocation, zoom: 6, zoomControl: false, attributionControl: false });
+        MapStyles.set('dark');
+
+        this.map.on('movestart', () => ParticleEngine.pause());
+        this.map.on('moveend', () => {
+            ParticleEngine.resume();
+            if(LayerManager.flightsActive) LayerManager.fetchLiveFlights();
         });
 
-        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { maxZoom: 19 }).addTo(this.map);
-
-        // Предотвращение лагов при панорамировании карты
-        this.map.on('movestart', () => ParticleEngine.pause());
-        this.map.on('moveend', () => ParticleEngine.resume());
         this.map.on('click', (e) => {
             this.activeLocation = [e.latlng.lat, e.latlng.lng];
-            QuantumEngine.inspectPoint(e.latlng.lat, e.latlng.lng);
+            this.inspectPoint(e.latlng.lat, e.latlng.lng);
         });
 
         ParticleEngine.init();
@@ -756,15 +580,64 @@ const QuantumEngine = {
         this.is3D = !this.is3D;
         document.body.classList.toggle('mode-3d', this.is3D);
         document.getElementById('btn3d').classList.toggle('active', this.is3D);
-        UIController.showToast(this.is3D ? "Режим 3D Перспективы активирован" : "Возврат в 2D проекцию");
+        UIController.showToast(this.is3D ? "3D Перспектива активирована" : "Возврат в 2D");
+    },
+
+    async inspectPoint(lat, lon, label) {
+        document.getElementById('locName').innerText = label || "Гео-анализ";
+        document.getElementById('locCoords').innerText = `${lat.toFixed(3)} N, ${lon.toFixed(3)} E`;
+
+        try {
+            // Реальные данные для всех эшелонов высот
+            const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,dew_point_2m,surface_pressure,wind_speed_10m,weather_code&hourly=surface_pressure,temperature_850hPa,wind_speed_850hPa,temperature_500hPa,wind_speed_500hPa,wind_speed_250hPa`;
+            const res = await fetch(url);
+            this.lastWeatherData = await res.json();
+
+            this.renderMetrics();
+        } catch(e) {
+            UIController.showToast("Ошибка загрузки метеоданных Open-Meteo");
+        }
+    },
+
+    renderMetrics() {
+        if(!this.lastWeatherData) return;
+        const cur = this.lastWeatherData.current;
+        const hourly = this.lastWeatherData.hourly;
+
+        let temp = cur.temperature_2m;
+        let wind = cur.wind_speed_10m;
+
+        // Корректировка показателей под выбранный высотный эшелон
+        if(this.activeAltitude === '850hpa' && hourly.temperature_850hPa) {
+            temp = hourly.temperature_850hPa[0];
+            wind = hourly.wind_speed_850hPa[0];
+        } else if(this.activeAltitude === '500hpa' && hourly.temperature_500hPa) {
+            temp = hourly.temperature_500hPa[0];
+            wind = hourly.wind_speed_500hPa[0];
+        } else if(this.activeAltitude === 'jetstream' && hourly.wind_speed_250hPa) {
+            wind = hourly.wind_speed_250hPa[0];
+        }
+
+        document.getElementById('valTemp').innerText = `${Math.round(temp)} °C`;
+        document.getElementById('valWind').innerText = `${Math.round(wind)} м/с`;
+        document.getElementById('valDew').innerText = `${Math.round(cur.dew_point_2m)} °C`;
+        document.getElementById('valPress').innerText = `${Math.round(cur.surface_pressure)} hPa`;
+
+        // Расчет скорости шума ветра в звуковом синтезаторе
+        AudioSynth.adjustByWind(wind);
+
+        if(hourly.surface_pressure) {
+            ChartEngine.update(hourly.surface_pressure.slice(0, 24));
+        }
     },
 
     setAltitude(alt, elem) {
         document.querySelectorAll('.alt-btn').forEach(b => b.classList.remove('active'));
         if(elem) elem.classList.add('active');
         this.activeAltitude = alt;
-        UIController.showToast(`Переключен эшелон: ${alt.toUpperCase()}`);
-        ParticleEngine.updateSpeedByAlt(alt);
+        this.renderMetrics();
+        ParticleEngine.setAlt(alt);
+        UIController.showToast(`Выбран эшелон: ${alt.toUpperCase()}`);
     },
 
     locateUser() {
@@ -772,7 +645,7 @@ const QuantumEngine = {
         navigator.geolocation.getCurrentPosition(pos => {
             const { latitude, longitude } = pos.coords;
             this.map.flyTo([latitude, longitude], 9, { duration: 1.2 });
-            this.inspectPoint(latitude, longitude, "Ваше местоположение");
+            this.inspectPoint(latitude, longitude, "Ваша локация");
         });
     },
 
@@ -791,247 +664,24 @@ const QuantumEngine = {
                 `).join('');
                 box.style.display = 'block';
             }
-        } catch(e) { box.style.display = 'none'; }
+        } catch(e) {}
     },
 
     selectLocation(lat, lon, name) {
         document.getElementById('searchResults').style.display = 'none';
         this.map.flyTo([lat, lon], 9, { duration: 1.2 });
         this.inspectPoint(lat, lon, name);
-    },
-
-    async inspectPoint(lat, lon, label) {
-        document.getElementById('locName').innerText = label || "Анализ точки";
-        document.getElementById('locCoords').innerText = `${lat.toFixed(3)} N, ${lon.toFixed(3)} E`;
-
-        try {
-            const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true&hourly=temperature_2m,surface_pressure,dewpoint_2m,windgusts_10m`);
-            const data = await res.json();
-
-            if(data.current_weather) {
-                const cw = data.current_weather;
-                document.getElementById('valTemp').innerText = `${cw.temperature} °C`;
-                document.getElementById('valWind').innerText = `${cw.windspeed} м/с`;
-                
-                // Расчет риска шторма
-                const risk = cw.windspeed > 15 ? "ВЫСОКИЙ" : (cw.windspeed > 8 ? "УМЕРЕННЫЙ" : "МИНИМАЛЬНЫЙ");
-                document.getElementById('threatVal').innerText = risk;
-                document.getElementById('threatVal').style.color = cw.windspeed > 15 ? 'var(--danger)' : 'var(--success)';
-            }
-
-            if(data.hourly) {
-                document.getElementById('valPress').innerText = `${Math.round(data.hourly.surface_pressure[0])} hPa`;
-                document.getElementById('valDew').innerText = `${Math.round(data.hourly.dewpoint_2m[0])} °C`;
-                ChartEngine.update(data.hourly.surface_pressure.slice(0, 24));
-            }
-        } catch(e) {}
     }
 };
 
 /**
- * 2. CANVAS PARTICLE WIND SYSTEM
- */
-const ParticleEngine = {
-    canvas: null, ctx: null, particles: [], isRunning: true, speedMultiplier: 1, animId: null,
-
-    init() {
-        this.canvas = document.getElementById('canvasOverlay');
-        this.ctx = this.canvas.getContext('2d');
-        this.resize();
-        window.addEventListener('resize', () => this.resize());
-        this.createParticles();
-        this.loop();
-    },
-
-    resize() {
-        this.canvas.width = window.innerWidth;
-        this.canvas.height = window.innerHeight;
-    },
-
-    createParticles() {
-        this.particles = [];
-        for(let i=0; i<220; i++) {
-            this.particles.push({
-                x: Math.random() * this.canvas.width,
-                y: Math.random() * this.canvas.height,
-                len: Math.random() * 15 + 5,
-                life: Math.random() * 100
-            });
-        }
-    },
-
-    updateSpeedByAlt(alt) {
-        if(alt === 'jetstream') this.speedMultiplier = 3.5;
-        else if(alt === '500hpa') this.speedMultiplier = 2.2;
-        else if(alt === '850hpa') this.speedMultiplier = 1.5;
-        else this.speedMultiplier = 1.0;
-    },
-
-    pause() { if(this.animId) cancelAnimationFrame(this.animId); this.animId = null; },
-    resume() { if(!this.animId && this.isRunning) this.loop(); },
-
-    loop() {
-        if(!this.isRunning) return;
-        this.ctx.fillStyle = 'rgba(5, 7, 12, 0.18)';
-        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
-
-        this.ctx.strokeStyle = 'rgba(6, 182, 212, 0.6)';
-        this.ctx.lineWidth = 1.5;
-        this.ctx.beginPath();
-
-        for(let p of this.particles) {
-            this.ctx.moveTo(p.x, p.y);
-            p.x += (2.0 * this.speedMultiplier);
-            p.y += Math.sin(p.x * 0.008) * 0.8;
-            p.life--;
-
-            this.ctx.lineTo(p.x, p.y);
-
-            if(p.x > this.canvas.width || p.life <= 0) {
-                p.x = Math.random() * this.canvas.width;
-                p.y = Math.random() * this.canvas.height;
-                p.life = 100;
-            }
-        }
-        this.ctx.stroke();
-        this.animId = requestAnimationFrame(() => this.loop());
-    }
-};
-
-/**
- * 3. ATMOSPHERIC SOUND SYNTHESIZER (WEB AUDIO API)
- */
-const AudioSynth = {
-    ctx: null, isPlaying: false, gainNode: null,
-
-    toggle() {
-        if(!this.ctx) {
-            this.ctx = new (window.AudioContext || window.webkitAudioContext)();
-        }
-
-        this.isPlaying = !this.isPlaying;
-        document.getElementById('btnAudio').classList.toggle('active', this.isPlaying);
-
-        if(this.isPlaying) {
-            this.ctx.resume();
-            // Генератор розового шума ветра
-            const bufferSize = this.ctx.sampleRate * 2;
-            const noiseBuffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
-            const output = noiseBuffer.getChannelData(0);
-            for (let i = 0; i < bufferSize; i++) {
-                output[i] = Math.random() * 2 - 1;
-            }
-
-            const whiteNoise = this.ctx.createBufferSource();
-            whiteNoise.buffer = noiseBuffer;
-            whiteNoise.loop = true;
-
-            const filter = this.ctx.createBiquadFilter();
-            filter.type = 'lowpass';
-            filter.frequency.value = 350;
-
-            this.gainNode = this.ctx.createGain();
-            this.gainNode.gain.value = 0.15;
-
-            whiteNoise.connect(filter);
-            filter.connect(this.gainNode);
-            this.gainNode.connect(this.ctx.destination);
-
-            whiteNoise.start();
-            UIController.showToast("Атмосферный звуковой эмбиент включен");
-        } else {
-            this.ctx.suspend();
-            UIController.showToast("Звук выключен");
-        }
-    }
-};
-
-/**
- * 4. VOICE AI BRIEFING (SPEECH SYNTHESIS)
- */
-const VoiceBriefing = {
-    speak() {
-        if (!('speechSynthesis' in window)) {
-            UIController.showToast("Синтез речи не поддерживается вашим браузером");
-            return;
-        }
-
-        const city = document.getElementById('locName').innerText;
-        const temp = document.getElementById('valTemp').innerText;
-        const wind = document.getElementById('valWind').innerText;
-        const text = `Квантовый метео-анализ для локации ${city}. Температура воздуха ${temp}. Скорость ветра ${wind}. Индекс штормовой угрозы минимальный.`;
-
-        const msg = new SpeechSynthesisUtterance(text);
-        msg.lang = 'ru-RU';
-        window.speechSynthesis.speak(msg);
-        UIController.showToast("Голосовой диктор активирован");
-    }
-};
-
-/**
- * 5. TIME MACHINE & RADAR ENGINE
- */
-const TimeMachine = {
-    radarFrames: [], currentIndex: 0, isPlaying: false, speed: 1000, timer: null, tileLayer: null,
-
-    async init() {
-        try {
-            const res = await fetch('https://api.rainviewer.com/public/weather-maps.json');
-            const data = await res.json();
-            this.radarFrames = data.radar?.past || [];
-            if(this.radarFrames.length) {
-                this.currentIndex = this.radarFrames.length - 1;
-                this.updateRadar();
-            }
-        } catch(e) {}
-    },
-
-    updateRadar() {
-        if(!this.radarFrames.length) return;
-        const frame = this.radarFrames[this.currentIndex];
-        const url = `https://tilecache.rainviewer.com/v2/radar/${frame.time}/256/{z}/{x}/{y}/2/1_1.png`;
-
-        if(this.tileLayer) QuantumEngine.map.removeLayer(this.tileLayer);
-        this.tileLayer = L.tileLayer(url, { opacity: 0.75, zIndex: 50 }).addTo(QuantumEngine.map);
-
-        const date = new Date(frame.time * 1000);
-        document.getElementById('timeDisplay').innerText = date.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
-    },
-
-    togglePlay() {
-        this.isPlaying = !this.isPlaying;
-        document.getElementById('playBtn').innerHTML = this.isPlaying ? '<i class="fa-solid fa-pause"></i>' : '<i class="fa-solid fa-play"></i>';
-
-        if(this.isPlaying) {
-            this.timer = setInterval(() => {
-                this.currentIndex = (this.currentIndex + 1) % this.radarFrames.length;
-                this.updateRadar();
-            }, this.speed);
-        } else {
-            clearInterval(this.timer);
-        }
-    },
-
-    setSpeed(mult, elem) {
-        document.querySelectorAll('.speed-btn').forEach(b => b.classList.remove('active'));
-        if(elem) elem.classList.add('active');
-        this.speed = 1000 / mult;
-        if(this.isPlaying) { this.togglePlay(); this.togglePlay(); }
-    },
-
-    onSeek(val) {
-        if(!this.radarFrames.length) return;
-        this.currentIndex = Math.round((val / 100) * (this.radarFrames.length - 1));
-        this.updateRadar();
-    }
-};
-
-/**
- * 6. FLIGHTS & LIGHTNING LIVE LAYERS
+ * 3. ЧЕСТНЫЕ АВИАРЕЙСЫ LIVE (OPENSKY NETWORK API)
  */
 const LayerManager = {
     flightGroup: L.layerGroup(),
     flightsActive: false,
+    terminatorLayer: null,
+    radarLayer: null,
 
     toggleFlights() {
         this.flightsActive = !this.flightsActive;
@@ -1039,89 +689,269 @@ const LayerManager = {
 
         if(this.flightsActive) {
             this.flightGroup.addTo(QuantumEngine.map);
-            UIController.showToast("LIVE Авиарейсы активированы");
-            // Симуляция транспондеров
-            for(let i=0; i<8; i++) {
-                const b = QuantumEngine.map.getBounds();
-                const lat = b.getSouth() + Math.random()*(b.getNorth()-b.getSouth());
-                const lon = b.getWest() + Math.random()*(b.getEast()-b.getWest());
-                
-                L.marker([lat, lon], {
-                    icon: L.divIcon({
-                        className: 'custom-plane-icon',
-                        html: `<i class="fa-solid fa-plane" style="color:#06b6d4; transform:rotate(${Math.random()*360}deg); font-size:14px;"></i>`
-                    })
-                }).addTo(this.flightGroup);
-            }
+            this.fetchLiveFlights();
         } else {
             QuantumEngine.map.removeLayer(this.flightGroup);
             this.flightGroup.clearLayers();
+            UIController.showToast("Авиарейсы отключены");
         }
+    },
+
+    async fetchLiveFlights() {
+        if(!this.flightsActive) return;
+        const b = QuantumEngine.map.getBounds();
+        UIController.showToast("Запрос трафика OpenSky...");
+
+        try {
+            const url = `https://opensky-network.org/api/states/all?lamin=${b.getSouth()}&lomin=${b.getWest()}&lamax=${b.getNorth()}&lomax=${b.getEast()}`;
+            const res = await fetch(url);
+            const data = await res.json();
+
+            this.flightGroup.clearLayers();
+            if(data && data.states) {
+                data.states.slice(0, 40).forEach(st => {
+                    const lat = st[6]; const lon = st[5]; const callsign = st[1] || 'PLANE'; const heading = st[10] || 0;
+                    if(lat && lon) {
+                        const icon = L.divIcon({
+                            className: 'plane-marker',
+                            html: `<i class="fa-solid fa-plane" style="color:#06b6d4; transform:rotate(${heading-45}deg); font-size:14px; filter:drop-shadow(0 0 6px #06b6d4);"></i>`
+                        });
+                        L.marker([lat, lon], { icon }).bindTooltip(`Рейс: ${callsign.trim()}`).addTo(this.flightGroup);
+                    }
+                });
+                UIController.showToast(`Найдено самолетов: ${data.states.length}`);
+            } else {
+                UIController.showToast("Нет активных бортов в этой зоне");
+            }
+        } catch(e) {
+            UIController.showToast("OpenSky API лимит (попробуйте позже)");
+        }
+    },
+
+    toggleTerminator() {
+        if(this.terminatorLayer) {
+            QuantumEngine.map.removeLayer(this.terminatorLayer);
+            this.terminatorLayer = null;
+            document.getElementById('btnTerminator').classList.remove('active');
+            UIController.showToast("Терминатор отключен");
+            return;
+        }
+
+        // Астрономический расчет положения солнца
+        const now = new Date();
+        const dayOfYear = Math.floor((now - new Date(now.getFullYear(), 0, 0)) / 1000 / 60 / 60 / 24);
+        const declination = 23.45 * Math.sin((360 / 365 * (dayOfYear - 81)) * Math.PI / 180);
+
+        const coords = [];
+        for (let lon = -180; lon <= 180; lon += 5) {
+            const hourAngle = (lon + (now.getUTCHours() * 15) + (now.getUTCMinutes() / 4)) * Math.PI / 180;
+            const lat = Math.atan(-Math.cos(hourAngle) / Math.tan(declination * Math.PI / 180)) * 180 / Math.PI;
+            coords.push([lat, lon]);
+        }
+        coords.push([-90, 180], [-90, -180]);
+
+        this.terminatorLayer = L.polygon(coords, { color: '#000', fillColor: '#000', fillOpacity: 0.45, weight: 1 }).addTo(QuantumEngine.map);
+        document.getElementById('btnTerminator').classList.add('active');
+        UIController.showToast("Терминатор День/Ночь включен");
     },
 
     toggle(type, enabled) {
         if(type === 'wind') ParticleEngine.isRunning = enabled;
-        UIController.showToast(`Слой ${type.toUpperCase()}: ${enabled ? 'Включен' : 'Выключен'}`);
-    }
-};
-
-/**
- * 7. CHART ENGINE
- */
-const ChartEngine = {
-    chart: null,
-
-    init() {
-        const ctx = document.getElementById('hudChart').getContext('2d');
-        this.chart = new Chart(ctx, {
-            type: 'line',
-            data: {
-                labels: Array(24).fill(''),
-                datasets: [{
-                    data: [1012, 1013, 1011, 1010, 1008, 1009, 1012, 1015],
-                    borderColor: '#3b82f6',
-                    borderWidth: 2,
-                    tension: 0.4,
-                    pointRadius: 0
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: { legend: { display: false } },
-                scales: { x: { display: false }, y: { display: false } }
-            }
-        });
-    },
-
-    update(data) {
-        if(this.chart) {
-            this.chart.data.datasets[0].data = data;
-            this.chart.update();
+        if(type === 'radar' && this.radarLayer) {
+            if(enabled) QuantumEngine.map.addLayer(this.radarLayer);
+            else QuantumEngine.map.removeLayer(this.radarLayer);
         }
     }
 };
 
 /**
- * 8. UI CONTROLLER
+ * 4. ВЕТРОВОЙ КАНВАС ПАРТИКЛОВ
+ */
+const ParticleEngine = {
+    canvas: null, ctx: null, particles: [], isRunning: true, speed: 1.5,
+
+    init() {
+        this.canvas = document.getElementById('canvasOverlay');
+        this.ctx = this.canvas.getContext('2d');
+        this.resize();
+        window.addEventListener('resize', () => this.resize());
+        for(let i=0; i<180; i++) this.particles.push({ x: Math.random()*this.canvas.width, y: Math.random()*this.canvas.height, life: Math.random()*100 });
+        this.loop();
+    },
+
+    resize() { this.canvas.width = window.innerWidth; this.canvas.height = window.innerHeight; },
+
+    setAlt(alt) {
+        if(alt === 'jetstream') this.speed = 4.5;
+        else if(alt === '500hpa') this.speed = 2.8;
+        else if(alt === '850hpa') this.speed = 2.0;
+        else this.speed = 1.2;
+    },
+
+    pause() { this.isRunning = false; },
+    resume() { this.isRunning = true; this.loop(); },
+
+    loop() {
+        if(!this.isRunning) return;
+        this.ctx.fillStyle = 'rgba(5, 7, 12, 0.2)';
+        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+        this.ctx.strokeStyle = 'rgba(6, 182, 212, 0.6)';
+        this.ctx.beginPath();
+
+        for(let p of this.particles) {
+            this.ctx.moveTo(p.x, p.y);
+            p.x += this.speed * 2;
+            p.y += Math.sin(p.x * 0.01);
+            p.life--;
+            this.ctx.lineTo(p.x, p.y);
+            if(p.x > this.canvas.width || p.life <= 0) { p.x = 0; p.y = Math.random()*this.canvas.height; p.life = 100; }
+        }
+        this.ctx.stroke();
+        requestAnimationFrame(() => this.loop());
+    }
+};
+
+/**
+ * 5. ЗВУКОВОЙ СИНТЕЗАТОР WEBAUDIO (РЕАЛЬНАЯ СВЯЗЬ С ВЕТРОМ)
+ */
+const AudioSynth = {
+    ctx: null, filter: null, isPlaying: false,
+
+    toggle() {
+        if(!this.ctx) this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+        this.isPlaying = !this.isPlaying;
+        document.getElementById('btnAudio').classList.toggle('active', this.isPlaying);
+
+        if(this.isPlaying) {
+            this.ctx.resume();
+            const buf = this.ctx.createBuffer(1, this.ctx.sampleRate * 2, this.ctx.sampleRate);
+            const data = buf.getChannelData(0);
+            for (let i = 0; i < buf.length; i++) data[i] = Math.random() * 2 - 1;
+
+            const noise = this.ctx.createBufferSource();
+            noise.buffer = buf; noise.loop = true;
+
+            this.filter = this.ctx.createBiquadFilter();
+            this.filter.type = 'lowpass';
+            this.filter.frequency.value = 300;
+
+            const gain = this.ctx.createGain(); gain.gain.value = 0.1;
+            noise.connect(this.filter); this.filter.connect(gain); gain.connect(this.ctx.destination);
+            noise.start();
+            UIController.showToast("Акустический эмбиент активирован");
+        } else {
+            this.ctx.suspend();
+            UIController.showToast("Звук выключен");
+        }
+    },
+
+    adjustByWind(windSpeed) {
+        if(this.filter && this.isPlaying) {
+            this.filter.frequency.value = Math.min(200 + windSpeed * 25, 1200);
+        }
+    }
+};
+
+/**
+ * 6. ОЗВУЧКА ГОЛОСОМ AI (SPEECH SYNTHESIS)
+ */
+const VoiceBriefing = {
+    speak() {
+        if (!('speechSynthesis' in window)) return;
+        const city = document.getElementById('locName').innerText;
+        const temp = document.getElementById('valTemp').innerText;
+        const wind = document.getElementById('valWind').innerText;
+        const msg = new SpeechSynthesisUtterance(`Сводка для ${city}. Температура: ${temp}. Скорость ветра: ${wind}.`);
+        msg.lang = 'ru-RU';
+        window.speechSynthesis.speak(msg);
+        UIController.showToast("Озвучивание метеосводки");
+    }
+};
+
+/**
+ * 7. RAINVIEWER LIVE RADAR TIME-MACHINE
+ */
+const TimeMachine = {
+    frames: [], index: 0, isPlaying: false, timer: null,
+
+    async init() {
+        try {
+            const res = await fetch('https://api.rainviewer.com/public/weather-maps.json');
+            const data = await res.json();
+            this.frames = data.radar?.past || [];
+            if(this.frames.length) {
+                this.index = this.frames.length - 1;
+                this.render();
+            }
+        } catch(e) {}
+    },
+
+    render() {
+        if(!this.frames.length) return;
+        const f = this.frames[this.index];
+        const url = `https://tilecache.rainviewer.com/v2/radar/${f.time}/256/{z}/{x}/{y}/2/1_1.png`;
+
+        if(LayerManager.radarLayer) QuantumEngine.map.removeLayer(LayerManager.radarLayer);
+        LayerManager.radarLayer = L.tileLayer(url, { opacity: 0.7, zIndex: 100 }).addTo(QuantumEngine.map);
+
+        const d = new Date(f.time * 1000);
+        document.getElementById('timeDisplay').innerText = d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+    },
+
+    togglePlay() {
+        this.isPlaying = !this.isPlaying;
+        document.getElementById('playBtn').innerHTML = this.isPlaying ? '<i class="fa-solid fa-pause"></i>' : '<i class="fa-solid fa-play"></i>';
+        if(this.isPlaying) {
+            this.timer = setInterval(() => {
+                this.index = (this.index + 1) % this.frames.length;
+                this.render();
+            }, 1000);
+        } else clearInterval(this.timer);
+    },
+
+    onSeek(val) {
+        if(!this.frames.length) return;
+        this.index = Math.round((val / 100) * (this.frames.length - 1));
+        this.render();
+    }
+};
+
+/**
+ * 8. CHART ENGINE
+ */
+const ChartEngine = {
+    chart: null,
+    init() {
+        const ctx = document.getElementById('hudChart').getContext('2d');
+        this.chart = new Chart(ctx, {
+            type: 'line',
+            data: { labels: Array(24).fill(''), datasets: [{ data: [], borderColor: '#3b82f6', borderWidth: 2, tension: 0.4, pointRadius: 0 }] },
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { display: false }, y: { display: false } } }
+        });
+    },
+    update(data) {
+        if(this.chart) { this.chart.data.datasets[0].data = data; this.chart.update(); }
+    }
+};
+
+/**
+ * 9. UI CONTROL
  */
 const UIController = {
     toggleHUD() {
-        const hud = document.getElementById('rightHud');
-        hud.classList.toggle('collapsed');
-        document.getElementById('btnHud').classList.toggle('active', !hud.classList.contains('collapsed'));
+        const h = document.getElementById('rightHud');
+        h.classList.toggle('collapsed');
+        document.getElementById('btnHud').classList.toggle('active', !h.classList.contains('collapsed'));
     },
-
     toggleDrawer() {
         document.getElementById('drawerPanel').classList.toggle('active');
         document.getElementById('drawerOverlay').classList.toggle('active');
     },
-
     showToast(msg) {
-        const toast = document.getElementById('toast');
+        const t = document.getElementById('toast');
         document.getElementById('toastMsg').innerText = msg;
-        toast.classList.add('active');
-        setTimeout(() => toast.classList.remove('active'), 2500);
+        t.classList.add('active');
+        setTimeout(() => t.classList.remove('active'), 2200);
     }
 };
 

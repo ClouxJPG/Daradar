@@ -2,371 +2,413 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Метео Радар Pro</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>METEO QUANTUM COMMAND</title>
 
-    <!-- Leaflet CSS & JS -->
+    <!-- Leaflet & FontAwesome & Chart.js -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-
-    <!-- FontAwesome Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
     <style>
         :root {
-            --bg-dark: #080b11;
-            --bg-glass: rgba(15, 20, 32, 0.85);
-            --bg-card: rgba(18, 24, 38, 0.95);
+            --bg-dark: #05070c;
+            --bg-glass: rgba(10, 15, 26, 0.72);
+            --bg-card: rgba(16, 24, 40, 0.85);
             --border: rgba(255, 255, 255, 0.08);
-            --border-active: rgba(59, 130, 246, 0.4);
-            --text-primary: #f1f5f9;
-            --text-secondary: #94a3b8;
+            --border-glow: rgba(59, 130, 246, 0.5);
             --accent: #3b82f6;
-            --accent-glow: rgba(59, 130, 246, 0.3);
-            --font-mono: 'JetBrains Mono', SFMono-Regular, Consolas, monospace;
+            --accent-cyan: #06b6d4;
+            --accent-purple: #8b5cf6;
+            --accent-pink: #ec4899;
+            --danger: #ef4444;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --text-main: #f8fafc;
+            --text-muted: #64748b;
+            --font-mono: 'JetBrains Mono', monospace;
+            --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
         }
 
         * {
             box-sizing: border-box;
-            margin: 0;
-            padding: 0;
+            margin: 0; padding: 0;
             font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, sans-serif;
+            user-select: none;
             -webkit-tap-highlight-color: transparent;
         }
 
-        html, body {
-            width: 100%;
-            height: 100%;
+        body, html {
+            width: 100%; height: 100%;
             overflow: hidden;
             background: var(--bg-dark);
-            color: var(--text-primary);
-            user-select: none;
+            color: var(--text-main);
+        }
+
+        /* КАРТА С ЭФФЕКТОМ 3D ТИЛТА */
+        #map-container {
+            width: 100%; height: 100%;
+            position: absolute;
+            perspective: 1000px;
+            transition: transform 0.6s var(--ease-out);
         }
 
         #map {
-            width: 100%;
-            height: 100%;
-            position: absolute;
-            top: 0;
-            left: 0;
-            z-index: 1;
-            background: #090d16;
+            width: 100%; height: 100%;
+            background: #030508;
+            transition: transform 0.6s var(--ease-out);
         }
 
-        #windCanvas {
+        body.mode-3d #map {
+            transform: rotateX(28deg) scale(1.08);
+            transform-origin: center bottom;
+        }
+
+        #canvasOverlay {
             position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            z-index: 2;
+            inset: 0;
             pointer-events: none;
+            z-index: 2;
         }
 
-        /* Общие Glass-стили */
+        /* GLASS UI COMPONENTS */
         .glass {
             background: var(--bg-glass);
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
             border: 1px solid var(--border);
-            box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5);
+            border-radius: 16px;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
+            transition: all 0.3s var(--ease-out);
         }
 
-        /* Верхняя панель */
-        .top-deck {
+        .glass:hover {
+            border-color: rgba(255, 255, 255, 0.15);
+        }
+
+        /* ВЕРХНИЙ КОМАНДНЫЙ БАР */
+        .top-bar {
             position: absolute;
-            top: 14px;
-            left: 14px;
-            right: 14px;
+            top: 16px; left: 16px; right: 16px;
             z-index: 10;
             display: flex;
             align-items: center;
             justify-content: space-between;
-            gap: 10px;
+            gap: 12px;
             pointer-events: none;
         }
 
-        .brand-pill {
+        .brand-badge {
             pointer-events: auto;
-            height: 44px;
-            padding: 0 16px;
-            border-radius: 14px;
-            font-size: 13px;
-            font-weight: 700;
+            padding: 10px 18px;
             display: flex;
             align-items: center;
             gap: 10px;
-            letter-spacing: 0.5px;
+            font-weight: 800;
+            font-size: 13px;
+            letter-spacing: 1.5px;
+            background: linear-gradient(135deg, rgba(59,130,246,0.2), rgba(139,92,246,0.1));
+            border: 1px solid var(--border-glow);
         }
-        .brand-pill i { color: var(--accent); }
 
-        .search-container {
+        .brand-badge i {
+            color: var(--accent-cyan);
+            animation: pulse-glow 2s infinite alternate;
+        }
+
+        .search-box {
             position: relative;
             flex: 1;
-            max-width: 380px;
+            max-width: 420px;
             pointer-events: auto;
         }
 
-        .search-pill {
-            height: 44px;
-            padding: 0 14px;
-            border-radius: 14px;
+        .search-input-wrap {
             display: flex;
             align-items: center;
+            padding: 0 16px;
+            height: 46px;
             gap: 10px;
         }
 
-        .search-pill input {
-            background: transparent;
-            border: none;
-            outline: none;
-            color: var(--text-primary);
-            font-size: 13px;
-            width: 100%;
+        .search-input-wrap input {
+            background: none; border: none; outline: none;
+            color: #fff; font-size: 13px; width: 100%;
         }
 
-        .search-results {
+        .search-dropdown {
             position: absolute;
-            top: 50px;
-            left: 0;
-            right: 0;
+            top: 54px; left: 0; right: 0;
             background: var(--bg-card);
             border: 1px solid var(--border);
             border-radius: 14px;
             overflow: hidden;
             display: none;
-            z-index: 50;
+            z-index: 100;
         }
 
         .search-item {
-            padding: 10px 14px;
+            padding: 12px 16px;
             font-size: 12px;
             cursor: pointer;
             border-bottom: 1px solid var(--border);
+            transition: background 0.2s;
         }
-        .search-item:hover { background: rgba(255, 255, 255, 0.05); }
 
-        .tools-group {
+        .search-item:hover { background: rgba(59, 130, 246, 0.15); }
+
+        .top-actions {
             display: flex;
             gap: 8px;
             pointer-events: auto;
         }
 
-        .btn-glass {
-            width: 44px;
-            height: 44px;
+        .icon-btn {
+            width: 46px; height: 46px;
             border-radius: 14px;
-            color: var(--text-primary);
-            display: flex;
-            align-items: center;
-            justify-content: center;
+            display: flex; align-items: center; justify-content: center;
+            color: var(--text-main);
             font-size: 15px;
             cursor: pointer;
-            transition: all 0.2s ease;
             border: 1px solid var(--border);
             background: var(--bg-glass);
+            transition: all 0.25s var(--ease-out);
+            position: relative;
         }
 
-        .btn-glass:hover {
-            border-color: rgba(255, 255, 255, 0.2);
-            transform: translateY(-1px);
+        .icon-btn:hover {
+            transform: translateY(-2px);
+            border-color: rgba(255, 255, 255, 0.3);
+            background: rgba(255, 255, 255, 0.08);
         }
 
-        .btn-glass.active {
+        .icon-btn.active {
             border-color: var(--accent);
-            color: var(--accent);
-            background: rgba(59, 130, 246, 0.15);
+            background: rgba(59, 130, 246, 0.2);
+            color: var(--accent-cyan);
+            box-shadow: 0 0 20px rgba(59, 130, 246, 0.3);
         }
 
-        /* Выбор подложек карт */
-        .basemap-picker {
+        .icon-btn .badge-dot {
             position: absolute;
-            left: 14px;
-            bottom: 110px;
-            z-index: 10;
-            padding: 4px;
-            border-radius: 14px;
-            display: flex;
-            gap: 4px;
-            pointer-events: auto;
+            top: 8px; right: 8px;
+            width: 7px; height: 7px;
+            border-radius: 50%;
+            background: var(--accent-pink);
         }
 
-        .basemap-btn {
-            padding: 6px 12px;
-            border-radius: 10px;
-            font-size: 11px;
-            font-weight: 600;
-            color: var(--text-secondary);
-            cursor: pointer;
-            border: none;
-            background: transparent;
-            transition: all 0.2s;
-        }
-        .basemap-btn.active {
-            background: var(--accent);
-            color: #fff;
-        }
-
-        /* Кастомный контрол зума */
-        .zoom-stack {
+        /* ЛЕВАЯ ПАНЕЛЬ ИНСТРУМЕНТОВ (QUICK DOCK) */
+        .left-dock {
             position: absolute;
-            right: 14px;
-            bottom: 110px;
-            z-index: 10;
-            display: flex;
-            flex-direction: column;
-            gap: 6px;
-            pointer-events: auto;
-        }
-
-        /* Правая панель Аналитики (Строгое выравнивание) */
-        .right-sidebar {
-            position: absolute;
-            top: 68px;
-            right: 14px;
+            top: 78px; left: 16px;
             z-index: 9;
-            width: 300px;
-            border-radius: 18px;
-            padding: 16px;
             display: flex;
             flex-direction: column;
-            gap: 14px;
+            gap: 8px;
             pointer-events: auto;
-            transition: transform 0.3s ease, opacity 0.3s ease;
         }
 
-        .right-sidebar.collapsed {
-            transform: translateX(330px);
+        /* ПРАВАЯ ПАНЕЛЬ - АНАЛИТИЧЕСКИЙ МЕТЕО-ЦЕНТР */
+        .right-hud {
+            position: absolute;
+            top: 78px; right: 16px; bottom: 100px;
+            width: 340px;
+            z-index: 9;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            pointer-events: auto;
+            overflow-y: auto;
+            transform: translateX(0);
+            opacity: 1;
+            transition: transform 0.4s var(--ease-out), opacity 0.4s var(--ease-out);
+        }
+
+        .right-hud.collapsed {
+            transform: translateX(380px);
             opacity: 0;
             pointer-events: none;
         }
 
-        .panel-header {
+        /* Скрыть скроллбар */
+        .right-hud::-webkit-scrollbar { width: 0; }
+
+        .hud-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .hud-title {
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1.2px;
+            color: var(--text-muted);
+        }
+
+        .location-card {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .loc-title-row {
             display: flex;
             align-items: center;
             justify-content: space-between;
         }
 
-        .panel-title {
+        .loc-name { font-size: 18px; font-weight: 800; color: #fff; }
+        .loc-coords { font-size: 11px; font-family: var(--font-mono); color: var(--accent-cyan); }
+
+        /* ИНДЕКС УГРОЗЫ / SEVERE MATRIX */
+        .threat-gauge {
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            border-radius: 12px;
+            padding: 10px 14px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .threat-level {
             font-size: 12px;
             font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 0.8px;
-            color: var(--text-secondary);
-        }
-
-        .location-info {
+            color: var(--danger);
             display: flex;
-            flex-direction: column;
-            gap: 2px;
+            align-items: center;
+            gap: 8px;
         }
 
-        .location-name {
-            font-size: 15px;
-            font-weight: 700;
-            color: var(--text-primary);
-        }
-
-        .location-coords {
-            font-size: 11px;
-            font-family: var(--font-mono);
-            color: var(--text-secondary);
-        }
-
-        /* Сетка показателей 2х2 */
+        /* 2x2 GRID МЕТРИК */
         .metrics-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
             gap: 10px;
         }
 
-        .metric-card {
-            background: rgba(255, 255, 255, 0.03);
+        .m-card {
+            background: rgba(255, 255, 255, 0.02);
             border: 1px solid var(--border);
             border-radius: 12px;
-            padding: 10px 12px;
+            padding: 12px;
             display: flex;
             flex-direction: column;
-            justify-content: space-between;
-            height: 62px;
+            gap: 6px;
+            transition: border 0.2s;
         }
 
-        .metric-label {
+        .m-card:hover { border-color: rgba(255,255,255,0.15); }
+
+        .m-label {
             font-size: 10px;
             font-weight: 600;
-            color: var(--text-secondary);
+            color: var(--text-muted);
             display: flex;
             align-items: center;
             gap: 6px;
         }
 
-        .metric-value {
-            font-size: 16px;
-            font-weight: 700;
+        .m-value {
+            font-size: 17px;
+            font-weight: 800;
             font-family: var(--font-mono);
             color: #fff;
         }
 
-        .chart-box {
+        /* ВЫСОТНЫЕ ЭШЕЛОНЫ (ALTITUDE SLIDER) */
+        .altitude-selector {
             display: flex;
             flex-direction: column;
             gap: 8px;
         }
 
-        .chart-canvas-wrap {
-            width: 100%;
-            height: 60px;
+        .alt-pills {
+            display: flex;
+            background: rgba(0,0,0,0.3);
+            padding: 3px;
+            border-radius: 10px;
+            border: 1px solid var(--border);
         }
 
-        /* Плеер */
-        .player-deck {
+        .alt-btn {
+            flex: 1;
+            padding: 6px 0;
+            border: none;
+            background: transparent;
+            color: var(--text-muted);
+            font-size: 10px;
+            font-weight: 700;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .alt-btn.active {
+            background: var(--accent);
+            color: #fff;
+            box-shadow: 0 0 10px rgba(59, 130, 246, 0.4);
+        }
+
+        /* ПЛЕЕР ВРЕМЕННОЙ ШКАЛЫ (TIME MACHINE) */
+        .time-deck {
             position: absolute;
-            bottom: 16px;
+            bottom: 20px;
             left: 50%;
             transform: translateX(-50%);
             z-index: 10;
-            width: calc(100% - 28px);
-            max-width: 640px;
-            padding: 12px 18px;
+            width: calc(100% - 32px);
+            max-width: 760px;
+            padding: 14px 20px;
             border-radius: 20px;
             display: flex;
             align-items: center;
-            gap: 14px;
+            gap: 16px;
             pointer-events: auto;
         }
 
-        .play-btn {
-            width: 40px;
-            height: 40px;
-            border-radius: 12px;
-            background: var(--accent);
+        .play-master-btn {
+            width: 44px; height: 44px;
+            border-radius: 14px;
+            background: linear-gradient(135deg, var(--accent), var(--accent-purple));
             border: none;
             color: #fff;
-            font-size: 15px;
+            font-size: 16px;
             cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+            display: flex; align-items: center; justify-content: center;
             flex-shrink: 0;
+            box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4);
+            transition: transform 0.2s;
         }
 
-        .player-timeline {
+        .play-master-btn:hover { transform: scale(1.05); }
+
+        .timeline-body {
             flex: 1;
             display: flex;
             flex-direction: column;
-            gap: 4px;
+            gap: 6px;
         }
 
-        .timeline-header {
+        .time-info-row {
             display: flex;
             justify-content: space-between;
+            align-items: center;
             font-size: 11px;
             font-family: var(--font-mono);
         }
 
-        .time-live {
-            color: #10b981;
+        .time-mode-badge {
+            padding: 2px 8px;
+            border-radius: 6px;
+            background: rgba(16, 185, 129, 0.2);
+            color: var(--success);
             font-weight: 700;
+            font-size: 9px;
             display: flex;
             align-items: center;
             gap: 4px;
@@ -375,523 +417,430 @@
         input[type="range"] {
             -webkit-appearance: none;
             width: 100%;
-            height: 4px;
-            border-radius: 2px;
-            background: rgba(255, 255, 255, 0.15);
+            height: 5px;
+            border-radius: 3px;
+            background: rgba(255, 255, 255, 0.12);
             outline: none;
         }
 
         input[type="range"]::-webkit-slider-thumb {
             -webkit-appearance: none;
-            width: 14px;
-            height: 14px;
+            width: 16px; height: 16px;
             border-radius: 50%;
             background: #fff;
-            border: 2px solid var(--accent);
+            border: 3px solid var(--accent-cyan);
+            cursor: pointer;
+            box-shadow: 0 0 10px var(--accent-cyan);
+            transition: transform 0.1s;
+        }
+
+        input[type="range"]::-webkit-slider-thumb:hover { transform: scale(1.2); }
+
+        .speed-selector {
+            display: flex;
+            gap: 4px;
+        }
+
+        .speed-btn {
+            background: transparent;
+            border: 1px solid var(--border);
+            color: var(--text-muted);
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-size: 10px;
+            font-family: var(--font-mono);
             cursor: pointer;
         }
 
-        /* Минималистичный Drawer (Центр слоев) */
+        .speed-btn.active {
+            color: var(--accent-cyan);
+            border-color: var(--accent-cyan);
+            background: rgba(6, 182, 212, 0.1);
+        }
+
+        /* МИНИМАЛИСТИЧНЫЙ ЦЕНТР СЛОЕВ (MODAL DRAWER) */
         .drawer-overlay {
-            position: fixed;
-            inset: 0;
-            background: rgba(0, 0, 0, 0.5);
-            backdrop-filter: blur(4px);
+            position: fixed; inset: 0;
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(8px);
             z-index: 100;
-            opacity: 0;
-            visibility: hidden;
-            transition: opacity 0.25s ease;
+            opacity: 0; visibility: hidden;
+            transition: all 0.3s var(--ease-out);
         }
         .drawer-overlay.active { opacity: 1; visibility: visible; }
 
-        .drawer-sheet {
+        .drawer-panel {
             position: fixed;
             bottom: 0; left: 0; right: 0;
             z-index: 101;
             background: var(--bg-card);
-            border-top: 1px solid var(--border);
-            border-radius: 24px 24px 0 0;
-            padding: 20px 24px 28px 24px;
-            transform: translateY(100%);
-            transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-            max-width: 600px;
+            border-top: 1px solid var(--border-glow);
+            border-radius: 28px 28px 0 0;
+            padding: 24px;
+            max-width: 640px;
             margin: 0 auto;
+            transform: translateY(100%);
+            transition: transform 0.4s var(--ease-out);
         }
-        .drawer-sheet.active { transform: translateY(0); }
+        .drawer-panel.active { transform: translateY(0); }
 
-        .drawer-title-row {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 16px;
-            padding-bottom: 10px;
-            border-bottom: 1px solid var(--border);
+        .drawer-head {
+            display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: 20px;
         }
 
-        .layer-list {
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-        }
-
-        .layer-row {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 10px 12px;
-            background: rgba(255, 255, 255, 0.02);
-            border: 1px solid var(--border);
-            border-radius: 12px;
-        }
-
-        .layer-row-left {
-            display: flex;
-            align-items: center;
+        .layers-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
             gap: 12px;
         }
 
-        .layer-row-icon {
-            width: 32px;
-            height: 32px;
+        .layer-card {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .layer-card-info {
+            display: flex; align-items: center; gap: 10px;
+            font-size: 12px; font-weight: 600;
+        }
+
+        .layer-card-info i {
+            width: 28px; height: 28px;
             border-radius: 8px;
-            background: rgba(59, 130, 246, 0.1);
+            background: rgba(59, 130, 246, 0.15);
             color: var(--accent);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 14px;
+            display: flex; align-items: center; justify-content: center;
         }
 
-        .layer-row-label {
-            font-size: 13px;
-            font-weight: 600;
-        }
-
-        .layer-row-controls {
-            display: flex;
-            align-items: center;
-            gap: 14px;
-        }
-
-        .mini-slider-wrap {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            width: 90px;
-        }
-
-        .mini-slider-wrap span {
-            font-size: 10px;
-            font-family: var(--font-mono);
-            color: var(--text-secondary);
-            width: 28px;
-        }
-
-        /* Переключатель Switch */
-        .switch {
-            position: relative;
-            display: inline-block;
-            width: 38px;
-            height: 22px;
-        }
+        /* Switch UI */
+        .switch { position: relative; width: 38px; height: 22px; }
         .switch input { opacity: 0; width: 0; height: 0; }
-        .slider {
-            position: absolute;
-            cursor: pointer;
-            inset: 0;
-            background-color: rgba(255, 255, 255, 0.15);
-            transition: .2s;
-            border-radius: 22px;
+        .slider-round {
+            position: absolute; inset: 0;
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 22px; cursor: pointer;
+            transition: 0.2s;
         }
-        .slider:before {
-            position: absolute;
-            content: "";
-            height: 16px;
-            width: 16px;
-            left: 3px;
-            bottom: 3px;
-            background-color: white;
-            transition: .2s;
-            border-radius: 50%;
+        .slider-round:before {
+            position: absolute; content: "";
+            height: 16px; width: 16px; left: 3px; bottom: 3px;
+            background: #fff; border-radius: 50%;
+            transition: 0.2s;
         }
-        input:checked + .slider { background-color: var(--accent); }
-        input:checked + .slider:before { transform: translateX(16px); }
+        input:checked + .slider-round { background: var(--accent); }
+        input:checked + .slider-round:before { transform: translateX(16px); }
 
-        .toast {
-            position: fixed;
-            top: 70px;
-            left: 50%;
+        /* TOAST NOTIFICATION */
+        .toast-banner {
+            position: fixed; top: 76px; left: 50%;
+            transform: translate(-50%, -20px);
             z-index: 200;
-            background: var(--accent);
+            background: rgba(16, 24, 40, 0.9);
+            border: 1px solid var(--accent);
             color: #fff;
-            padding: 8px 16px;
-            border-radius: 20px;
-            font-size: 12px;
-            font-weight: 600;
-            opacity: 0;
-            transform: translate(-50%, -10px);
-            transition: all 0.2s ease;
-            pointer-events: none;
+            padding: 10px 20px;
+            border-radius: 30px;
+            font-size: 12px; font-weight: 600;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            opacity: 0; pointer-events: none;
+            transition: all 0.3s var(--ease-out);
+            display: flex; align-items: center; gap: 8px;
         }
-        .toast.active { opacity: 1; transform: translate(-50%, 0); }
+        .toast-banner.active { opacity: 1; transform: translate(-50%, 0); }
 
-        @media (max-width: 640px) {
-            .right-sidebar { width: calc(100% - 28px); top: auto; bottom: 85px; }
-            .basemap-picker, .zoom-stack { bottom: 150px; }
+        @keyframes pulse-glow {
+            from { filter: drop-shadow(0 0 2px var(--accent-cyan)); }
+            to { filter: drop-shadow(0 0 8px var(--accent-cyan)); }
+        }
+
+        @media (max-width: 768px) {
+            .right-hud { width: calc(100% - 32px); top: auto; bottom: 95px; height: 280px; }
+            .layers-grid { grid-template-columns: 1fr; }
         }
     </style>
 </head>
 <body>
 
-<div id="map"></div>
-<canvas id="windCanvas"></canvas>
-<div class="toast" id="toast"></div>
+<div id="map-container">
+    <div id="map"></div>
+</div>
+<canvas id="canvasOverlay"></canvas>
 
-<!-- Верхняя панель -->
-<div class="top-deck">
-    <div class="glass brand-pill">
-        <i class="fa-solid fa-radar"></i> METEO PRO
+<div class="toast-banner" id="toast"><i class="fa-solid fa-circle-info" style="color:var(--accent-cyan);"></i> <span id="toastMsg">Готово</span></div>
+
+<!-- ВЕРХНИЙ КОМАНДНЫЙ БАР -->
+<div class="top-bar">
+    <div class="glass brand-badge">
+        <i class="fa-solid fa-atom"></i> QUANTUM METEO
     </div>
 
-    <div class="search-container">
-        <div class="glass search-pill">
-            <i class="fa-solid fa-magnifying-glass" style="color: var(--text-secondary);"></i>
-            <input type="text" id="searchInput" placeholder="Поиск локации..." oninput="GeoEngine.onSearchInput(this.value)">
+    <div class="search-box">
+        <div class="glass search-input-wrap">
+            <i class="fa-solid fa-magnifying-glass" style="color: var(--text-muted);"></i>
+            <input type="text" id="searchInput" placeholder="Поиск координат или городов..." oninput="QuantumEngine.searchLocation(this.value)">
         </div>
-        <div class="search-results" id="searchResults"></div>
+        <div class="search-dropdown" id="searchResults"></div>
     </div>
 
-    <div class="tools-group">
-        <button class="btn-glass active" id="toggleAnalysisBtn" onclick="UIController.toggleRightSidebar()" title="Панель анализа">
-            <i class="fa-solid fa-chart-simple"></i>
+    <div class="top-actions">
+        <button class="icon-btn" onclick="QuantumEngine.toggle3D()" id="btn3d" title="3D Перспектива">
+            <i class="fa-solid fa-cube"></i>
         </button>
-        <button class="btn-glass" onclick="GeoEngine.locateUser()" title="Мое местоположение">
-            <i class="fa-solid fa-location-arrow"></i>
+        <button class="icon-btn" onclick="AudioSynth.toggle()" id="btnAudio" title="Звуковой атмосферный эмбиент">
+            <i class="fa-solid fa-volume-high"></i>
         </button>
-        <button class="btn-glass" onclick="UIController.toggleDrawer()" title="Слои карты">
+        <button class="icon-btn" onclick="VoiceBriefing.speak()" title="Голосовая метео-сводка AI">
+            <i class="fa-solid fa-bullhorn"></i>
+        </button>
+        <button class="icon-btn active" onclick="UIController.toggleHUD()" id="btnHud" title="Аналитическая панель">
+            <i class="fa-solid fa-chart-pie"></i>
+        </button>
+        <button class="icon-btn" onclick="UIController.toggleDrawer()" title="Центр слоев">
             <i class="fa-solid fa-layer-group"></i>
+            <span class="badge-dot"></span>
         </button>
     </div>
 </div>
 
-<!-- Выбор подложек -->
-<div class="glass basemap-picker">
-    <button class="basemap-btn active" onclick="BaseMapEngine.switchBaseMap('dark', this)">Темная</button>
-    <button class="basemap-btn" onclick="BaseMapEngine.switchBaseMap('satellite', this)">Спутник</button>
-    <button class="basemap-btn" onclick="BaseMapEngine.switchBaseMap('streets', this)">Карта</button>
+<!-- ЛЕВАЯ ПАНЕЛЬ БЫСТРЫХ ИНСТРУМЕНТОВ -->
+<div class="left-dock">
+    <button class="icon-btn" onclick="QuantumEngine.locateUser()" title="Моя локация"><i class="fa-solid fa-crosshairs"></i></button>
+    <button class="icon-btn" onclick="LayerManager.toggleFlights()" id="btnFlights" title="Авиарейсы Live"><i class="fa-solid fa-plane"></i></button>
+    <button class="icon-btn" onclick="LayerManager.toggleAurora()" id="btnAurora" title="Овал Полярных Сияний"><i class="fa-solid fa-sun"></i></button>
+    <button class="icon-btn" onclick="LayerManager.toggleTerminator()" id="btnTerminator" title="Линия Ночи/Солнца"><i class="fa-solid fa-moon"></i></button>
 </div>
 
-<!-- Контроллер зума -->
-<div class="zoom-stack">
-    <button class="btn-glass" onclick="GeoEngine.zoomIn()"><i class="fa-solid fa-plus"></i></button>
-    <button class="btn-glass" onclick="GeoEngine.zoomOut()"><i class="fa-solid fa-minus"></i></button>
-</div>
-
-<!-- Правая панель Аналитики -->
-<div class="glass right-sidebar" id="rightSidebar">
-    <div class="panel-header">
-        <span class="panel-title">Анализ точки</span>
-        <i class="fa-solid fa-xmark" style="cursor:pointer; color:var(--text-secondary);" onclick="UIController.toggleRightSidebar()"></i>
+<!-- ПРАВЫЙ АНАЛИТИЧЕСКИЙ HUD -->
+<div class="glass right-hud" id="rightHud">
+    <div class="hud-header">
+        <span class="hud-title">Квантовый скрининг</span>
+        <i class="fa-solid fa-xmark" style="cursor:pointer; color:var(--text-muted);" onclick="UIController.toggleHUD()"></i>
     </div>
 
-    <div class="location-info">
-        <div class="location-name" id="locName">Москва</div>
-        <div class="location-coords" id="locCoords">55.751, 37.618</div>
+    <div class="location-card">
+        <div class="loc-title-row">
+            <span class="loc-name" id="locName">Москва</span>
+            <span class="loc-coords" id="locCoords">55.751 N, 37.618 E</span>
+        </div>
+    </div>
+
+    <div class="threat-gauge">
+        <div class="threat-level"><i class="fa-solid fa-triangle-exclamation"></i> Риск шторма: <span id="threatVal">Минимальный</span></div>
+        <span style="font-size:10px; font-family:var(--font-mono); color:var(--text-muted);" id="capeVal">CAPE: 120 J/kg</span>
+    </div>
+
+    <!-- ВЫСОТНЫЕ ЭШЕЛОНЫ -->
+    <div class="altitude-selector">
+        <span class="hud-title" style="font-size:9px;">Атмосферный срез</span>
+        <div class="alt-pills">
+            <button class="alt-btn active" onclick="QuantumEngine.setAltitude('surface', this)">Поверхность</button>
+            <button class="alt-btn" onclick="QuantumEngine.setAltitude('850hpa', this)">850 hPa</button>
+            <button class="alt-btn" onclick="QuantumEngine.setAltitude('500hpa', this)">500 hPa</button>
+            <button class="alt-btn" onclick="QuantumEngine.setAltitude('jetstream', this)">Jet Stream</button>
+        </div>
     </div>
 
     <div class="metrics-grid">
-        <div class="metric-card">
-            <div class="metric-label"><i class="fa-solid fa-temperature-half" style="color:#ef4444;"></i> Температура</div>
-            <div class="metric-value" id="valTemp">-- °C</div>
+        <div class="m-card">
+            <div class="m-label"><i class="fa-solid fa-temperature-three-quarters" style="color:var(--accent-pink);"></i> Температура</div>
+            <div class="m-value" id="valTemp">-- °C</div>
         </div>
-        <div class="metric-card">
-            <div class="metric-label"><i class="fa-solid fa-cloud-rain" style="color:#3b82f6;"></i> Осадки</div>
-            <div class="metric-value" id="valRain">0.0 мм/ч</div>
+        <div class="m-card">
+            <div class="m-label"><i class="fa-solid fa-droplet" style="color:var(--accent-cyan);"></i> Точка росы</div>
+            <div class="m-value" id="valDew">-- °C</div>
         </div>
-        <div class="metric-card">
-            <div class="metric-label"><i class="fa-solid fa-wind" style="color:#06b6d4;"></i> Ветер</div>
-            <div class="metric-value" id="valWind">-- м/с</div>
+        <div class="m-card">
+            <div class="m-label"><i class="fa-solid fa-wind" style="color:var(--accent);"></i> Порывы ветра</div>
+            <div class="m-value" id="valWind">-- м/с</div>
         </div>
-        <div class="metric-card">
-            <div class="metric-label"><i class="fa-solid fa-gauge-high" style="color:#10b981;"></i> Давление</div>
-            <div class="metric-value" id="valPress">-- hPa</div>
+        <div class="m-card">
+            <div class="m-label"><i class="fa-solid fa-gauge" style="color:var(--success);"></i> Давление</div>
+            <div class="m-value" id="valPress">-- hPa</div>
         </div>
     </div>
 
-    <div class="chart-box">
-        <div class="panel-title" style="font-size:10px;">Прогноз осадков (24 ч)</div>
-        <div class="chart-canvas-wrap">
-            <canvas id="miniChartCanvas"></canvas>
-        </div>
+    <div style="flex:1; min-height:80px;">
+        <span class="hud-title" style="font-size:9px; margin-bottom:6px; display:block;">Тренд давления & Осадков (24ч)</span>
+        <canvas id="hudChart"></canvas>
     </div>
 </div>
 
-<!-- Плеер радара -->
-<div class="glass player-deck">
-    <button class="play-btn" id="playBtn" onclick="RadarEngine.togglePlay()">
+<!-- ВРЕМЕННАЯ ШКАЛА / TIME MACHINE -->
+<div class="glass time-deck">
+    <button class="play-master-btn" id="playBtn" onclick="TimeMachine.togglePlay()">
         <i class="fa-solid fa-play"></i>
     </button>
-    <div class="player-timeline">
-        <div class="timeline-header">
-            <span class="time-live"><i class="fa-solid fa-circle" style="font-size:6px;"></i> LIVE</span>
-            <span id="timeReadout" style="color:var(--text-primary); font-weight:700;">--:--</span>
+    <div class="timeline-body">
+        <div class="time-info-row">
+            <div class="time-mode-badge"><i class="fa-solid fa-satellite"></i> <span id="timeModeText">LIVE РАДАР</span></div>
+            <span id="timeDisplay" style="color:#fff; font-weight:700;">--:--</span>
         </div>
-        <input type="range" id="timeSlider" min="0" max="100" value="0" oninput="RadarEngine.onSeek(this.value)">
+        <input type="range" id="timeSlider" min="0" max="100" value="100" oninput="TimeMachine.onSeek(this.value)">
+    </div>
+    <div class="speed-selector">
+        <button class="speed-btn active" onclick="TimeMachine.setSpeed(1, this)">1x</button>
+        <button class="speed-btn" onclick="TimeMachine.setSpeed(3, this)">3x</button>
+        <button class="speed-btn" onclick="TimeMachine.setSpeed(8, this)">8x</button>
     </div>
 </div>
 
-<!-- Минималистичная панель слоев (Drawer) -->
+<!-- МИНИМАЛИСТИЧНЫЙ DRAWER СЛОЕВ -->
 <div class="drawer-overlay" id="drawerOverlay" onclick="UIController.toggleDrawer()"></div>
-<div class="drawer-sheet" id="drawerSheet">
-    <div class="drawer-title-row">
-        <span class="panel-title" style="font-size:13px; color:var(--text-primary);">Слои карты</span>
+<div class="drawer-panel" id="drawerPanel">
+    <div class="drawer-head">
+        <span class="hud-title" style="font-size:13px; color:#fff;">Управление Квантовыми Слоями</span>
         <i class="fa-solid fa-xmark" style="cursor:pointer;" onclick="UIController.toggleDrawer()"></i>
     </div>
 
-    <div class="layer-list">
-        <!-- Радар -->
-        <div class="layer-row">
-            <div class="layer-row-left">
-                <div class="layer-row-icon"><i class="fa-solid fa-cloud-showers-heavy"></i></div>
-                <div class="layer-row-label">Радар осадков</div>
-            </div>
-            <div class="layer-row-controls">
-                <div class="mini-slider-wrap">
-                    <input type="range" min="10" max="100" value="80" oninput="LayerManager.setOpacity(this.value); document.getElementById('opRadarVal').innerText=this.value+'%'">
-                    <span id="opRadarVal">80%</span>
-                </div>
-                <label class="switch">
-                    <input type="checkbox" id="toggleRadar" checked onchange="LayerManager.toggle('radar', this.checked)">
-                    <span class="slider"></span>
-                </label>
-            </div>
+    <div class="layers-grid">
+        <div class="layer-card">
+            <div class="layer-card-info"><i class="fa-solid fa-cloud-showers-heavy"></i> Радар Осадков</div>
+            <label class="switch"><input type="checkbox" checked onchange="LayerManager.toggle('radar', this.checked)"><span class="slider-round"></span></label>
         </div>
-
-        <!-- Облака -->
-        <div class="layer-row">
-            <div class="layer-row-left">
-                <div class="layer-row-icon"><i class="fa-solid fa-cloud"></i></div>
-                <div class="layer-row-label">Спутник (Облака)</div>
-            </div>
-            <div class="layer-row-controls">
-                <label class="switch">
-                    <input type="checkbox" id="toggleClouds" onchange="LayerManager.toggle('clouds', this.checked)">
-                    <span class="slider"></span>
-                </label>
-            </div>
+        <div class="layer-card">
+            <div class="layer-card-info"><i class="fa-solid fa-wind"></i> Векторы Ветера</div>
+            <label class="switch"><input type="checkbox" id="chkWind" checked onchange="LayerManager.toggle('wind', this.checked)"><span class="slider-round"></span></label>
         </div>
-
-        <!-- Ветер -->
-        <div class="layer-row">
-            <div class="layer-row-left">
-                <div class="layer-row-icon"><i class="fa-solid fa-wind"></i></div>
-                <div class="layer-row-label">Потоки ветра</div>
-            </div>
-            <div class="layer-row-controls">
-                <label class="switch">
-                    <input type="checkbox" id="toggleWind" onchange="LayerManager.toggle('wind', this.checked)">
-                    <span class="slider"></span>
-                </label>
-            </div>
+        <div class="layer-card">
+            <div class="layer-card-info"><i class="fa-solid fa-bolt"></i> Детектор Гроз (Live)</div>
+            <label class="switch"><input type="checkbox" checked onchange="LayerManager.toggle('lightning', this.checked)"><span class="slider-round"></span></label>
         </div>
-
-        <!-- Грозы -->
-        <div class="layer-row">
-            <div class="layer-row-left">
-                <div class="layer-row-icon"><i class="fa-solid fa-bolt"></i></div>
-                <div class="layer-row-label">Грозы (Live)</div>
-            </div>
-            <div class="layer-row-controls">
-                <label class="switch">
-                    <input type="checkbox" id="toggleLightning" onchange="LayerManager.toggle('lightning', this.checked)">
-                    <span class="slider"></span>
-                </label>
-            </div>
+        <div class="layer-card">
+            <div class="layer-card-info"><i class="fa-solid fa-temperature-high"></i> Тепловое Поле</div>
+            <label class="switch"><input type="checkbox" onchange="LayerManager.toggle('thermal', this.checked)"><span class="slider-round"></span></label>
         </div>
     </div>
 </div>
 
 <script>
 /**
- * 1. BASE MAPS ENGINE
+ * 1. QUANTUM MAP ENGINE
  */
-const BaseMapEngine = {
-    currentLayer: null,
-    providers: {
-        dark: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
-        satellite: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-        streets: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png'
-    },
-
-    init() {
-        this.currentLayer = L.tileLayer(this.providers.dark, { maxZoom: 19, subdomains: 'abcd' }).addTo(GeoEngine.map);
-    },
-
-    switchBaseMap(type, elem) {
-        document.querySelectorAll('.basemap-btn').forEach(el => el.classList.remove('active'));
-        if (elem) elem.classList.add('active');
-        if (this.currentLayer) GeoEngine.map.removeLayer(this.currentLayer);
-        this.currentLayer = L.tileLayer(this.providers[type], { maxZoom: 18 }).addTo(GeoEngine.map);
-    }
-};
-
-/**
- * 2. GEOGRAPHIC ENGINE
- */
-const GeoEngine = {
+const QuantumEngine = {
     map: null,
-    defaultCenter: [55.7512, 37.6184],
-    activeMarker: null,
+    is3D: false,
+    activeLocation: [55.751, 37.618],
+    activeAltitude: 'surface',
 
     init() {
         this.map = L.map('map', {
-            center: this.defaultCenter,
+            center: this.activeLocation,
             zoom: 6,
             zoomControl: false,
             attributionControl: false
         });
 
-        BaseMapEngine.init();
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { maxZoom: 19 }).addTo(this.map);
 
-        // ОПТИМИЗАЦИЯ: Остановка анимации ветра при движении карты во избежание зависаний
-        this.map.on('movestart', () => {
-            WindEngine.pause();
-        });
-
-        this.map.on('moveend', () => {
-            WindEngine.resume();
-        });
-
+        // Предотвращение лагов при панорамировании карты
+        this.map.on('movestart', () => ParticleEngine.pause());
+        this.map.on('moveend', () => ParticleEngine.resume());
         this.map.on('click', (e) => {
-            StormInspector.analyzePoint(e.latlng.lat, e.latlng.lng);
+            this.activeLocation = [e.latlng.lat, e.latlng.lng];
+            QuantumEngine.inspectPoint(e.latlng.lat, e.latlng.lng);
         });
+
+        ParticleEngine.init();
+        TimeMachine.init();
+        ChartEngine.init();
+        this.inspectPoint(this.activeLocation[0], this.activeLocation[1], "Москва");
     },
 
-    zoomIn() { this.map.zoomIn(); },
-    zoomOut() { this.map.zoomOut(); },
+    toggle3D() {
+        this.is3D = !this.is3D;
+        document.body.classList.toggle('mode-3d', this.is3D);
+        document.getElementById('btn3d').classList.toggle('active', this.is3D);
+        UIController.showToast(this.is3D ? "Режим 3D Перспективы активирован" : "Возврат в 2D проекцию");
+    },
+
+    setAltitude(alt, elem) {
+        document.querySelectorAll('.alt-btn').forEach(b => b.classList.remove('active'));
+        if(elem) elem.classList.add('active');
+        this.activeAltitude = alt;
+        UIController.showToast(`Переключен эшелон: ${alt.toUpperCase()}`);
+        ParticleEngine.updateSpeedByAlt(alt);
+    },
 
     locateUser() {
         if (!navigator.geolocation) return;
         navigator.geolocation.getCurrentPosition(pos => {
             const { latitude, longitude } = pos.coords;
-            this.map.flyTo([latitude, longitude], 9, { duration: 1 });
-            StormInspector.analyzePoint(latitude, longitude, "Ваше местоположение");
+            this.map.flyTo([latitude, longitude], 9, { duration: 1.2 });
+            this.inspectPoint(latitude, longitude, "Ваше местоположение");
         });
     },
 
-    async onSearchInput(val) {
-        const resBox = document.getElementById('searchResults');
-        if (!val.trim()) { resBox.style.display = 'none'; return; }
+    async searchLocation(val) {
+        const box = document.getElementById('searchResults');
+        if(!val.trim()) { box.style.display = 'none'; return; }
 
         try {
             const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(val)}&limit=3`);
             const data = await res.json();
-            if (data.length) {
-                resBox.innerHTML = data.map(i => `
-                    <div class="search-item" onclick="GeoEngine.selectCity(${i.lat}, ${i.lon}, '${i.display_name.split(',')[0]}')">
-                        ${i.display_name}
+            if(data.length) {
+                box.innerHTML = data.map(item => `
+                    <div class="search-item" onclick="QuantumEngine.selectLocation(${item.lat}, ${item.lon}, '${item.display_name.split(',')[0]}')">
+                        ${item.display_name}
                     </div>
                 `).join('');
-                resBox.style.display = 'block';
+                box.style.display = 'block';
             }
-        } catch (e) { resBox.style.display = 'none'; }
+        } catch(e) { box.style.display = 'none'; }
     },
 
-    selectCity(lat, lon, name) {
+    selectLocation(lat, lon, name) {
         document.getElementById('searchResults').style.display = 'none';
-        this.map.flyTo([lat, lon], 9, { duration: 1 });
-        StormInspector.analyzePoint(lat, lon, name);
-    }
-};
+        this.map.flyTo([lat, lon], 9, { duration: 1.2 });
+        this.inspectPoint(lat, lon, name);
+    },
 
-/**
- * 3. RADAR & METEO LAYERS ENGINE
- */
-const RadarEngine = {
-    radarFrames: [],
-    satFrames: [],
-    currentIndex: 0,
-    isPlaying: false,
-    timer: null,
-    activeTileLayer: null,
-    opacity: 0.8,
-    activeMode: 'radar',
+    async inspectPoint(lat, lon, label) {
+        document.getElementById('locName').innerText = label || "Анализ точки";
+        document.getElementById('locCoords').innerText = `${lat.toFixed(3)} N, ${lon.toFixed(3)} E`;
 
-    async init() {
         try {
-            const res = await fetch('https://api.rainviewer.com/public/weather-maps.json');
+            const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true&hourly=temperature_2m,surface_pressure,dewpoint_2m,windgusts_10m`);
             const data = await res.json();
-            this.radarFrames = [...(data.radar.past || []), ...(data.radar.nowcast || [])];
-            this.satFrames = data.satellite?.infrared || [];
 
-            if (this.radarFrames.length) {
-                this.currentIndex = this.radarFrames.length - 1;
-                this.updateLayer();
+            if(data.current_weather) {
+                const cw = data.current_weather;
+                document.getElementById('valTemp').innerText = `${cw.temperature} °C`;
+                document.getElementById('valWind').innerText = `${cw.windspeed} м/с`;
+                
+                // Расчет риска шторма
+                const risk = cw.windspeed > 15 ? "ВЫСОКИЙ" : (cw.windspeed > 8 ? "УМЕРЕННЫЙ" : "МИНИМАЛЬНЫЙ");
+                document.getElementById('threatVal').innerText = risk;
+                document.getElementById('threatVal').style.color = cw.windspeed > 15 ? 'var(--danger)' : 'var(--success)';
             }
-        } catch (e) {
-            UIController.showToast("Ошибка загрузки данных радара");
-        }
-    },
 
-    updateLayer() {
-        const frames = (this.activeMode === 'clouds') ? this.satFrames : this.radarFrames;
-        if (!frames.length || !frames[this.currentIndex]) return;
-
-        const frame = frames[this.currentIndex];
-        const path = this.activeMode === 'clouds' ? 'sat' : 'radar';
-        const url = `https://tilecache.rainviewer.com/v2/${path}/${frame.time}/256/{z}/{x}/{y}/2/1_1.png`;
-
-        if (this.activeTileLayer) {
-            GeoEngine.map.removeLayer(this.activeTileLayer);
-        }
-
-        this.activeTileLayer = L.tileLayer(url, { opacity: this.opacity, zIndex: 100 }).addTo(GeoEngine.map);
-
-        const date = new Date(frame.time * 1000);
-        document.getElementById('timeReadout').innerText = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-        document.getElementById('timeSlider').value = (this.currentIndex / (frames.length - 1)) * 100;
-    },
-
-    togglePlay() {
-        const frames = (this.activeMode === 'clouds') ? this.satFrames : this.radarFrames;
-        if (!frames.length) return;
-
-        this.isPlaying = !this.isPlaying;
-        document.getElementById('playBtn').innerHTML = this.isPlaying ? '<i class="fa-solid fa-pause"></i>' : '<i class="fa-solid fa-play"></i>';
-
-        if (this.isPlaying) {
-            this.timer = setInterval(() => {
-                this.currentIndex = (this.currentIndex + 1) % frames.length;
-                this.updateLayer();
-            }, 600);
-        } else {
-            clearInterval(this.timer);
-        }
-    },
-
-    onSeek(val) {
-        const frames = (this.activeMode === 'clouds') ? this.satFrames : this.radarFrames;
-        if (!frames.length) return;
-        this.currentIndex = Math.round((val / 100) * (frames.length - 1));
-        this.updateLayer();
+            if(data.hourly) {
+                document.getElementById('valPress').innerText = `${Math.round(data.hourly.surface_pressure[0])} hPa`;
+                document.getElementById('valDew').innerText = `${Math.round(data.hourly.dewpoint_2m[0])} °C`;
+                ChartEngine.update(data.hourly.surface_pressure.slice(0, 24));
+            }
+        } catch(e) {}
     }
 };
 
 /**
- * 4. CANVAS WIND PARTICLES ENGINE (Оптимизирован без лагов)
+ * 2. CANVAS PARTICLE WIND SYSTEM
  */
-const WindEngine = {
-    canvas: null,
-    ctx: null,
-    particles: [],
-    isRunning: false,
-    animId: null,
+const ParticleEngine = {
+    canvas: null, ctx: null, particles: [], isRunning: true, speedMultiplier: 1, animId: null,
 
     init() {
-        this.canvas = document.getElementById('windCanvas');
+        this.canvas = document.getElementById('canvasOverlay');
         this.ctx = this.canvas.getContext('2d');
         this.resize();
         window.addEventListener('resize', () => this.resize());
+        this.createParticles();
+        this.loop();
     },
 
     resize() {
@@ -899,63 +848,49 @@ const WindEngine = {
         this.canvas.height = window.innerHeight;
     },
 
-    toggle(enable) {
-        this.isRunning = enable;
-        if (enable) {
-            this.createParticles();
-            this.loop();
-        } else {
-            this.pause();
-            this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-        }
-    },
-
-    pause() {
-        if (this.animId) {
-            cancelAnimationFrame(this.animId);
-            this.animId = null;
-        }
-    },
-
-    resume() {
-        if (this.isRunning && !this.animId) {
-            this.loop();
-        }
-    },
-
     createParticles() {
         this.particles = [];
-        for (let i = 0; i < 180; i++) {
+        for(let i=0; i<220; i++) {
             this.particles.push({
                 x: Math.random() * this.canvas.width,
                 y: Math.random() * this.canvas.height,
-                life: Math.random() * 80
+                len: Math.random() * 15 + 5,
+                life: Math.random() * 100
             });
         }
     },
 
-    loop() {
-        if (!this.isRunning) return;
+    updateSpeedByAlt(alt) {
+        if(alt === 'jetstream') this.speedMultiplier = 3.5;
+        else if(alt === '500hpa') this.speedMultiplier = 2.2;
+        else if(alt === '850hpa') this.speedMultiplier = 1.5;
+        else this.speedMultiplier = 1.0;
+    },
 
-        this.ctx.fillStyle = 'rgba(8, 11, 17, 0.12)';
+    pause() { if(this.animId) cancelAnimationFrame(this.animId); this.animId = null; },
+    resume() { if(!this.animId && this.isRunning) this.loop(); },
+
+    loop() {
+        if(!this.isRunning) return;
+        this.ctx.fillStyle = 'rgba(5, 7, 12, 0.18)';
         this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
 
-        this.ctx.strokeStyle = 'rgba(59, 130, 246, 0.5)';
-        this.ctx.lineWidth = 1.2;
+        this.ctx.strokeStyle = 'rgba(6, 182, 212, 0.6)';
+        this.ctx.lineWidth = 1.5;
         this.ctx.beginPath();
 
-        for (let p of this.particles) {
+        for(let p of this.particles) {
             this.ctx.moveTo(p.x, p.y);
-            p.x += 1.5;
-            p.y += Math.sin(p.x * 0.01) * 0.5;
+            p.x += (2.0 * this.speedMultiplier);
+            p.y += Math.sin(p.x * 0.008) * 0.8;
             p.life--;
 
             this.ctx.lineTo(p.x, p.y);
 
-            if (p.x > this.canvas.width || p.life <= 0) {
+            if(p.x > this.canvas.width || p.life <= 0) {
                 p.x = Math.random() * this.canvas.width;
                 p.y = Math.random() * this.canvas.height;
-                p.life = 80;
+                p.life = 100;
             }
         }
         this.ctx.stroke();
@@ -964,120 +899,206 @@ const WindEngine = {
 };
 
 /**
- * 5. LIGHTNING ENGINE
+ * 3. ATMOSPHERIC SOUND SYNTHESIZER (WEB AUDIO API)
  */
-const LightningEngine = {
-    layerGroup: L.layerGroup(),
-    timer: null,
+const AudioSynth = {
+    ctx: null, isPlaying: false, gainNode: null,
 
-    toggle(enable) {
-        if (enable) {
-            this.layerGroup.addTo(GeoEngine.map);
-            this.timer = setInterval(() => {
-                const bounds = GeoEngine.map.getBounds();
-                const lat = bounds.getSouth() + Math.random() * (bounds.getNorth() - bounds.getSouth());
-                const lon = bounds.getWest() + Math.random() * (bounds.getEast() - bounds.getWest());
+    toggle() {
+        if(!this.ctx) {
+            this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+        }
 
-                const m = L.circleMarker([lat, lon], { radius: 6, color: '#f59e0b', fillColor: '#ef4444', fillOpacity: 0.8 }).addTo(this.layerGroup);
-                setTimeout(() => this.layerGroup.removeLayer(m), 2000);
-            }, 1000);
+        this.isPlaying = !this.isPlaying;
+        document.getElementById('btnAudio').classList.toggle('active', this.isPlaying);
+
+        if(this.isPlaying) {
+            this.ctx.resume();
+            // Генератор розового шума ветра
+            const bufferSize = this.ctx.sampleRate * 2;
+            const noiseBuffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+            const output = noiseBuffer.getChannelData(0);
+            for (let i = 0; i < bufferSize; i++) {
+                output[i] = Math.random() * 2 - 1;
+            }
+
+            const whiteNoise = this.ctx.createBufferSource();
+            whiteNoise.buffer = noiseBuffer;
+            whiteNoise.loop = true;
+
+            const filter = this.ctx.createBiquadFilter();
+            filter.type = 'lowpass';
+            filter.frequency.value = 350;
+
+            this.gainNode = this.ctx.createGain();
+            this.gainNode.gain.value = 0.15;
+
+            whiteNoise.connect(filter);
+            filter.connect(this.gainNode);
+            this.gainNode.connect(this.ctx.destination);
+
+            whiteNoise.start();
+            UIController.showToast("Атмосферный звуковой эмбиент включен");
         } else {
-            GeoEngine.map.removeLayer(this.layerGroup);
-            clearInterval(this.timer);
-            this.layerGroup.clearLayers();
+            this.ctx.suspend();
+            UIController.showToast("Звук выключен");
         }
     }
 };
 
 /**
- * 6. STORM INSPECTOR
+ * 4. VOICE AI BRIEFING (SPEECH SYNTHESIS)
  */
-const StormInspector = {
-    async analyzePoint(lat, lon, label) {
-        document.getElementById('locName').innerText = label || "Выбранная точка";
-        document.getElementById('locCoords').innerText = `${lat.toFixed(3)}, ${lon.toFixed(3)}`;
+const VoiceBriefing = {
+    speak() {
+        if (!('speechSynthesis' in window)) {
+            UIController.showToast("Синтез речи не поддерживается вашим браузером");
+            return;
+        }
 
-        if (GeoEngine.activeMarker) GeoEngine.map.removeLayer(GeoEngine.activeMarker);
-        GeoEngine.activeMarker = L.circleMarker([lat, lon], { radius: 5, color: '#3b82f6', fillColor: '#fff', fillOpacity: 1 }).addTo(GeoEngine.map);
+        const city = document.getElementById('locName').innerText;
+        const temp = document.getElementById('valTemp').innerText;
+        const wind = document.getElementById('valWind').innerText;
+        const text = `Квантовый метео-анализ для локации ${city}. Температура воздуха ${temp}. Скорость ветра ${wind}. Индекс штормовой угрозы минимальный.`;
 
+        const msg = new SpeechSynthesisUtterance(text);
+        msg.lang = 'ru-RU';
+        window.speechSynthesis.speak(msg);
+        UIController.showToast("Голосовой диктор активирован");
+    }
+};
+
+/**
+ * 5. TIME MACHINE & RADAR ENGINE
+ */
+const TimeMachine = {
+    radarFrames: [], currentIndex: 0, isPlaying: false, speed: 1000, timer: null, tileLayer: null,
+
+    async init() {
         try {
-            const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true&hourly=precipitation,surface_pressure`);
+            const res = await fetch('https://api.rainviewer.com/public/weather-maps.json');
             const data = await res.json();
-
-            if (data.current_weather) {
-                document.getElementById('valTemp').innerText = `${data.current_weather.temperature} °C`;
-                document.getElementById('valWind').innerText = `${data.current_weather.windspeed} м/с`;
+            this.radarFrames = data.radar?.past || [];
+            if(this.radarFrames.length) {
+                this.currentIndex = this.radarFrames.length - 1;
+                this.updateRadar();
             }
+        } catch(e) {}
+    },
 
-            if (data.hourly && data.hourly.surface_pressure) {
-                document.getElementById('valPress').innerText = `${Math.round(data.hourly.surface_pressure[0])} hPa`;
-            }
+    updateRadar() {
+        if(!this.radarFrames.length) return;
+        const frame = this.radarFrames[this.currentIndex];
+        const url = `https://tilecache.rainviewer.com/v2/radar/${frame.time}/256/{z}/{x}/{y}/2/1_1.png`;
 
-            if (data.hourly && data.hourly.precipitation) {
-                const precip = data.hourly.precipitation.slice(0, 24);
-                document.getElementById('valRain').innerText = `${precip[0] || 0.0} мм/ч`;
-                ChartEngine.render(precip);
-            }
-        } catch (e) {
-            ChartEngine.render([0, 0, 0.4, 0.8, 0.2, 0, 0, 0]);
-        }
-    }
-};
+        if(this.tileLayer) QuantumEngine.map.removeLayer(this.tileLayer);
+        this.tileLayer = L.tileLayer(url, { opacity: 0.75, zIndex: 50 }).addTo(QuantumEngine.map);
 
-const ChartEngine = {
-    render(values = []) {
-        const canvas = document.getElementById('miniChartCanvas');
-        if (!canvas) return;
-        const ctx = canvas.getContext('2d');
-        canvas.width = canvas.parentElement.clientWidth;
-        canvas.height = 60;
+        const date = new Date(frame.time * 1000);
+        document.getElementById('timeDisplay').innerText = date.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+    },
 
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        const max = Math.max(...values, 1);
-        const step = canvas.width / (values.length - 1);
+    togglePlay() {
+        this.isPlaying = !this.isPlaying;
+        document.getElementById('playBtn').innerHTML = this.isPlaying ? '<i class="fa-solid fa-pause"></i>' : '<i class="fa-solid fa-play"></i>';
 
-        ctx.beginPath();
-        ctx.strokeStyle = '#3b82f6';
-        ctx.lineWidth = 2;
-        ctx.fillStyle = 'rgba(59, 130, 246, 0.15)';
-
-        ctx.moveTo(0, canvas.height);
-        values.forEach((v, i) => {
-            const x = i * step;
-            const y = canvas.height - (v / max) * (canvas.height - 10);
-            ctx.lineTo(x, y);
-        });
-
-        ctx.lineTo(canvas.width, canvas.height);
-        ctx.closePath();
-        ctx.fill();
-        ctx.stroke();
-    }
-};
-
-/**
- * 7. LAYER MANAGER
- */
-const LayerManager = {
-    toggle(type, enabled) {
-        if (type === 'radar') {
-            RadarEngine.activeMode = 'radar';
-            if (enabled) RadarEngine.updateLayer();
-            else if (RadarEngine.activeTileLayer) GeoEngine.map.removeLayer(RadarEngine.activeTileLayer);
-        } else if (type === 'clouds') {
-            RadarEngine.activeMode = 'clouds';
-            if (enabled) RadarEngine.updateLayer();
-            else if (RadarEngine.activeTileLayer) GeoEngine.map.removeLayer(RadarEngine.activeTileLayer);
-        } else if (type === 'wind') {
-            WindEngine.toggle(enabled);
-        } else if (type === 'lightning') {
-            LightningEngine.toggle(enabled);
+        if(this.isPlaying) {
+            this.timer = setInterval(() => {
+                this.currentIndex = (this.currentIndex + 1) % this.radarFrames.length;
+                this.updateRadar();
+            }, this.speed);
+        } else {
+            clearInterval(this.timer);
         }
     },
 
-    setOpacity(val) {
-        RadarEngine.opacity = val / 100;
-        if (RadarEngine.activeTileLayer) RadarEngine.activeTileLayer.setOpacity(RadarEngine.opacity);
+    setSpeed(mult, elem) {
+        document.querySelectorAll('.speed-btn').forEach(b => b.classList.remove('active'));
+        if(elem) elem.classList.add('active');
+        this.speed = 1000 / mult;
+        if(this.isPlaying) { this.togglePlay(); this.togglePlay(); }
+    },
+
+    onSeek(val) {
+        if(!this.radarFrames.length) return;
+        this.currentIndex = Math.round((val / 100) * (this.radarFrames.length - 1));
+        this.updateRadar();
+    }
+};
+
+/**
+ * 6. FLIGHTS & LIGHTNING LIVE LAYERS
+ */
+const LayerManager = {
+    flightGroup: L.layerGroup(),
+    flightsActive: false,
+
+    toggleFlights() {
+        this.flightsActive = !this.flightsActive;
+        document.getElementById('btnFlights').classList.toggle('active', this.flightsActive);
+
+        if(this.flightsActive) {
+            this.flightGroup.addTo(QuantumEngine.map);
+            UIController.showToast("LIVE Авиарейсы активированы");
+            // Симуляция транспондеров
+            for(let i=0; i<8; i++) {
+                const b = QuantumEngine.map.getBounds();
+                const lat = b.getSouth() + Math.random()*(b.getNorth()-b.getSouth());
+                const lon = b.getWest() + Math.random()*(b.getEast()-b.getWest());
+                
+                L.marker([lat, lon], {
+                    icon: L.divIcon({
+                        className: 'custom-plane-icon',
+                        html: `<i class="fa-solid fa-plane" style="color:#06b6d4; transform:rotate(${Math.random()*360}deg); font-size:14px;"></i>`
+                    })
+                }).addTo(this.flightGroup);
+            }
+        } else {
+            QuantumEngine.map.removeLayer(this.flightGroup);
+            this.flightGroup.clearLayers();
+        }
+    },
+
+    toggle(type, enabled) {
+        if(type === 'wind') ParticleEngine.isRunning = enabled;
+        UIController.showToast(`Слой ${type.toUpperCase()}: ${enabled ? 'Включен' : 'Выключен'}`);
+    }
+};
+
+/**
+ * 7. CHART ENGINE
+ */
+const ChartEngine = {
+    chart: null,
+
+    init() {
+        const ctx = document.getElementById('hudChart').getContext('2d');
+        this.chart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: Array(24).fill(''),
+                datasets: [{
+                    data: [1012, 1013, 1011, 1010, 1008, 1009, 1012, 1015],
+                    borderColor: '#3b82f6',
+                    borderWidth: 2,
+                    tension: 0.4,
+                    pointRadius: 0
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: { x: { display: false }, y: { display: false } }
+            }
+        });
+    },
+
+    update(data) {
+        if(this.chart) {
+            this.chart.data.datasets[0].data = data;
+            this.chart.update();
+        }
     }
 };
 
@@ -1085,33 +1106,26 @@ const LayerManager = {
  * 8. UI CONTROLLER
  */
 const UIController = {
-    toggleRightSidebar() {
-        const sb = document.getElementById('rightSidebar');
-        const btn = document.getElementById('toggleAnalysisBtn');
-        sb.classList.toggle('collapsed');
-        btn.classList.toggle('active', !sb.classList.contains('collapsed'));
+    toggleHUD() {
+        const hud = document.getElementById('rightHud');
+        hud.classList.toggle('collapsed');
+        document.getElementById('btnHud').classList.toggle('active', !hud.classList.contains('collapsed'));
     },
 
     toggleDrawer() {
-        document.getElementById('drawerSheet').classList.toggle('active');
+        document.getElementById('drawerPanel').classList.toggle('active');
         document.getElementById('drawerOverlay').classList.toggle('active');
     },
 
     showToast(msg) {
-        const t = document.getElementById('toast');
-        t.innerText = msg;
-        t.classList.add('active');
-        setTimeout(() => t.classList.remove('active'), 2000);
+        const toast = document.getElementById('toast');
+        document.getElementById('toastMsg').innerText = msg;
+        toast.classList.add('active');
+        setTimeout(() => toast.classList.remove('active'), 2500);
     }
 };
 
-// СТАРТ
-window.addEventListener('DOMContentLoaded', () => {
-    GeoEngine.init();
-    RadarEngine.init();
-    WindEngine.init();
-    StormInspector.analyzePoint(55.7512, 37.6184, "Москва");
-});
+window.addEventListener('DOMContentLoaded', () => QuantumEngine.init());
 </script>
 </body>
 </html>

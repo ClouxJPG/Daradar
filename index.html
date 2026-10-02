@@ -455,7 +455,7 @@
             cursor: pointer;
         }
 
-        /* Настройки Drawer */
+        /* Drawer Панели Слоев */
         .drawer-overlay {
             position: fixed;
             top: 0; left: 0; right: 0; bottom: 0;
@@ -479,9 +479,130 @@
             padding: 24px;
             transform: translateY(100%);
             transition: transform 0.3s var(--ease-spring);
+            max-height: 82vh;
+            overflow-y: auto;
         }
 
         .drawer-sheet.active { transform: translateY(0); }
+
+        /* Стилизация сетки слоев внутри Drawer */
+        .layers-config-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 12px;
+            margin-top: 14px;
+        }
+
+        .layer-config-card {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--border);
+            border-radius: 18px;
+            padding: 14px 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            transition: all 0.2s;
+        }
+
+        .layer-config-card:hover {
+            border-color: var(--border-light);
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .layer-config-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .layer-title-wrap {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .layer-icon {
+            font-size: 18px;
+            color: var(--accent);
+            width: 24px;
+            text-align: center;
+        }
+
+        .layer-name {
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        .layer-sub {
+            font-size: 10px;
+            color: var(--text-secondary);
+            margin-top: 2px;
+        }
+
+        .setting-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 11px;
+            margin-bottom: 4px;
+        }
+
+        .setting-label {
+            color: var(--text-secondary);
+        }
+
+        .setting-val {
+            font-weight: 700;
+            color: var(--accent);
+            font-family: var(--font-mono);
+        }
+
+        /* Переключатель Switch (Toggle) */
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 42px;
+            height: 24px;
+            flex-shrink: 0;
+        }
+
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider.round {
+            position: absolute;
+            cursor: pointer;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-color: rgba(255, 255, 255, 0.15);
+            transition: .3s;
+            border-radius: 24px;
+            border: 1px solid var(--border);
+        }
+
+        .slider.round:before {
+            position: absolute;
+            content: "";
+            height: 16px;
+            width: 16px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            transition: .3s;
+            border-radius: 50%;
+        }
+
+        input:checked + .slider.round {
+            background-color: var(--accent);
+            border-color: var(--accent);
+        }
+
+        input:checked + .slider.round:before {
+            transform: translateX(18px);
+        }
 
         .toast {
             position: fixed;
@@ -550,7 +671,7 @@
 
     <div class="tools-group">
         <!-- Кнопки управления боковыми панелями -->
-        <button class="btn-glass active" id="toggleLeftBtn" onclick="UIController.toggleLeftSidebar()" title="Панель слоев">
+        <button class="btn-glass active" id="toggleLeftBtn" onclick="UIController.toggleLeftSidebar()" title="Быстрая панель слоев">
             <i class="fa-solid fa-layer-group"></i>
         </button>
         <button class="btn-glass active" id="toggleRightBtn" onclick="UIController.toggleRightSidebar()" title="Панель аналитики">
@@ -565,7 +686,8 @@
         <button class="btn-glass" id="audioBtn" onclick="AudioEngine.toggleAmbience()" title="Звуковой эмбиент дождя">
             <i class="fa-solid fa-volume-xmark"></i>
         </button>
-        <button class="btn-glass" onclick="UIController.toggleDrawer()" title="Настройки">
+        <!-- Кнопка вызова расширенной панели слоев и их настроек -->
+        <button class="btn-glass" onclick="UIController.toggleDrawer()" title="Управление слоями и настройками">
             <i class="fa-solid fa-sliders"></i>
         </button>
     </div>
@@ -603,26 +725,26 @@
     </button>
 </div>
 
-<!-- Левая панель слоев -->
+<!-- Левая быстрая панель слоев -->
 <div class="left-sidebar" id="leftSidebar">
     <div class="glass-pill panel-card">
         <div class="card-title">
             <span>Метео Слои</span>
             <button class="panel-close-btn" onclick="UIController.toggleLeftSidebar()"><i class="fa-solid fa-xmark"></i></button>
         </div>
-        <button class="layer-btn active" onclick="LayerManager.switchLayer('radar', this)">
+        <button class="layer-btn active" id="sidebarBtnRadar" onclick="LayerManager.switchLayer('radar', this)">
             <i class="fa-solid fa-cloud-showers-heavy"></i> Радар осадков
         </button>
-        <button class="layer-btn" onclick="LayerManager.switchLayer('clouds', this)">
+        <button class="layer-btn" id="sidebarBtnClouds" onclick="LayerManager.switchLayer('clouds', this)">
             <i class="fa-solid fa-cloud"></i> Облачность
         </button>
-        <button class="layer-btn" onclick="LayerManager.switchLayer('wind_speed', this)">
-            <i class="fa-solid fa-wind"></i> Поки ветра
+        <button class="layer-btn" id="sidebarBtnWind" onclick="LayerManager.switchLayer('wind_speed', this)">
+            <i class="fa-solid fa-wind"></i> Потоки ветра
         </button>
-        <button class="layer-btn" onclick="LayerManager.switchLayer('temp', this)">
+        <button class="layer-btn" id="sidebarBtnTemp" onclick="LayerManager.switchLayer('temp', this)">
             <i class="fa-solid fa-temperature-high"></i> Температура
         </button>
-        <button class="layer-btn" onclick="LayerManager.switchLayer('lightning', this)">
+        <button class="layer-btn" id="sidebarBtnLightning" onclick="LayerManager.switchLayer('lightning', this)">
             <i class="fa-solid fa-bolt"></i> Грозы (Live)
         </button>
     </div>
@@ -684,24 +806,122 @@
     </div>
 </div>
 
-<!-- Drawer Настроек -->
+<!-- Drawer Панель Слоев и Настроек Параметров -->
 <div class="drawer-overlay" id="drawerOverlay" onclick="UIController.toggleDrawer()"></div>
 <div class="drawer-sheet" id="drawerSheet">
-    <div class="card-title" style="font-size:14px; margin-bottom:16px;">
-        <span>Настройки отображения</span>
-        <i class="fa-solid fa-xmark" style="cursor:pointer;" onclick="UIController.toggleDrawer()"></i>
+    <div class="card-title" style="font-size:14px; margin-bottom:12px; border-bottom: 1px solid var(--border); padding-bottom: 10px;">
+        <span><i class="fa-solid fa-layer-group" style="color:var(--accent); margin-right:8px;"></i>Центр управления слоями и параметрами</span>
+        <i class="fa-solid fa-xmark" style="cursor:pointer; font-size:16px;" onclick="UIController.toggleDrawer()"></i>
     </div>
-    <div style="display:flex; flex-direction:column; gap:16px;">
-        <div>
-            <div class="card-title" style="margin-bottom:6px;">Прозрачность слоев</div>
-            <input type="range" min="10" max="100" value="80" oninput="LayerManager.setOpacity(this.value)">
+    
+    <div class="layers-config-container">
+        <!-- Слой 1: Радар осадков -->
+        <div class="layer-config-card">
+            <div class="layer-config-header">
+                <div class="layer-title-wrap">
+                    <i class="fa-solid fa-cloud-showers-heavy layer-icon"></i>
+                    <div>
+                        <div class="layer-name">Радар осадков</div>
+                        <div class="layer-sub">RainViewer API (Live Doppler)</div>
+                    </div>
+                </div>
+                <label class="switch">
+                    <input type="checkbox" id="layerRadarToggle" checked onchange="LayerManager.toggleLayerFromDrawer('radar', this.checked)">
+                    <span class="slider round"></span>
+                </label>
+            </div>
+            <div class="layer-config-body">
+                <div class="setting-row">
+                    <span class="setting-label">Прозрачность радара</span>
+                    <span class="setting-val" id="radarOpacityVal">80%</span>
+                </div>
+                <input type="range" min="10" max="100" value="80" oninput="LayerManager.setOpacity(this.value); document.getElementById('radarOpacityVal').innerText=this.value+'%'">
+            </div>
+        </div>
+
+        <!-- Слой 2: Спутниковая облачность -->
+        <div class="layer-config-card">
+            <div class="layer-config-header">
+                <div class="layer-title-wrap">
+                    <i class="fa-solid fa-cloud layer-icon"></i>
+                    <div>
+                        <div class="layer-name">Облачность</div>
+                        <div class="layer-sub">Инфракрасный спутник</div>
+                    </div>
+                </div>
+                <label class="switch">
+                    <input type="checkbox" id="layerCloudsToggle" onchange="LayerManager.toggleLayerFromDrawer('clouds', this.checked)">
+                    <span class="slider round"></span>
+                </label>
+            </div>
+            <div class="layer-config-body">
+                <div class="setting-row">
+                    <span class="setting-label">Прозрачность облаков</span>
+                    <span class="setting-val" id="cloudsOpacityVal">80%</span>
+                </div>
+                <input type="range" min="10" max="100" value="80" oninput="LayerManager.setOpacity(this.value); document.getElementById('cloudsOpacityVal').innerText=this.value+'%'">
+            </div>
+        </div>
+
+        <!-- Слой 3: Потоки ветра -->
+        <div class="layer-config-card">
+            <div class="layer-config-header">
+                <div class="layer-title-wrap">
+                    <i class="fa-solid fa-wind layer-icon"></i>
+                    <div>
+                        <div class="layer-name">Потоки ветра</div>
+                        <div class="layer-sub">Canvas Анимация частиц</div>
+                    </div>
+                </div>
+                <label class="switch">
+                    <input type="checkbox" id="layerWindToggle" onchange="LayerManager.toggleLayerFromDrawer('wind_speed', this.checked)">
+                    <span class="slider round"></span>
+                </label>
+            </div>
+            <div class="layer-config-body">
+                <div class="setting-row">
+                    <span class="setting-label">Плотность частиц</span>
+                    <span class="setting-val" id="windCountVal">250</span>
+                </div>
+                <input type="range" min="50" max="600" step="50" value="250" oninput="WindEngine.setParticleCount(this.value); document.getElementById('windCountVal').innerText=this.value">
+                
+                <div class="setting-row" style="margin-top:10px;">
+                    <span class="setting-label">Скорость анимации</span>
+                    <span class="setting-val" id="windSpeedVal">1.8x</span>
+                </div>
+                <input type="range" min="0.5" max="4.0" step="0.3" value="1.8" oninput="WindEngine.setSpeed(this.value); document.getElementById('windSpeedVal').innerText=this.value+'x'">
+            </div>
+        </div>
+
+        <!-- Слой 4: Грозы Live -->
+        <div class="layer-config-card">
+            <div class="layer-config-header">
+                <div class="layer-title-wrap">
+                    <i class="fa-solid fa-bolt layer-icon"></i>
+                    <div>
+                        <div class="layer-name">Грозы (Live)</div>
+                        <div class="layer-sub">Детектор грозовых разрядов</div>
+                    </div>
+                </div>
+                <label class="switch">
+                    <input type="checkbox" id="layerLightningToggle" onchange="LayerManager.toggleLayerFromDrawer('lightning', this.checked)">
+                    <span class="slider round"></span>
+                </label>
+            </div>
+            <div class="layer-config-body">
+                <div class="setting-row">
+                    <span class="setting-label">Радиус метки разряда</span>
+                    <span class="setting-val" id="lightningRadiusVal">8 px</span>
+                </div>
+                <input type="range" min="4" max="20" value="8" oninput="LightningEngine.setMarkerRadius(this.value); document.getElementById('lightningRadiusVal').innerText=this.value+' px'">
+            </div>
         </div>
     </div>
 </div>
 
 <script>
 /**
- * 0. TELEMETRY ENGINE (Мгновенный подсчет FPS)
+ * 0. TELEMETRY ENGINE
  */
 const TelemetryEngine = {
     frameCount: 0,
@@ -723,7 +943,7 @@ const TelemetryEngine = {
 };
 
 /**
- * 1. BASE MAPS ENGINE (Стабильные подложки)
+ * 1. BASE MAPS ENGINE
  */
 const BaseMapEngine = {
     currentLayer: null,
@@ -843,7 +1063,7 @@ const GeoEngine = {
 };
 
 /**
- * 3. RADAR & METEO LAYERS ENGINE (RainViewer Integration)
+ * 3. RADAR & METEO LAYERS ENGINE
  */
 const RadarEngine = {
     radarFrames: [],
@@ -935,6 +1155,7 @@ const LightningEngine = {
     layerGroup: L.layerGroup(),
     timer: null,
     isActive: false,
+    markerRadius: 8,
 
     toggle(enable) {
         this.isActive = enable;
@@ -949,6 +1170,10 @@ const LightningEngine = {
         }
     },
 
+    setMarkerRadius(radius) {
+        this.markerRadius = parseFloat(radius);
+    },
+
     startSimulation() {
         this.timer = setInterval(() => {
             if (!this.isActive) return;
@@ -957,7 +1182,7 @@ const LightningEngine = {
             const lon = bounds.getWest() + Math.random() * (bounds.getEast() - bounds.getWest());
 
             const marker = L.circleMarker([lat, lon], {
-                radius: 8,
+                radius: this.markerRadius,
                 color: '#f59e0b',
                 fillColor: '#ef4444',
                 fillOpacity: 0.9
@@ -976,6 +1201,8 @@ const WindEngine = {
     ctx: null,
     particles: [],
     isRunning: false,
+    particleCount: 250,
+    speedMultiplier: 1.8,
 
     init() {
         this.canvas = document.getElementById('windCanvas');
@@ -989,9 +1216,11 @@ const WindEngine = {
         this.canvas.height = window.innerHeight;
     },
 
-    toggle() {
-        this.isRunning = !this.isRunning;
+    toggle(forceState) {
+        this.isRunning = forceState !== undefined ? forceState : !this.isRunning;
         document.getElementById('windBtn').classList.toggle('active', this.isRunning);
+        document.getElementById('layerWindToggle').checked = this.isRunning;
+
         if (this.isRunning) {
             this.createParticles();
             this.loop();
@@ -1001,9 +1230,18 @@ const WindEngine = {
         }
     },
 
+    setParticleCount(val) {
+        this.particleCount = parseInt(val);
+        if (this.isRunning) this.createParticles();
+    },
+
+    setSpeed(val) {
+        this.speedMultiplier = parseFloat(val);
+    },
+
     createParticles() {
         this.particles = [];
-        for (let i = 0; i < 250; i++) {
+        for (let i = 0; i < this.particleCount; i++) {
             this.particles.push({
                 x: Math.random() * this.canvas.width,
                 y: Math.random() * this.canvas.height,
@@ -1023,7 +1261,7 @@ const WindEngine = {
 
         for (let p of this.particles) {
             this.ctx.moveTo(p.x, p.y);
-            p.x += 1.8 + Math.sin(p.y * 0.01);
+            p.x += this.speedMultiplier + Math.sin(p.y * 0.01);
             p.y += Math.cos(p.x * 0.01) * 0.5;
             p.life--;
 
@@ -1041,7 +1279,7 @@ const WindEngine = {
 };
 
 /**
- * 6. STORM INSPECTOR & OPEN-METEO API (С реальным давлением)
+ * 6. STORM INSPECTOR & OPEN-METEO API
  */
 const StormInspector = {
     async analyzePoint(lat, lon, label) {
@@ -1113,12 +1351,17 @@ const ChartEngine = {
 };
 
 /**
- * 7. LAYER MANAGER
+ * 7. LAYER MANAGER (Синхронизация Меню и Drawer)
  */
 const LayerManager = {
     switchLayer(type, btn) {
         document.querySelectorAll('.layer-btn').forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
+        if (btn) btn.classList.add('active');
+
+        // Синхронизация тогглов в Drawer
+        document.getElementById('layerRadarToggle').checked = (type === 'radar');
+        document.getElementById('layerCloudsToggle').checked = (type === 'clouds');
+        document.getElementById('layerLightningToggle').checked = (type === 'lightning');
 
         LightningEngine.toggle(type === 'lightning');
 
@@ -1126,10 +1369,24 @@ const LayerManager = {
             RadarEngine.activeMode = type;
             RadarEngine.updateLayer();
         } else if (type === 'wind_speed') {
-            if (!WindEngine.isRunning) WindEngine.toggle();
+            if (!WindEngine.isRunning) WindEngine.toggle(true);
         }
 
-        UIController.showToast(`Выбран слой: ${btn.innerText.trim()}`);
+        if (btn) UIController.showToast(`Выбран слой: ${btn.innerText.trim()}`);
+    },
+
+    toggleLayerFromDrawer(type, isChecked) {
+        if (type === 'radar') {
+            if (isChecked) this.switchLayer('radar', document.getElementById('sidebarBtnRadar'));
+            else if (RadarEngine.activeTileLayer) GeoEngine.map.removeLayer(RadarEngine.activeTileLayer);
+        } else if (type === 'clouds') {
+            if (isChecked) this.switchLayer('clouds', document.getElementById('sidebarBtnClouds'));
+            else if (RadarEngine.activeTileLayer) GeoEngine.map.removeLayer(RadarEngine.activeTileLayer);
+        } else if (type === 'wind_speed') {
+            WindEngine.toggle(isChecked);
+        } else if (type === 'lightning') {
+            LightningEngine.toggle(isChecked);
+        }
     },
 
     setOpacity(val) {
@@ -1141,7 +1398,7 @@ const LayerManager = {
 };
 
 /**
- * 8. AUDIO AMBIENCE ENGINE (Web Audio API Synthesizer)
+ * 8. AUDIO AMBIENCE ENGINE
  */
 const AudioEngine = {
     audioCtx: null,

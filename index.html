@@ -14,9 +14,9 @@
     <style>
         :root {
             --bg-dark: #05070c;
-            --bg-glass: rgba(10, 15, 26, 0.78);
-            --bg-card: rgba(16, 24, 40, 0.88);
-            --border: rgba(255, 255, 255, 0.1);
+            --bg-glass: rgba(10, 15, 26, 0.85);
+            --bg-card: rgba(16, 24, 40, 0.9);
+            --border: rgba(255, 255, 255, 0.12);
             --border-glow: rgba(59, 130, 246, 0.5);
             --accent: #3b82f6;
             --accent-cyan: #06b6d4;
@@ -62,13 +62,6 @@
             transform-origin: center bottom;
         }
 
-        #canvasOverlay {
-            position: absolute;
-            inset: 0;
-            pointer-events: none;
-            z-index: 2;
-        }
-
         .glass {
             background: var(--bg-glass);
             backdrop-filter: blur(24px);
@@ -79,11 +72,11 @@
             transition: all 0.3s var(--ease-out);
         }
 
-        /* ВЕРХНИЙ КОМАНДНЫЙ БАР */
+        /* ВЕРХНИЙ БАР */
         .top-bar {
             position: absolute;
             top: 16px; left: 16px; right: 16px;
-            z-index: 10;
+            z-index: 1000;
             display: flex;
             align-items: center;
             justify-content: space-between;
@@ -134,7 +127,7 @@
             border-radius: 14px;
             overflow: hidden;
             display: none;
-            z-index: 100;
+            z-index: 1100;
         }
 
         .search-item {
@@ -182,7 +175,7 @@
         .left-dock {
             position: absolute;
             top: 78px; left: 16px;
-            z-index: 9;
+            z-index: 1000;
             display: flex;
             flex-direction: column;
             gap: 8px;
@@ -193,8 +186,8 @@
         .right-hud {
             position: absolute;
             top: 78px; right: 16px; bottom: 100px;
-            width: 350px;
-            z-index: 9;
+            width: 340px;
+            z-index: 1000;
             padding: 20px;
             display: flex;
             flex-direction: column;
@@ -205,7 +198,7 @@
         }
 
         .right-hud.collapsed {
-            transform: translateX(390px);
+            transform: translateX(380px);
             opacity: 0;
             pointer-events: none;
         }
@@ -220,19 +213,6 @@
 
         .loc-name { font-size: 18px; font-weight: 800; color: #fff; }
         .loc-coords { font-size: 11px; font-family: var(--font-mono); color: var(--accent-cyan); }
-
-        .threat-gauge {
-            background: rgba(239, 68, 68, 0.1);
-            border: 1px solid rgba(239, 68, 68, 0.3);
-            border-radius: 12px;
-            padding: 10px 14px;
-            display: flex; align-items: center; justify-content: space-between;
-        }
-
-        .threat-level {
-            font-size: 12px; font-weight: 700; color: var(--danger);
-            display: flex; align-items: center; gap: 8px;
-        }
 
         .metrics-grid {
             display: grid;
@@ -276,10 +256,10 @@
             box-shadow: 0 0 10px rgba(59, 130, 246, 0.4);
         }
 
-        /* ТАЙМЛАЙН ПЛЕЕР */
+        /* ТАЙМЛАЙН */
         .time-deck {
             position: absolute; bottom: 20px; left: 50%;
-            transform: translateX(-50%); z-index: 10;
+            transform: translateX(-50%); z-index: 1000;
             width: calc(100% - 32px); max-width: 760px;
             padding: 14px 20px; border-radius: 20px;
             display: flex; align-items: center; gap: 16px;
@@ -313,7 +293,7 @@
             position: fixed; inset: 0;
             background: rgba(0, 0, 0, 0.6);
             backdrop-filter: blur(8px);
-            z-index: 100;
+            z-index: 2000;
             opacity: 0; visibility: hidden;
             transition: all 0.3s var(--ease-out);
         }
@@ -321,7 +301,7 @@
 
         .drawer-panel {
             position: fixed; bottom: 0; left: 0; right: 0;
-            z-index: 101;
+            z-index: 2001;
             background: var(--bg-card);
             border-top: 1px solid var(--border-glow);
             border-radius: 28px 28px 0 0;
@@ -374,7 +354,7 @@
 
         .toast-banner {
             position: fixed; top: 76px; left: 50%;
-            transform: translate(-50%, -20px); z-index: 200;
+            transform: translate(-50%, -20px); z-index: 3000;
             background: rgba(16, 24, 40, 0.95);
             border: 1px solid var(--accent);
             color: #fff; padding: 10px 20px; border-radius: 30px;
@@ -394,9 +374,8 @@
 <body>
 
 <div id="map-container"><div id="map"></div></div>
-<canvas id="canvasOverlay"></canvas>
 
-<div class="toast-banner" id="toast"><i class="fa-solid fa-circle-info" style="color:var(--accent-cyan);"></i> <span id="toastMsg">Синхронизация данных...</span></div>
+<div class="toast-banner" id="toast"><i class="fa-solid fa-circle-info" style="color:var(--accent-cyan);"></i> <span id="toastMsg">Ready</span></div>
 
 <!-- ВЕРХНИЙ БАР -->
 <div class="top-bar">
@@ -414,7 +393,7 @@
         <button class="icon-btn" onclick="QuantumEngine.toggle3D()" id="btn3d" title="3D Перспектива"><i class="fa-solid fa-cube"></i></button>
         <button class="icon-btn" onclick="AudioSynth.toggle()" id="btnAudio" title="Акустический эмбиент ветра"><i class="fa-solid fa-volume-high"></i></button>
         <button class="icon-btn" onclick="VoiceBriefing.speak()" title="AI Озвучка сводки"><i class="fa-solid fa-bullhorn"></i></button>
-        <button class="icon-btn active" onclick="UIController.toggleHUD()" id="btnHud" title="Аналитика"><i class="fa-solid fa-chart-pie"></i></button>
+        <button class="icon-btn" onclick="UIController.toggleHUD()" id="btnHud" title="Аналитика"><i class="fa-solid fa-chart-pie"></i></button>
         <button class="icon-btn" onclick="UIController.toggleDrawer()" title="Выбор карты и слоев"><i class="fa-solid fa-layer-group"></i></button>
     </div>
 </div>
@@ -426,8 +405,8 @@
     <button class="icon-btn" onclick="LayerManager.toggleTerminator()" id="btnTerminator" title="Терминатор День/Ночь"><i class="fa-solid fa-moon"></i></button>
 </div>
 
-<!-- ПРАВЫЙ HUD -->
-<div class="glass right-hud" id="rightHud">
+<!-- ПРАВЫЙ HUD (ВЫКЛЮЧЕН ПО УМОЛЧАНИЮ) -->
+<div class="glass right-hud collapsed" id="rightHud">
     <div class="hud-header" style="display:flex; justify-content:space-between; align-items:center;">
         <span class="hud-title">Квантовый скрининг</span>
         <i class="fa-solid fa-xmark" style="cursor:pointer; color:var(--text-muted);" onclick="UIController.toggleHUD()"></i>
@@ -436,11 +415,6 @@
     <div>
         <div class="loc-name" id="locName">Москва</div>
         <div class="loc-coords" id="locCoords">55.751 N, 37.618 E</div>
-    </div>
-
-    <div class="threat-gauge">
-        <div class="threat-level"><i class="fa-solid fa-shield-halved"></i> Статус погоды: <span id="threatVal">Штиль</span></div>
-        <span style="font-size:10px; font-family:var(--font-mono); color:var(--text-muted);" id="weatherCodeDesc">Ясно</span>
     </div>
 
     <!-- ВЫСОТНЫЕ ЭШЕЛОНЫ -->
@@ -464,7 +438,7 @@
             <div class="m-value" id="valDew">-- °C</div>
         </div>
         <div class="m-card">
-            <div class="m-label"><i class="fa-solid fa-wind" style="color:var(--accent);"></i> Скорость ветра</div>
+            <div class="m-label"><i class="fa-solid fa-wind" style="color:var(--accent);"></i> Ветер</div>
             <div class="m-value" id="valWind">-- м/с</div>
         </div>
         <div class="m-card">
@@ -495,7 +469,7 @@
 <div class="drawer-overlay" id="drawerOverlay" onclick="UIController.toggleDrawer()"></div>
 <div class="drawer-panel" id="drawerPanel">
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
-        <span class="hud-title" style="font-size:12px; color:#fff;">Выбор картографической подложки</span>
+        <span class="hud-title" style="font-size:12px; color:#fff;">Выбор подложки карты</span>
         <i class="fa-solid fa-xmark" style="cursor:pointer;" onclick="UIController.toggleDrawer()"></i>
     </div>
 
@@ -508,22 +482,22 @@
         <div class="map-style-card" onclick="MapStyles.set('osm', this)"><i class="fa-solid fa-map"></i><br>OSM Standard</div>
     </div>
 
-    <span class="hud-title" style="font-size:12px; color:#fff; margin-bottom:12px; display:block;">Оверлеи и Покилометровые слои</span>
+    <span class="hud-title" style="font-size:12px; color:#fff; margin-bottom:12px; display:block;">Оверлеи слоев</span>
     <div class="layers-grid">
         <div class="layer-card">
             <span><i class="fa-solid fa-cloud-showers-heavy" style="color:var(--accent);"></i> Осадки (Радар)</span>
-            <label class="switch"><input type="checkbox" checked onchange="LayerManager.toggle('radar', this.checked)"><span class="slider-round"></span></label>
+            <label class="switch"><input type="checkbox" id="chkRadar" onchange="LayerManager.toggle('radar', this.checked)"><span class="slider-round"></span></label>
         </div>
         <div class="layer-card">
-            <span><i class="fa-solid fa-wind" style="color:var(--accent-cyan);"></i> Векторы ветра</span>
-            <label class="switch"><input type="checkbox" checked onchange="LayerManager.toggle('wind', this.checked)"><span class="slider-round"></span></label>
+            <span><i class="fa-solid fa-wind" style="color:var(--accent-cyan);"></i> Векторы ветра (Карта)</span>
+            <label class="switch"><input type="checkbox" id="chkWind" onchange="LayerManager.toggle('wind', this.checked)"><span class="slider-round"></span></label>
         </div>
     </div>
 </div>
 
 <script>
 /**
- * 1. КАРТЫ И ПОДЛОЖКИ
+ * 1. КАРТЫ И ПОДЛОЖКИ (5 реальных карт)
  */
 const MapStyles = {
     providers: {
@@ -541,12 +515,12 @@ const MapStyles = {
 
         if(this.currentTileLayer) QuantumEngine.map.removeLayer(this.currentTileLayer);
         this.currentTileLayer = L.tileLayer(this.providers[type], { maxZoom: 18 }).addTo(QuantumEngine.map);
-        UIController.showToast(`Подложка карты изменена: ${type.toUpperCase()}`);
+        UIController.showToast(`Карта переключена: ${type.toUpperCase()}`);
     }
 };
 
 /**
- * 2. ЯДРО КАРТЫ & НАСТОЯЩИЕ ДАННЫЕ OPEN-METEO
+ * 2. ЯДРО КАРТЫ & DYNAMIC CANVAS OVERLAY ДЛЯ ВЕТРА
  */
 const QuantumEngine = {
     map: null,
@@ -559,18 +533,12 @@ const QuantumEngine = {
         this.map = L.map('map', { center: this.activeLocation, zoom: 6, zoomControl: false, attributionControl: false });
         MapStyles.set('dark');
 
-        this.map.on('movestart', () => ParticleEngine.pause());
-        this.map.on('moveend', () => {
-            ParticleEngine.resume();
-            if(LayerManager.flightsActive) LayerManager.fetchLiveFlights();
-        });
-
         this.map.on('click', (e) => {
             this.activeLocation = [e.latlng.lat, e.latlng.lng];
             this.inspectPoint(e.latlng.lat, e.latlng.lng);
         });
 
-        ParticleEngine.init();
+        WindCanvasLayer.init(this.map);
         TimeMachine.init();
         ChartEngine.init();
         this.inspectPoint(this.activeLocation[0], this.activeLocation[1], "Москва");
@@ -580,7 +548,7 @@ const QuantumEngine = {
         this.is3D = !this.is3D;
         document.body.classList.toggle('mode-3d', this.is3D);
         document.getElementById('btn3d').classList.toggle('active', this.is3D);
-        UIController.showToast(this.is3D ? "3D Перспектива активирована" : "Возврат в 2D");
+        UIController.showToast(this.is3D ? "3D Режим" : "2D Режим");
     },
 
     async inspectPoint(lat, lon, label) {
@@ -588,14 +556,12 @@ const QuantumEngine = {
         document.getElementById('locCoords').innerText = `${lat.toFixed(3)} N, ${lon.toFixed(3)} E`;
 
         try {
-            // Реальные данные для всех эшелонов высот
             const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,dew_point_2m,surface_pressure,wind_speed_10m,weather_code&hourly=surface_pressure,temperature_850hPa,wind_speed_850hPa,temperature_500hPa,wind_speed_500hPa,wind_speed_250hPa`;
             const res = await fetch(url);
             this.lastWeatherData = await res.json();
-
             this.renderMetrics();
         } catch(e) {
-            UIController.showToast("Ошибка загрузки метеоданных Open-Meteo");
+            UIController.showToast("Ошибка загрузки данных Open-Meteo");
         }
     },
 
@@ -607,13 +573,10 @@ const QuantumEngine = {
         let temp = cur.temperature_2m;
         let wind = cur.wind_speed_10m;
 
-        // Корректировка показателей под выбранный высотный эшелон
         if(this.activeAltitude === '850hpa' && hourly.temperature_850hPa) {
-            temp = hourly.temperature_850hPa[0];
-            wind = hourly.wind_speed_850hPa[0];
+            temp = hourly.temperature_850hPa[0]; wind = hourly.wind_speed_850hPa[0];
         } else if(this.activeAltitude === '500hpa' && hourly.temperature_500hPa) {
-            temp = hourly.temperature_500hPa[0];
-            wind = hourly.wind_speed_500hPa[0];
+            temp = hourly.temperature_500hPa[0]; wind = hourly.wind_speed_500hPa[0];
         } else if(this.activeAltitude === 'jetstream' && hourly.wind_speed_250hPa) {
             wind = hourly.wind_speed_250hPa[0];
         }
@@ -623,12 +586,8 @@ const QuantumEngine = {
         document.getElementById('valDew').innerText = `${Math.round(cur.dew_point_2m)} °C`;
         document.getElementById('valPress').innerText = `${Math.round(cur.surface_pressure)} hPa`;
 
-        // Расчет скорости шума ветра в звуковом синтезаторе
         AudioSynth.adjustByWind(wind);
-
-        if(hourly.surface_pressure) {
-            ChartEngine.update(hourly.surface_pressure.slice(0, 24));
-        }
+        if(hourly.surface_pressure) ChartEngine.update(hourly.surface_pressure.slice(0, 24));
     },
 
     setAltitude(alt, elem) {
@@ -636,8 +595,8 @@ const QuantumEngine = {
         if(elem) elem.classList.add('active');
         this.activeAltitude = alt;
         this.renderMetrics();
-        ParticleEngine.setAlt(alt);
-        UIController.showToast(`Выбран эшелон: ${alt.toUpperCase()}`);
+        WindCanvasLayer.setAltitude(alt);
+        UIController.showToast(`Эшелон: ${alt.toUpperCase()}`);
     },
 
     locateUser() {
@@ -675,7 +634,120 @@ const QuantumEngine = {
 };
 
 /**
- * 3. ЧЕСТНЫЕ АВИАРЕЙСЫ LIVE (OPENSKY NETWORK API)
+ * 3. ВЕТЕР НАЛОЖЕННЫЙ ПРЯМО НА КАРТУ (LEAFLET CANVAS LAYER)
+ */
+const WindCanvasLayer = {
+    map: null,
+    canvas: null,
+    ctx: null,
+    particles: [],
+    active: false,
+    speedMultiplier: 1.0,
+
+    init(map) {
+        this.map = map;
+
+        // Создаем собственный Custom Leaflet Layer
+        const CanvasOverlay = L.Layer.extend({
+            onAdd: (map) => {
+                const pane = map.getPane('overlayPane');
+                this.canvas = L.DomUtil.create('canvas', 'leaflet-wind-layer');
+                this.canvas.style.pointerEvents = 'none';
+                this.canvas.style.position = 'absolute';
+                this.canvas.style.zIndex = '400';
+                pane.appendChild(this.canvas);
+                this.ctx = this.canvas.getContext('2d');
+                map.on('move end resize zoom', this.reset, this);
+                this.reset();
+            },
+            onRemove: (map) => {
+                L.DomUtil.remove(this.canvas);
+                map.off('move end resize zoom', this.reset, this);
+            },
+            reset: () => {
+                if(!this.canvas) return;
+                const size = this.map.getSize();
+                const lt = this.map.containerPointToLayerPoint([0, 0]);
+                L.DomUtil.setPosition(this.canvas, lt);
+                this.canvas.width = size.x;
+                this.canvas.height = size.y;
+                this.spawnParticles();
+            }
+        });
+
+        this.layer = new CanvasOverlay();
+    },
+
+    toggle(enable) {
+        this.active = enable;
+        if(enable) {
+            this.map.addLayer(this.layer);
+            this.spawnParticles();
+            this.loop();
+        } else {
+            this.map.removeLayer(this.layer);
+        }
+    },
+
+    setAltitude(alt) {
+        if(alt === 'jetstream') this.speedMultiplier = 3.5;
+        else if(alt === '500hpa') this.speedMultiplier = 2.2;
+        else if(alt === '850hpa') this.speedMultiplier = 1.5;
+        else this.speedMultiplier = 1.0;
+    },
+
+    spawnParticles() {
+        if(!this.canvas) return;
+        this.particles = [];
+        const count = Math.floor((this.canvas.width * this.canvas.height) / 6000);
+        
+        // Генерация точек с учетом географических координат
+        const bounds = this.map.getBounds();
+        for(let i = 0; i < count; i++) {
+            const lat = bounds.getSouth() + Math.random() * (bounds.getNorth() - bounds.getSouth());
+            const lng = bounds.getWest() + Math.random() * (bounds.getEast() - bounds.getWest());
+            this.particles.push({ lat, lng, life: Math.random() * 80 + 20 });
+        }
+    },
+
+    loop() {
+        if(!this.active || !this.ctx) return;
+
+        this.ctx.fillStyle = 'rgba(5, 7, 12, 0.15)';
+        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+
+        this.ctx.strokeStyle = 'rgba(6, 182, 212, 0.8)';
+        this.ctx.lineWidth = 1.5;
+        this.ctx.beginPath();
+
+        const bounds = this.map.getBounds();
+
+        for(let p of this.particles) {
+            const currentPoint = this.map.latLngToContainerPoint([p.lat, p.lng]);
+            this.ctx.moveTo(currentPoint.x, currentPoint.y);
+
+            // Движение географических координат частицы
+            p.lng += 0.02 * this.speedMultiplier;
+            p.lat += Math.sin(p.lng * 5) * 0.003;
+            p.life--;
+
+            const nextPoint = this.map.latLngToContainerPoint([p.lat, p.lng]);
+            this.ctx.lineTo(nextPoint.x, nextPoint.y);
+
+            if(p.life <= 0 || !bounds.contains([p.lat, p.lng])) {
+                p.lat = bounds.getSouth() + Math.random() * (bounds.getNorth() - bounds.getSouth());
+                p.lng = bounds.getWest();
+                p.life = Math.random() * 80 + 20;
+            }
+        }
+
+        this.ctx.stroke();
+        requestAnimationFrame(() => this.loop());
+    }
+};
+
+/**
+ * 4. УПРАВЛЕНИЕ СЛОЯМИ И СЕРВИСАМИ
  */
 const LayerManager = {
     flightGroup: L.layerGroup(),
@@ -693,14 +765,14 @@ const LayerManager = {
         } else {
             QuantumEngine.map.removeLayer(this.flightGroup);
             this.flightGroup.clearLayers();
-            UIController.showToast("Авиарейсы отключены");
+            UIController.showToast("Самолеты отключены");
         }
     },
 
     async fetchLiveFlights() {
         if(!this.flightsActive) return;
         const b = QuantumEngine.map.getBounds();
-        UIController.showToast("Запрос трафика OpenSky...");
+        UIController.showToast("Запрос OpenSky Live...");
 
         try {
             const url = `https://opensky-network.org/api/states/all?lamin=${b.getSouth()}&lomin=${b.getWest()}&lamax=${b.getNorth()}&lomax=${b.getEast()}`;
@@ -709,7 +781,7 @@ const LayerManager = {
 
             this.flightGroup.clearLayers();
             if(data && data.states) {
-                data.states.slice(0, 40).forEach(st => {
+                data.states.slice(0, 30).forEach(st => {
                     const lat = st[6]; const lon = st[5]; const callsign = st[1] || 'PLANE'; const heading = st[10] || 0;
                     if(lat && lon) {
                         const icon = L.divIcon({
@@ -719,12 +791,12 @@ const LayerManager = {
                         L.marker([lat, lon], { icon }).bindTooltip(`Рейс: ${callsign.trim()}`).addTo(this.flightGroup);
                     }
                 });
-                UIController.showToast(`Найдено самолетов: ${data.states.length}`);
+                UIController.showToast(`Найдено бортов: ${data.states.length}`);
             } else {
-                UIController.showToast("Нет активных бортов в этой зоне");
+                UIController.showToast("Нет бортов в этой зоне");
             }
         } catch(e) {
-            UIController.showToast("OpenSky API лимит (попробуйте позже)");
+            UIController.showToast("Лимит OpenSky API (попробуйте позже)");
         }
     },
 
@@ -737,7 +809,6 @@ const LayerManager = {
             return;
         }
 
-        // Астрономический расчет положения солнца
         const now = new Date();
         const dayOfYear = Math.floor((now - new Date(now.getFullYear(), 0, 0)) / 1000 / 60 / 60 / 24);
         const declination = 23.45 * Math.sin((360 / 365 * (dayOfYear - 81)) * Math.PI / 180);
@@ -756,63 +827,16 @@ const LayerManager = {
     },
 
     toggle(type, enabled) {
-        if(type === 'wind') ParticleEngine.isRunning = enabled;
-        if(type === 'radar' && this.radarLayer) {
-            if(enabled) QuantumEngine.map.addLayer(this.radarLayer);
-            else QuantumEngine.map.removeLayer(this.radarLayer);
+        if(type === 'wind') WindCanvasLayer.toggle(enabled);
+        if(type === 'radar') {
+            if(enabled && TimeMachine.frames.length) TimeMachine.render();
+            else if(!enabled && this.radarLayer) QuantumEngine.map.removeLayer(this.radarLayer);
         }
     }
 };
 
 /**
- * 4. ВЕТРОВОЙ КАНВАС ПАРТИКЛОВ
- */
-const ParticleEngine = {
-    canvas: null, ctx: null, particles: [], isRunning: true, speed: 1.5,
-
-    init() {
-        this.canvas = document.getElementById('canvasOverlay');
-        this.ctx = this.canvas.getContext('2d');
-        this.resize();
-        window.addEventListener('resize', () => this.resize());
-        for(let i=0; i<180; i++) this.particles.push({ x: Math.random()*this.canvas.width, y: Math.random()*this.canvas.height, life: Math.random()*100 });
-        this.loop();
-    },
-
-    resize() { this.canvas.width = window.innerWidth; this.canvas.height = window.innerHeight; },
-
-    setAlt(alt) {
-        if(alt === 'jetstream') this.speed = 4.5;
-        else if(alt === '500hpa') this.speed = 2.8;
-        else if(alt === '850hpa') this.speed = 2.0;
-        else this.speed = 1.2;
-    },
-
-    pause() { this.isRunning = false; },
-    resume() { this.isRunning = true; this.loop(); },
-
-    loop() {
-        if(!this.isRunning) return;
-        this.ctx.fillStyle = 'rgba(5, 7, 12, 0.2)';
-        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
-        this.ctx.strokeStyle = 'rgba(6, 182, 212, 0.6)';
-        this.ctx.beginPath();
-
-        for(let p of this.particles) {
-            this.ctx.moveTo(p.x, p.y);
-            p.x += this.speed * 2;
-            p.y += Math.sin(p.x * 0.01);
-            p.life--;
-            this.ctx.lineTo(p.x, p.y);
-            if(p.x > this.canvas.width || p.life <= 0) { p.x = 0; p.y = Math.random()*this.canvas.height; p.life = 100; }
-        }
-        this.ctx.stroke();
-        requestAnimationFrame(() => this.loop());
-    }
-};
-
-/**
- * 5. ЗВУКОВОЙ СИНТЕЗАТОР WEBAUDIO (РЕАЛЬНАЯ СВЯЗЬ С ВЕТРОМ)
+ * 5. ЗВУКОВОЙ СИНТЕЗАТОР (ОТКЛЮЧЕН ПО УМОЛЧАНИЮ)
  */
 const AudioSynth = {
     ctx: null, filter: null, isPlaying: false,
@@ -838,10 +862,10 @@ const AudioSynth = {
             const gain = this.ctx.createGain(); gain.gain.value = 0.1;
             noise.connect(this.filter); this.filter.connect(gain); gain.connect(this.ctx.destination);
             noise.start();
-            UIController.showToast("Акустический эмбиент активирован");
+            UIController.showToast("Аудио-эмбиент включен");
         } else {
             this.ctx.suspend();
-            UIController.showToast("Звук выключен");
+            UIController.showToast("Аудио выключено");
         }
     },
 
@@ -853,7 +877,7 @@ const AudioSynth = {
 };
 
 /**
- * 6. ОЗВУЧКА ГОЛОСОМ AI (SPEECH SYNTHESIS)
+ * 6. ОЗВУЧКА СВОДКИ
  */
 const VoiceBriefing = {
     speak() {
@@ -869,7 +893,7 @@ const VoiceBriefing = {
 };
 
 /**
- * 7. RAINVIEWER LIVE RADAR TIME-MACHINE
+ * 7. RAINVIEWER LIVE RADAR
  */
 const TimeMachine = {
     frames: [], index: 0, isPlaying: false, timer: null,
@@ -881,7 +905,6 @@ const TimeMachine = {
             this.frames = data.radar?.past || [];
             if(this.frames.length) {
                 this.index = this.frames.length - 1;
-                this.render();
             }
         } catch(e) {}
     },
@@ -899,6 +922,11 @@ const TimeMachine = {
     },
 
     togglePlay() {
+        if(!document.getElementById('chkRadar').checked) {
+            document.getElementById('chkRadar').checked = true;
+            LayerManager.toggle('radar', true);
+        }
+
         this.isPlaying = !this.isPlaying;
         document.getElementById('playBtn').innerHTML = this.isPlaying ? '<i class="fa-solid fa-pause"></i>' : '<i class="fa-solid fa-play"></i>';
         if(this.isPlaying) {
@@ -912,7 +940,7 @@ const TimeMachine = {
     onSeek(val) {
         if(!this.frames.length) return;
         this.index = Math.round((val / 100) * (this.frames.length - 1));
-        this.render();
+        if(document.getElementById('chkRadar').checked) this.render();
     }
 };
 
@@ -935,7 +963,7 @@ const ChartEngine = {
 };
 
 /**
- * 9. UI CONTROL
+ * 9. UI CONTROLLER
  */
 const UIController = {
     toggleHUD() {

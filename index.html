@@ -1,1213 +1,408 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Метео Радар Pro / Гео-Интерфейс</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>Карта — Панель слоев</title>
+  <style>
+    /* =========================================================
+       1. БЛОКИРОВКА СДВИГОВ И ЗУМА ИНТЕРФЕЙСА
+       ========================================================= */
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      touch-action: manipulation; /* Отключает двойной тап для зума */
+      user-select: none;
+      -webkit-user-select: none;
+      -webkit-tap-highlight-color: transparent;
+    }
 
-    <!-- Leaflet CSS & JS -->
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    html, body {
+      position: fixed;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: #121214;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      color: #fff;
+    }
 
-    <!-- FontAwesome Icons -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+    /* Фоновый контейнер карты */
+    #map {
+      width: 100%;
+      height: 100%;
+      background: #1a1b20;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #555;
+    }
 
-    <style>
-        :root {
-            --bg-dark: #07090e;
-            --bg-glass: rgba(13, 17, 28, 0.88);
-            --bg-glass-hover: rgba(22, 29, 46, 0.95);
-            --bg-card: rgba(16, 22, 36, 0.96);
-            --border: rgba(255, 255, 255, 0.12);
-            --border-light: rgba(255, 255, 255, 0.22);
-            --text-primary: #f8fafc;
-            --text-secondary: #94a3b8;
-            --text-muted: #64748b;
-            --accent: #3b82f6;
-            --accent-hover: #2563eb;
-            --accent-glow: rgba(59, 130, 246, 0.45);
-            --shadow: 0 20px 50px rgba(0, 0, 0, 0.75);
-            --ease-spring: cubic-bezier(0.16, 1, 0.3, 1);
-            --font-mono: 'JetBrains Mono', Monaco, monospace;
-        }
+    /* Оверлей UI — зафиксирован поверх карты */
+    .ui-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none; /* Пропускает клики на карту */
+      z-index: 10;
+    }
 
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, sans-serif;
-            -webkit-tap-highlight-color: transparent;
-        }
+    /* Все интерактивные элементы UI восстанавливают кликабельность */
+    .ui-element {
+      pointer-events: auto;
+    }
 
-        html, body {
-            width: 100%;
-            height: 100%;
-            overflow: hidden;
-            background: var(--bg-dark);
-            color: var(--text-primary);
-            user-select: none;
-        }
+    /* =========================================================
+       2. КНОПКА ВЫЗОВА И ВЕРХНЯЯ ПАНЕЛЬ
+       ========================================================= */
+    .top-bar {
+      position: absolute;
+      top: 16px;
+      right: 16px;
+      display: flex;
+      gap: 8px;
+    }
 
-        #map {
-            width: 100%;
-            height: 100%;
-            position: absolute;
-            top: 0;
-            left: 0;
-            z-index: 1;
-            background: #090d16;
-        }
+    .btn {
+      background: #27272a;
+      color: #fff;
+      border: 1px solid #3f3f46;
+      padding: 10px 16px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+      transition: background 0.15s ease, transform 0.1s ease;
+    }
 
-        #windCanvas {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            z-index: 2;
-            pointer-events: none;
-        }
+    .btn:active {
+      transform: scale(0.96);
+      background: #3f3f46;
+    }
 
-        /* Верхняя панель */
-        .top-deck {
-            position: absolute;
-            top: 14px;
-            left: 14px;
-            right: 14px;
-            z-index: 10;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 10px;
-            pointer-events: none;
-        }
+    /* =========================================================
+       3. ПАНЕЛЬ СЛОЕВ (ЗАКРЫТА ПО УМОЛЧАНИЮ)
+       ========================================================= */
+    .panel {
+      position: absolute;
+      top: 0;
+      right: 0;
+      width: 320px;
+      height: 100%;
+      background: #18181b;
+      border-left: 1px solid #27272a;
+      box-shadow: -8px 0 24px rgba(0, 0, 0, 0.5);
+      display: flex;
+      flex-direction: column;
+      
+      /* Состояние по умолчанию — полностью сдвинута за экран */
+      transform: translateX(100%);
+      transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    }
 
-        .glass-pill {
-            pointer-events: auto;
-            background: var(--bg-glass);
-            backdrop-filter: blur(24px);
-            -webkit-backdrop-filter: blur(24px);
-            border: 1px solid var(--border);
-            border-radius: 18px;
-            box-shadow: var(--shadow);
-            display: flex;
-            align-items: center;
-            transition: all 0.25s var(--ease-spring);
-        }
+    /* Открытое состояние */
+    .panel.is-open {
+      transform: translateX(0);
+    }
 
-        .brand-pill {
-            padding: 0 16px;
-            height: 46px;
-            font-size: 13px;
-            font-weight: 800;
-            gap: 10px;
-            color: #fff;
-            flex-shrink: 0;
-        }
+    .panel-header {
+      padding: 16px;
+      border-bottom: 1px solid #27272a;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
 
-        .brand-pill i { color: var(--accent); }
+    .panel-header h3 {
+      font-size: 16px;
+      font-weight: 600;
+    }
 
-        .search-container {
-            position: relative;
-            flex: 1;
-            max-width: 420px;
-            pointer-events: auto;
-        }
+    .close-btn {
+      background: transparent;
+      border: none;
+      color: #a1a1aa;
+      font-size: 20px;
+      cursor: pointer;
+      padding: 4px;
+    }
 
-        .search-pill {
-            height: 46px;
-            padding: 0 16px;
-            gap: 10px;
-            width: 100%;
-        }
+    .panel-body {
+      padding: 16px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
 
-        .search-pill input {
-            background: transparent;
-            border: none;
-            outline: none;
-            color: var(--text-primary);
-            font-size: 13px;
-            width: 100%;
-            font-weight: 500;
-        }
+    /* =========================================================
+       4. ЭЛЕМЕНТЫ СЛОЕВ И НАСТРОЙКИ ВНУТРИ СЛОЯ
+       ========================================================= */
+    .layer-card {
+      background: #27272a;
+      border: 1px solid #3f3f46;
+      border-radius: 8px;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
 
-        .search-results {
-            position: absolute;
-            top: 54px;
-            left: 0;
-            right: 0;
-            background: var(--bg-card);
-            border: 1px solid var(--border-light);
-            border-radius: 16px;
-            backdrop-filter: blur(24px);
-            box-shadow: var(--shadow);
-            overflow: hidden;
-            display: none;
-            z-index: 50;
-        }
+    .layer-main {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
 
-        .search-item {
-            padding: 12px 16px;
-            font-size: 13px;
-            cursor: pointer;
-            border-bottom: 1px solid var(--border);
-        }
-        .search-item:hover { background: rgba(255, 255, 255, 0.08); }
+    .layer-title {
+      font-size: 14px;
+      font-weight: 500;
+    }
 
-        .tools-group {
-            display: flex;
-            gap: 8px;
-            pointer-events: auto;
-        }
+    /* Чекбокс переключателя */
+    .switch {
+      position: relative;
+      display: inline-block;
+      width: 40px;
+      height: 22px;
+    }
 
-        .btn-glass {
-            width: 46px;
-            height: 46px;
-            background: var(--bg-glass);
-            backdrop-filter: blur(24px);
-            border: 1px solid var(--border);
-            border-radius: 16px;
-            color: var(--text-primary);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 15px;
-            cursor: pointer;
-            box-shadow: var(--shadow);
-            transition: all 0.2s var(--ease-spring);
-        }
+    .switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
 
-        .btn-glass:hover {
-            background: var(--bg-glass-hover);
-            border-color: var(--border-light);
-            transform: translateY(-2px);
-        }
+    .slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background-color: #52525b;
+      transition: .2s;
+      border-radius: 22px;
+    }
 
-        .btn-glass.active {
-            border-color: var(--accent);
-            color: var(--accent);
-            box-shadow: 0 0 16px var(--accent-glow);
-        }
+    .slider:before {
+      position: absolute;
+      content: "";
+      height: 16px;
+      width: 16px;
+      left: 3px;
+      bottom: 3px;
+      background-color: white;
+      transition: .2s;
+      border-radius: 50%;
+    }
 
-        /* Кнопки навигации по карте */
-        .map-controls-stack {
-            position: absolute;
-            right: 14px;
-            bottom: 120px;
-            z-index: 10;
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-            pointer-events: auto;
-        }
+    input:checked + .slider {
+      background-color: #2563eb;
+    }
 
-        /* Выбор подложек карт */
-        .basemap-picker-card {
-            position: absolute;
-            left: 14px;
-            bottom: 120px;
-            z-index: 10;
-            padding: 6px;
-            display: flex;
-            gap: 6px;
-            pointer-events: auto;
-            border-radius: 18px;
-        }
+    input:checked + .slider:before {
+      transform: translateX(18px);
+    }
 
-        .basemap-thumb {
-            width: 58px;
-            height: 52px;
-            border-radius: 12px;
-            border: 2px solid transparent;
-            cursor: pointer;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            gap: 4px;
-            font-size: 10px;
-            font-weight: 700;
-            color: var(--text-secondary);
-            background: rgba(255, 255, 255, 0.05);
-            transition: all 0.2s;
-        }
+    /* Настройки внутри слоя (прозрачность) */
+    .layer-controls {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      padding-top: 8px;
+      border-top: 1px solid #3f3f46;
+    }
 
-        .basemap-thumb:hover { border-color: var(--border-light); }
-        .basemap-thumb.active {
-            border-color: var(--accent);
-            color: #fff;
-            background: rgba(59, 130, 246, 0.25);
-        }
+    .layer-controls label {
+      font-size: 12px;
+      color: #a1a1aa;
+      display: flex;
+      justify-content: space-between;
+    }
 
-        /* Левая панель слоев */
-        .left-sidebar {
-            position: absolute;
-            top: 72px;
-            left: 14px;
-            z-index: 9;
-            width: 230px;
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-            pointer-events: none;
-            transition: transform 0.3s var(--ease-spring), opacity 0.3s;
-        }
-
-        .left-sidebar.collapsed {
-            transform: translateX(-260px);
-            opacity: 0;
-        }
-
-        /* Правая панель аналитики */
-        .right-sidebar {
-            position: absolute;
-            top: 72px;
-            right: 14px;
-            z-index: 9;
-            width: 280px;
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-            pointer-events: none;
-            transition: transform 0.3s var(--ease-spring), opacity 0.3s;
-        }
-
-        .right-sidebar.collapsed {
-            transform: translateX(310px);
-            opacity: 0;
-        }
-
-        .panel-card {
-            pointer-events: auto;
-            padding: 14px;
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-        }
-
-        .card-title {
-            font-size: 11px;
-            font-weight: 800;
-            color: var(--text-secondary);
-            text-transform: uppercase;
-            letter-spacing: 0.8px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .panel-close-btn {
-            background: none;
-            border: none;
-            color: var(--text-secondary);
-            cursor: pointer;
-            font-size: 14px;
-            padding: 2px 6px;
-            border-radius: 6px;
-        }
-        .panel-close-btn:hover { color: #fff; background: rgba(255,255,255,0.1); }
-
-        .layer-btn {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            padding: 10px 12px;
-            border-radius: 12px;
-            background: rgba(255, 255, 255, 0.04);
-            border: 1px solid transparent;
-            color: var(--text-primary);
-            font-size: 12px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-
-        .layer-btn:hover { background: rgba(255, 255, 255, 0.08); }
-        .layer-btn.active {
-            background: rgba(59, 130, 246, 0.2);
-            border-color: var(--accent);
-            color: #60a5fa;
-        }
-
-        .stat-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 8px;
-        }
-
-        .stat-box {
-            background: rgba(255, 255, 255, 0.04);
-            border: 1px solid var(--border);
-            padding: 8px 10px;
-            border-radius: 10px;
-        }
-
-        .stat-lbl { font-size: 10px; color: var(--text-secondary); display: block; }
-        .stat-val { font-size: 13px; font-weight: 800; color: #fff; margin-top: 2px; }
-
-        .mini-chart-container {
-            width: 100%;
-            height: 70px;
-            position: relative;
-        }
-
-        /* Плеер */
-        .player-deck {
-            position: absolute;
-            bottom: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            z-index: 10;
-            width: calc(100% - 28px);
-            max-width: 680px;
-            padding: 14px 20px;
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-            pointer-events: auto;
-            border-radius: 22px;
-        }
-
-        .player-top {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            width: 100%;
-        }
-
-        .status-badge {
-            font-size: 10px;
-            font-weight: 800;
-            color: #10b981;
-            background: rgba(16, 185, 129, 0.15);
-            border: 1px solid rgba(16, 185, 129, 0.3);
-            padding: 4px 10px;
-            border-radius: 10px;
-            display: flex;
-            align-items: center;
-            gap: 6px;
-        }
-
-        .pulse-dot {
-            width: 6px;
-            height: 6px;
-            border-radius: 50%;
-            background: currentColor;
-            animation: blink 1.2s infinite;
-        }
-
-        @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
-
-        .time-readout {
-            font-size: 18px;
-            font-weight: 800;
-            color: #60a5fa;
-            font-family: var(--font-mono);
-        }
-
-        .player-controls {
-            display: flex;
-            align-items: center;
-            gap: 14px;
-            width: 100%;
-        }
-
-        .play-btn-main {
-            width: 44px;
-            height: 44px;
-            border-radius: 14px;
-            background: var(--accent);
-            border: none;
-            color: #fff;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 16px;
-            cursor: pointer;
-            box-shadow: 0 0 16px var(--accent-glow);
-            transition: all 0.2s;
-        }
-        .play-btn-main:hover { transform: scale(1.05); }
-
-        .range-container { flex: 1; }
-
-        input[type="range"] {
-            -webkit-appearance: none;
-            width: 100%;
-            height: 6px;
-            border-radius: 3px;
-            background: rgba(255, 255, 255, 0.2);
-            outline: none;
-        }
-
-        input[type="range"]::-webkit-slider-thumb {
-            -webkit-appearance: none;
-            width: 18px;
-            height: 18px;
-            border-radius: 50%;
-            background: #fff;
-            border: 2px solid var(--accent);
-            cursor: pointer;
-        }
-
-        /* Настройки Drawer */
-        .drawer-overlay {
-            position: fixed;
-            top: 0; left: 0; right: 0; bottom: 0;
-            background: rgba(0, 0, 0, 0.65);
-            backdrop-filter: blur(10px);
-            z-index: 100;
-            opacity: 0;
-            visibility: hidden;
-            transition: opacity 0.3s;
-        }
-
-        .drawer-overlay.active { opacity: 1; visibility: visible; }
-
-        .drawer-sheet {
-            position: fixed;
-            bottom: 0; left: 0; right: 0;
-            z-index: 101;
-            background: var(--bg-card);
-            border-top: 1px solid var(--border-light);
-            border-radius: 28px 28px 0 0;
-            padding: 24px;
-            transform: translateY(100%);
-            transition: transform 0.3s var(--ease-spring);
-        }
-
-        .drawer-sheet.active { transform: translateY(0); }
-
-        .toast {
-            position: fixed;
-            top: 70px;
-            left: 50%;
-            z-index: 200;
-            background: var(--accent);
-            color: #fff;
-            padding: 10px 20px;
-            border-radius: 20px;
-            font-size: 13px;
-            font-weight: 700;
-            opacity: 0;
-            transform: translate(-50%, -15px);
-            transition: all 0.3s;
-            pointer-events: none;
-        }
-        .toast.active { opacity: 1; transform: translate(-50%, 0); }
-
-        .telemetry-bar {
-            position: absolute;
-            bottom: 6px;
-            left: 14px;
-            z-index: 5;
-            font-size: 10px;
-            font-family: var(--font-mono);
-            color: var(--text-muted);
-            display: flex;
-            gap: 12px;
-            pointer-events: none;
-        }
-
-        @media (max-width: 768px) {
-            .basemap-picker-card, .map-controls-stack { bottom: 175px; }
-            .left-sidebar { width: 190px; }
-            .right-sidebar { width: 240px; }
-        }
-    </style>
+    .layer-controls input[type="range"] {
+      width: 100%;
+      accent-color: #2563eb;
+      cursor: pointer;
+    }
+  </style>
 </head>
 <body>
 
-<div id="map"></div>
-<canvas id="windCanvas"></canvas>
-<div class="toast" id="toast"></div>
+  <!-- Карта -->
+  <div id="map">
+    <span>Область карты</span>
+  </div>
 
-<!-- Телеметрия -->
-<div class="telemetry-bar">
-    <span id="fpsCount">FPS: 60</span>
-    <span id="latVal">LAT: 55.751</span>
-    <span id="lonVal">LON: 37.618</span>
-</div>
-
-<!-- Верхняя панель навигации -->
-<div class="top-deck">
-    <div class="glass-pill brand-pill">
-        <i class="fa-solid fa-radar"></i> METEO PRO
+  <!-- Интерфейс поверх карты -->
+  <div class="ui-overlay">
+    
+    <!-- Кнопка вызова панели -->
+    <div class="top-bar">
+      <button id="open-layers-btn" class="btn ui-element">
+        <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <polygon points="12 2 2 7 12 12 22 7 12 2"/>
+          <polyline points="2 17 12 22 22 17"/>
+          <polyline points="2 12 12 17 22 12"/>
+        </svg>
+        Слои
+      </button>
     </div>
 
-    <div class="search-container">
-        <div class="glass-pill search-pill">
-            <i class="fa-solid fa-magnifying-glass" style="color: var(--text-secondary);"></i>
-            <input type="text" id="searchInput" placeholder="Поиск города или координат..." oninput="GeoEngine.onSearchInput(this.value)">
-        </div>
-        <div class="search-results" id="searchResults"></div>
-    </div>
+    <!-- Панель слоев (Закрыта по умолчанию) -->
+    <aside id="layers-panel" class="panel ui-element">
+      <div class="panel-header">
+        <h3>Слои карты</h3>
+        <button id="close-layers-btn" class="close-btn">&times;</button>
+      </div>
 
-    <div class="tools-group">
-        <!-- Кнопки управления боковыми панелями -->
-        <button class="btn-glass active" id="toggleLeftBtn" onclick="UIController.toggleLeftSidebar()" title="Панель слоев">
-            <i class="fa-solid fa-layer-group"></i>
-        </button>
-        <button class="btn-glass active" id="toggleRightBtn" onclick="UIController.toggleRightSidebar()" title="Панель аналитики">
-            <i class="fa-solid fa-chart-line"></i>
-        </button>
-        <button class="btn-glass" onclick="GeoEngine.locateUser()" title="Моя геопозиция">
-            <i class="fa-solid fa-crosshairs"></i>
-        </button>
-        <button class="btn-glass" id="windBtn" onclick="WindEngine.toggle()" title="Анимация ветра">
-            <i class="fa-solid fa-wind"></i>
-        </button>
-        <button class="btn-glass" id="audioBtn" onclick="AudioEngine.toggleAmbience()" title="Звуковой эмбиент дождя">
-            <i class="fa-solid fa-volume-xmark"></i>
-        </button>
-        <button class="btn-glass" onclick="UIController.toggleDrawer()" title="Настройки">
-            <i class="fa-solid fa-sliders"></i>
-        </button>
-    </div>
-</div>
-
-<!-- Подложки карт (Стабильные Esri & CartoDB) -->
-<div class="glass-pill basemap-picker-card">
-    <div class="basemap-thumb active" onclick="BaseMapEngine.switchBaseMap('dark', this)">
-        <i class="fa-solid fa-moon"></i> Тёмная
-    </div>
-    <div class="basemap-thumb" onclick="BaseMapEngine.switchBaseMap('satellite', this)">
-        <i class="fa-solid fa-earth-americas"></i> Спутник
-    </div>
-    <div class="basemap-thumb" onclick="BaseMapEngine.switchBaseMap('streets', this)">
-        <i class="fa-solid fa-map"></i> Схема
-    </div>
-    <div class="basemap-thumb" onclick="BaseMapEngine.switchBaseMap('topo', this)">
-        <i class="fa-solid fa-mountain"></i> Рельеф
-    </div>
-</div>
-
-<!-- Кастомные кнопки управления картой -->
-<div class="map-controls-stack">
-    <button class="btn-glass" onclick="GeoEngine.zoomIn()" title="Увеличить">
-        <i class="fa-solid fa-plus"></i>
-    </button>
-    <button class="btn-glass" onclick="GeoEngine.zoomOut()" title="Уменьшить">
-        <i class="fa-solid fa-minus"></i>
-    </button>
-    <button class="btn-glass" onclick="GeoEngine.resetView()" title="Сбросить вид">
-        <i class="fa-solid fa-compass"></i>
-    </button>
-    <button class="btn-glass" onclick="UIController.toggleFullscreen()" title="Полноэкранный режим">
-        <i class="fa-solid fa-expand"></i>
-    </button>
-</div>
-
-<!-- Левая панель слоев -->
-<div class="left-sidebar" id="leftSidebar">
-    <div class="glass-pill panel-card">
-        <div class="card-title">
-            <span>Метео Слои</span>
-            <button class="panel-close-btn" onclick="UIController.toggleLeftSidebar()"><i class="fa-solid fa-xmark"></i></button>
-        </div>
-        <button class="layer-btn active" onclick="LayerManager.switchLayer('radar', this)">
-            <i class="fa-solid fa-cloud-showers-heavy"></i> Радар осадков
-        </button>
-        <button class="layer-btn" onclick="LayerManager.switchLayer('clouds', this)">
-            <i class="fa-solid fa-cloud"></i> Облачность
-        </button>
-        <button class="layer-btn" onclick="LayerManager.switchLayer('wind_speed', this)">
-            <i class="fa-solid fa-wind"></i> Поки ветра
-        </button>
-        <button class="layer-btn" onclick="LayerManager.switchLayer('temp', this)">
-            <i class="fa-solid fa-temperature-high"></i> Температура
-        </button>
-        <button class="layer-btn" onclick="LayerManager.switchLayer('lightning', this)">
-            <i class="fa-solid fa-bolt"></i> Грозы (Live)
-        </button>
-    </div>
-</div>
-
-<!-- Правая панель аналитики -->
-<div class="right-sidebar" id="rightSidebar">
-    <div class="glass-pill panel-card">
-        <div class="card-title">
-            <span>Анализ точки</span>
-            <button class="panel-close-btn" onclick="UIController.toggleRightSidebar()"><i class="fa-solid fa-xmark"></i></button>
-        </div>
-        <div style="font-size:11px; color:var(--text-secondary);" id="activePointCoord">Москва (55.75, 37.61)</div>
-        <div class="stat-grid">
-            <div class="stat-box">
-                <span class="stat-lbl">Температура</span>
-                <span class="stat-val" id="tempValue">-- °C</span>
-            </div>
-            <div class="stat-box">
-                <span class="stat-lbl">Осадки</span>
-                <span class="stat-val" id="rainRate">0.0 мм/ч</span>
-            </div>
-            <div class="stat-box">
-                <span class="stat-lbl">Ветер</span>
-                <span class="stat-val" id="windSpeed">-- м/с</span>
-            </div>
-            <div class="stat-box">
-                <span class="stat-lbl">Давление</span>
-                <span class="stat-val" id="pressValue">-- hPa</span>
-            </div>
-        </div>
-        <div class="card-title" style="margin-top:4px;">Прогноз осадков (24 ч)</div>
-        <div class="mini-chart-container">
-            <canvas id="miniChartCanvas"></canvas>
-        </div>
-    </div>
-</div>
-
-<!-- Плеер радара -->
-<div class="glass-pill player-deck">
-    <div class="player-top">
-        <div class="status-badge" id="statusBadge">
-            <div class="pulse-dot"></div>
-            <span id="statusText">LIVE РАДАР</span>
-        </div>
-        <div class="time-readout" id="timeReadout">--:--:--</div>
-        <div style="font-size:11px; color:var(--text-secondary);" id="dateReadout">-- --- ----</div>
-    </div>
-    <div class="player-controls">
-        <button class="play-btn-main" id="playBtn" onclick="RadarEngine.togglePlay()">
-            <i class="fa-solid fa-play"></i>
-        </button>
-        <div class="range-container">
-            <input type="range" id="timeSlider" min="0" max="100" value="0" oninput="RadarEngine.onSeek(this.value)">
-        </div>
-        <button class="btn-glass" style="width:40px; height:40px; font-size:12px; font-weight:800;" onclick="RadarEngine.changeSpeed()">
-            <span id="speedVal">1x</span>
-        </button>
-    </div>
-</div>
-
-<!-- Drawer Настроек -->
-<div class="drawer-overlay" id="drawerOverlay" onclick="UIController.toggleDrawer()"></div>
-<div class="drawer-sheet" id="drawerSheet">
-    <div class="card-title" style="font-size:14px; margin-bottom:16px;">
-        <span>Настройки отображения</span>
-        <i class="fa-solid fa-xmark" style="cursor:pointer;" onclick="UIController.toggleDrawer()"></i>
-    </div>
-    <div style="display:flex; flex-direction:column; gap:16px;">
-        <div>
-            <div class="card-title" style="margin-bottom:6px;">Прозрачность слоев</div>
-            <input type="range" min="10" max="100" value="80" oninput="LayerManager.setOpacity(this.value)">
-        </div>
-    </div>
-</div>
-
-<script>
-/**
- * 1. BASE MAPS ENGINE (Стабильные подложки)
- */
-const BaseMapEngine = {
-    currentLayer: null,
-    providers: {
-        dark: {
-            url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
-            opts: { maxZoom: 19, subdomains: 'abcd', attribution: '&copy; CartoDB' }
-        },
-        satellite: {
-            url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-            opts: { maxZoom: 18, attribution: '&copy; Esri' }
-        },
-        streets: {
-            url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-            opts: { maxZoom: 19, subdomains: 'abc', attribution: '&copy; OpenStreetMap' }
-        },
-        topo: {
-            url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}',
-            opts: { maxZoom: 18, attribution: '&copy; Esri Topo' }
-        }
-    },
-
-    init() {
-        const p = this.providers.dark;
-        this.currentLayer = L.tileLayer(p.url, p.opts).addTo(GeoEngine.map);
-    },
-
-    switchBaseMap(type, elem) {
-        document.querySelectorAll('.basemap-thumb').forEach(el => el.classList.remove('active'));
-        if (elem) elem.classList.add('active');
-
-        if (this.currentLayer) {
-            GeoEngine.map.removeLayer(this.currentLayer);
-        }
-        const p = this.providers[type];
-        this.currentLayer = L.tileLayer(p.url, p.opts).addTo(GeoEngine.map);
-        UIController.showToast(`Подложка: ${type.toUpperCase()}`);
-    }
-};
-
-/**
- * 2. GEOGRAPHIC ENGINE
- */
-const GeoEngine = {
-    map: null,
-    defaultCenter: [55.7512, 37.6184],
-    defaultZoom: 6,
-    activeMarker: null,
-
-    init() {
-        this.map = L.map('map', {
-            center: this.defaultCenter,
-            zoom: this.defaultZoom,
-            zoomControl: false,
-            attributionControl: false
-        });
-
-        BaseMapEngine.init();
-
-        this.map.on('move', () => {
-            const c = this.map.getCenter();
-            document.getElementById('latVal').innerText = `LAT: ${c.lat.toFixed(3)}`;
-            document.getElementById('lonVal').innerText = `LON: ${c.lon.toFixed(3)}`;
-        });
-
-        this.map.on('click', (e) => {
-            StormInspector.analyzePoint(e.latlng.lat, e.latlng.lng);
-        });
-
-        window.addEventListener('resize', () => this.map.invalidateSize());
-    },
-
-    zoomIn() { this.map.zoomIn(); },
-    zoomOut() { this.map.zoomOut(); },
-    resetView() { this.map.flyTo(this.defaultCenter, this.defaultZoom, { duration: 1 }); },
-
-    locateUser() {
-        if (!navigator.geolocation) return;
-        navigator.geolocation.getCurrentPosition(pos => {
-            const lat = pos.coords.latitude;
-            const lon = pos.coords.longitude;
-            this.map.flyTo([lat, lon], 10, { duration: 1.2 });
-            StormInspector.analyzePoint(lat, lon);
-            UIController.showToast("Геопозиция определена");
-        });
-    },
-
-    async onSearchInput(val) {
-        const resBox = document.getElementById('searchResults');
-        if (!val.trim()) { resBox.style.display = 'none'; return; }
-
-        try {
-            const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(val)}&limit=4`);
-            const data = await res.json();
-            if (data.length) {
-                resBox.innerHTML = data.map(i => `
-                    <div class="search-item" onclick="GeoEngine.selectCity(${i.lat}, ${i.lon}, '${i.display_name.replace(/'/g, "\\'")}')">
-                        <i class="fa-solid fa-location-dot" style="color:var(--accent); margin-right:8px;"></i>${i.display_name}
-                    </div>
-                `).join('');
-                resBox.style.display = 'block';
-            }
-        } catch (e) { resBox.style.display = 'none'; }
-    },
-
-    selectCity(lat, lon, name) {
-        document.getElementById('searchResults').style.display = 'none';
-        this.map.flyTo([lat, lon], 10, { duration: 1.2 });
-        StormInspector.analyzePoint(lat, lon, name.split(',')[0]);
-    }
-};
-
-/**
- * 3. RADAR & METEO LAYERS ENGINE (RainViewer Integration)
- */
-const RadarEngine = {
-    radarFrames: [],
-    satFrames: [],
-    currentIndex: 0,
-    isPlaying: false,
-    timer: null,
-    speed: 500,
-    activeTileLayer: null,
-    radarOpacity: 0.8,
-    activeMode: 'radar',
-
-    async init() {
-        try {
-            const res = await fetch('https://api.rainviewer.com/public/weather-maps.json');
-            const data = await res.json();
-            this.radarFrames = [...(data.radar.past || []), ...(data.radar.nowcast || [])];
-            this.satFrames = data.satellite?.infrared || [];
-
-            if (this.radarFrames.length) {
-                this.currentIndex = this.radarFrames.length - 1;
-                this.updateLayer();
-            }
-        } catch (e) {
-            UIController.showToast("Ошибка получения метеоданных");
-        }
-    },
-
-    updateLayer() {
-        const frames = (this.activeMode === 'clouds' && this.satFrames.length) ? this.satFrames : this.radarFrames;
-        if (!frames.length || !frames[this.currentIndex]) return;
-
-        const frame = frames[this.currentIndex];
-        const path = this.activeMode === 'clouds' ? 'sat' : 'radar';
-        const url = `https://tilecache.rainviewer.com/v2/${path}/${frame.time}/256/{z}/{x}/{y}/2/1_1.png`;
-
-        if (this.activeTileLayer) {
-            GeoEngine.map.removeLayer(this.activeTileLayer);
-        }
-
-        this.activeTileLayer = L.tileLayer(url, { opacity: this.radarOpacity, zIndex: 100 }).addTo(GeoEngine.map);
-
-        const date = new Date(frame.time * 1000);
-        document.getElementById('timeReadout').innerText = date.toLocaleTimeString();
-        document.getElementById('dateReadout').innerText = date.toLocaleDateString([], { day:'2-digit', month:'short', year:'numeric' }).toUpperCase();
+      <div class="panel-body">
         
-        const pct = (this.currentIndex / (frames.length - 1)) * 100;
-        document.getElementById('timeSlider').value = isNaN(pct) ? 0 : pct;
-    },
+        <!-- Слой 1: Радар -->
+        <div class="layer-card">
+          <div class="layer-main">
+            <span class="layer-title">Радар осадков</span>
+            <label class="switch">
+              <input type="checkbox" class="layer-toggle" data-layer="radar" checked>
+              <span class="slider"></span>
+            </label>
+          </div>
+          <div class="layer-controls">
+            <label>Прозрачность <span id="radar-val">80%</span></label>
+            <input type="range" class="opacity-slider" data-layer="radar" min="0" max="100" value="80">
+          </div>
+        </div>
 
-    togglePlay() {
-        const frames = (this.activeMode === 'clouds' && this.satFrames.length) ? this.satFrames : this.radarFrames;
-        if (!frames.length) return;
+        <!-- Слой 2: Границы регионов -->
+        <div class="layer-card">
+          <div class="layer-main">
+            <span class="layer-title">Границы регионов</span>
+            <label class="switch">
+              <input type="checkbox" class="layer-toggle" data-layer="borders" checked>
+              <span class="slider"></span>
+            </label>
+          </div>
+          <div class="layer-controls">
+            <label>Прозрачность <span id="borders-val">100%</span></label>
+            <input type="range" class="opacity-slider" data-layer="borders" min="0" max="100" value="100">
+          </div>
+        </div>
 
-        this.isPlaying = !this.isPlaying;
-        document.getElementById('playBtn').innerHTML = this.isPlaying ? '<i class="fa-solid fa-pause"></i>' : '<i class="fa-solid fa-play"></i>';
+        <!-- Слой 3: Облачность -->
+        <div class="layer-card">
+          <div class="layer-main">
+            <span class="layer-title">Спутниковая облачность</span>
+            <label class="switch">
+              <input type="checkbox" class="layer-toggle" data-layer="clouds">
+              <span class="slider"></span>
+            </label>
+          </div>
+          <div class="layer-controls">
+            <label>Прозрачность <span id="clouds-val">50%</span></label>
+            <input type="range" class="opacity-slider" data-layer="clouds" min="0" max="100" value="50">
+          </div>
+        </div>
+
+      </div>
+    </aside>
+
+  </div>
+
+  <script>
+    /* =========================================================
+       1. МГНОВЕННЫЙ ЗВУК НАЖАТИЯ (Web Audio API)
+       ========================================================= */
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+    function playClickSound() {
+      if (audioCtx.state === 'suspended') {
+        audioCtx.resume();
+      }
+      
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(600, audioCtx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(120, audioCtx.currentTime + 0.03);
+      
+      gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.03);
+      
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      
+      osc.start();
+      osc.stop(audioCtx.currentTime + 0.03);
+    }
+
+    /* =========================================================
+       2. ЗАЩИТА ОТ ДВОЙНЫХ НАЖАТИЙ (DEBOUNCE)
+       ========================================================= */
+    let isBlocked = false;
+    const DEBOUNCE_MS = 250;
+
+    function safeAction(callback) {
+      return function(e) {
+        if (isBlocked) return;
+        isBlocked = true;
         
-        if (this.isPlaying) {
-            this.timer = setInterval(() => {
-                this.currentIndex = (this.currentIndex + 1) % frames.length;
-                this.updateLayer();
-            }, this.speed);
-        } else {
-            clearInterval(this.timer);
-        }
-    },
+        playClickSound();
+        callback(e);
 
-    onSeek(val) {
-        const frames = (this.activeMode === 'clouds' && this.satFrames.length) ? this.satFrames : this.radarFrames;
-        if (!frames.length) return;
-        this.currentIndex = Math.round((val / 100) * (frames.length - 1));
-        this.updateLayer();
-    },
-
-    changeSpeed() {
-        const speeds = [500, 250, 1000];
-        const labels = ['1x', '2x', '0.5x'];
-        let idx = (speeds.indexOf(this.speed) + 1) % speeds.length;
-        this.speed = speeds[idx];
-        document.getElementById('speedVal').innerText = labels[idx];
-        if (this.isPlaying) { this.togglePlay(); this.togglePlay(); }
+        setTimeout(() => {
+          isBlocked = false;
+        }, DEBOUNCE_MS);
+      };
     }
-};
 
-/**
- * 4. LIGHTNING LIVE STRIKES LAYER
- */
-const LightningEngine = {
-    layerGroup: L.layerGroup(),
-    timer: null,
-    isActive: false,
+    /* =========================================================
+       3. ЛОГИКА ПАНЕЛИ И СЛОЕВ
+       ========================================================= */
+    const panel = document.getElementById('layers-panel');
+    const openBtn = document.getElementById('open-layers-btn');
+    const closeBtn = document.getElementById('close-layers-btn');
 
-    toggle(enable) {
-        this.isActive = enable;
-        if (enable) {
-            this.layerGroup.addTo(GeoEngine.map);
-            this.startSimulation();
-            UIController.showToast("Слой гроз активен");
-        } else {
-            GeoEngine.map.removeLayer(this.layerGroup);
-            clearInterval(this.timer);
-            this.layerGroup.clearLayers();
-        }
-    },
+    // Открытие панели
+    openBtn.addEventListener('click', safeAction(() => {
+      panel.classList.add('is-open');
+    }));
 
-    startSimulation() {
-        this.timer = setInterval(() => {
-            if (!this.isActive) return;
-            const bounds = GeoEngine.map.getBounds();
-            const lat = bounds.getSouth() + Math.random() * (bounds.getNorth() - bounds.getSouth());
-            const lon = bounds.getWest() + Math.random() * (bounds.getEast() - bounds.getWest());
+    // Закрытие панели
+    closeBtn.addEventListener('click', safeAction(() => {
+      panel.classList.remove('is-open');
+    }));
 
-            const marker = L.circleMarker([lat, lon], {
-                radius: 8,
-                color: '#f59e0b',
-                fillColor: '#ef4444',
-                fillOpacity: 0.9
-            }).addTo(this.layerGroup);
+    // Переключение видимости слоев
+    document.querySelectorAll('.layer-toggle').forEach(toggle => {
+      toggle.addEventListener('change', safeAction((e) => {
+        const layerName = e.target.dataset.layer;
+        const isVisible = e.target.checked;
+        console.log(`Слой "${layerName}": ${isVisible ? 'Включен' : 'Выключен'}`);
+        // Здесь вызывается выключение слоя на карте (Leaflet/OpenLayers/Mapbox)
+      }));
+    });
 
-            setTimeout(() => this.layerGroup.removeLayer(marker), 2500);
-        }, 1200);
-    }
-};
+    // Регулировка прозрачности слоев
+    document.querySelectorAll('.opacity-slider').forEach(slider => {
+      slider.addEventListener('input', (e) => {
+        const layerName = e.target.dataset.layer;
+        const val = e.target.value;
+        document.getElementById(`${layerName}-val`).textContent = `${val}%`;
+        console.log(`Прозрачность слоя "${layerName}": ${val}%`);
+        // Здесь меняется opacity слоя на карте
+      });
 
-/**
- * 5. CANVAS WIND PARTICLES ENGINE
- */
-const WindEngine = {
-    canvas: null,
-    ctx: null,
-    particles: [],
-    isRunning: false,
-
-    init() {
-        this.canvas = document.getElementById('windCanvas');
-        this.ctx = this.canvas.getContext('2d');
-        this.resize();
-        window.addEventListener('resize', () => this.resize());
-    },
-
-    resize() {
-        this.canvas.width = window.innerWidth;
-        this.canvas.height = window.innerHeight;
-    },
-
-    toggle() {
-        this.isRunning = !this.isRunning;
-        document.getElementById('windBtn').classList.toggle('active', this.isRunning);
-        if (this.isRunning) {
-            this.createParticles();
-            this.loop();
-            UIController.showToast("Анимация ветра включена");
-        } else {
-            this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-        }
-    },
-
-    createParticles() {
-        this.particles = [];
-        for (let i = 0; i < 250; i++) {
-            this.particles.push({
-                x: Math.random() * this.canvas.width,
-                y: Math.random() * this.canvas.height,
-                life: Math.random() * 100
-            });
-        }
-    },
-
-    loop() {
-        if (!this.isRunning) return;
-        this.ctx.fillStyle = 'rgba(7, 9, 14, 0.08)';
-        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
-
-        this.ctx.strokeStyle = 'rgba(96, 165, 250, 0.6)';
-        this.ctx.lineWidth = 1.2;
-        this.ctx.beginPath();
-
-        for (let p of this.particles) {
-            this.ctx.moveTo(p.x, p.y);
-            p.x += 1.8 + Math.sin(p.y * 0.01);
-            p.y += Math.cos(p.x * 0.01) * 0.5;
-            p.life--;
-
-            this.ctx.lineTo(p.x, p.y);
-
-            if (p.x > this.canvas.width || p.y > this.canvas.height || p.life <= 0) {
-                p.x = Math.random() * this.canvas.width;
-                p.y = Math.random() * this.canvas.height;
-                p.life = 100;
-            }
-        }
-        this.ctx.stroke();
-        requestAnimationFrame(() => this.loop());
-    }
-};
-
-/**
- * 6. STORM INSPECTOR & OPEN-METEO API
- */
-const StormInspector = {
-    async analyzePoint(lat, lon, label) {
-        document.getElementById('activePointCoord').innerText = label ? `${label} (${lat.toFixed(2)}, ${lon.toFixed(2)})` : `Координаты: ${lat.toFixed(2)}, ${lon.toFixed(2)}`;
-        
-        if (GeoEngine.activeMarker) GeoEngine.map.removeLayer(GeoEngine.activeMarker);
-        GeoEngine.activeMarker = L.circleMarker([lat, lon], { radius: 6, color: '#3b82f6', fillColor: '#fff', fillOpacity: 1 }).addTo(GeoEngine.map);
-
-        try {
-            const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true&hourly=precipitation`);
-            const data = await res.json();
-
-            if (data.current_weather) {
-                document.getElementById('tempValue').innerText = `${data.current_weather.temperature} °C`;
-                document.getElementById('windSpeed').innerText = `${data.current_weather.windspeed} м/с`;
-                document.getElementById('pressValue').innerText = `${Math.round(1013 - lat * 0.2)} hPa`;
-            }
-
-            if (data.hourly && data.hourly.precipitation) {
-                const precip = data.hourly.precipitation.slice(0, 24);
-                document.getElementById('rainRate').innerText = `${precip[0] || 0.0} мм/ч`;
-                ChartEngine.renderMiniChart(precip);
-            }
-        } catch (e) {
-            document.getElementById('tempValue').innerText = "18.5 °C";
-            document.getElementById('rainRate').innerText = "0.2 мм/ч";
-            ChartEngine.renderMiniChart([0,0,0.2,0.5,1.2,0.4,0,0,0,0,0,0]);
-        }
-    }
-};
-
-const ChartEngine = {
-    renderMiniChart(values = []) {
-        const canvas = document.getElementById('miniChartCanvas');
-        if (!canvas) return;
-        const ctx = canvas.getContext('2d');
-        canvas.width = canvas.parentElement.clientWidth;
-        canvas.height = 70;
-
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        if (!values.length) values = [0, 0.5, 1, 0.2, 0, 0, 0];
-
-        const max = Math.max(...values, 2);
-        const step = canvas.width / (values.length - 1);
-
-        ctx.beginPath();
-        ctx.strokeStyle = '#3b82f6';
-        ctx.lineWidth = 2;
-        ctx.fillStyle = 'rgba(59, 130, 246, 0.2)';
-
-        ctx.moveTo(0, canvas.height);
-        values.forEach((v, i) => {
-            const x = i * step;
-            const y = canvas.height - (v / max) * (canvas.height - 10);
-            ctx.lineTo(x, y);
-        });
-
-        ctx.lineTo(canvas.width, canvas.height);
-        ctx.closePath();
-        ctx.fill();
-        ctx.stroke();
-    }
-};
-
-/**
- * 7. LAYER MANAGER
- */
-const LayerManager = {
-    switchLayer(type, btn) {
-        document.querySelectorAll('.layer-btn').forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-
-        LightningEngine.toggle(type === 'lightning');
-
-        if (type === 'radar' || type === 'clouds') {
-            RadarEngine.activeMode = type;
-            RadarEngine.updateLayer();
-        } else if (type === 'wind_speed') {
-            if (!WindEngine.isRunning) WindEngine.toggle();
-        }
-
-        UIController.showToast(`Выбран слой: ${btn.innerText.trim()}`);
-    },
-
-    setOpacity(val) {
-        RadarEngine.radarOpacity = val / 100;
-        if (RadarEngine.activeTileLayer) {
-            RadarEngine.activeTileLayer.setOpacity(RadarEngine.radarOpacity);
-        }
-    }
-};
-
-/**
- * 8. AUDIO AMBIENCE ENGINE (Web Audio API Synthesizer)
- */
-const AudioEngine = {
-    audioCtx: null,
-    isMuted: true,
-    noiseNode: null,
-
-    toggleAmbience() {
-        this.isMuted = !this.isMuted;
-        document.getElementById('audioBtn').classList.toggle('active', !this.isMuted);
-        document.getElementById('audioBtn').innerHTML = this.isMuted ? '<i class="fa-solid fa-volume-xmark"></i>' : '<i class="fa-solid fa-volume-high"></i>';
-
-        if (!this.isMuted) {
-            this.startRainSynth();
-            UIController.showToast("Аудио-эмбиент включен");
-        } else {
-            this.stopRainSynth();
-            UIController.showToast("Звук отключен");
-        }
-    },
-
-    startRainSynth() {
-        if (!this.audioCtx) {
-            this.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        }
-        const bufferSize = this.audioCtx.sampleRate * 2;
-        const noiseBuffer = this.audioCtx.createBuffer(1, bufferSize, this.audioCtx.sampleRate);
-        const output = noiseBuffer.getChannelData(0);
-        for (let i = 0; i < bufferSize; i++) {
-            output[i] = Math.random() * 2 - 1;
-        }
-
-        this.noiseNode = this.audioCtx.createBufferSource();
-        this.noiseNode.buffer = noiseBuffer;
-        this.noiseNode.loop = true;
-
-        const filter = this.audioCtx.createBiquadFilter();
-        filter.type = 'lowpass';
-        filter.frequency.value = 800;
-
-        const gain = this.audioCtx.createGain();
-        gain.gain.value = 0.15;
-
-        this.noiseNode.connect(filter);
-        filter.connect(gain);
-        gain.connect(this.audioCtx.destination);
-
-        this.noiseNode.start();
-    },
-
-    stopRainSynth() {
-        if (this.noiseNode) {
-            this.noiseNode.stop();
-            this.noiseNode = null;
-        }
-    }
-};
-
-/**
- * 9. UI & SCREEN CONTROLLER
- */
-const UIController = {
-    toggleLeftSidebar() {
-        const sb = document.getElementById('leftSidebar');
-        const btn = document.getElementById('toggleLeftBtn');
-        sb.classList.toggle('collapsed');
-        btn.classList.toggle('active', !sb.classList.contains('collapsed'));
-        setTimeout(() => GeoEngine.map.invalidateSize(), 300);
-    },
-
-    toggleRightSidebar() {
-        const sb = document.getElementById('rightSidebar');
-        const btn = document.getElementById('toggleRightBtn');
-        sb.classList.toggle('collapsed');
-        btn.classList.toggle('active', !sb.classList.contains('collapsed'));
-        setTimeout(() => GeoEngine.map.invalidateSize(), 300);
-    },
-
-    toggleDrawer() {
-        document.getElementById('drawerSheet').classList.toggle('active');
-        document.getElementById('drawerOverlay').classList.toggle('active');
-    },
-
-    toggleFullscreen() {
-        if (!document.fullscreenElement) {
-            document.documentElement.requestFullscreen();
-        } else if (document.exitFullscreen) {
-            document.exitFullscreen();
-        }
-    },
-
-    showToast(msg) {
-        const t = document.getElementById('toast');
-        t.innerText = msg;
-        t.classList.add('active');
-        setTimeout(() => t.classList.remove('active'), 2000);
-    }
-};
-
-// СИСТЕМНЫЙ СТАРТ
-window.addEventListener('DOMContentLoaded', () => {
-    GeoEngine.init();
-    RadarEngine.init();
-    WindEngine.init();
-    StormInspector.analyzePoint(55.7512, 37.6184, "Москва");
-});
-</script>
+      // Звук при завершении перетаскивания ползунка
+      slider.addEventListener('change', () => {
+        playClickSound();
+      });
+    });
+  </script>
 </body>
 </html>

@@ -177,7 +177,6 @@
             background: #162032;
         }
 
-        /* Мгновенная реакция по клику / активному состоянию */
         .icon-btn:active, .icon-btn.active {
             transform: scale(0.92);
             background: #1d4ed8 !important;
@@ -422,7 +421,6 @@
 
     <div class="top-actions">
         <button class="icon-btn" onclick="SafeAction(this, () => QuantumEngine.toggle3D(), 'success')" id="btn3d" title="3D Перспектива"><i class="fa-solid fa-cube"></i></button>
-        <button class="icon-btn" onclick="SafeAction(this, () => AudioSynth.toggle(), 'toggle')" id="btnAudio" title="Акустический эмбиент ветра"><i class="fa-solid fa-volume-high"></i></button>
         <button class="icon-btn" onclick="SafeAction(this, () => UIController.toggleHUD(), 'neutral')" id="btnHud" title="Аналитика"><i class="fa-solid fa-chart-pie"></i></button>
         <button class="icon-btn" onclick="SafeAction(this, () => UIController.toggleDrawer(), 'neutral')" title="Выбор карты и слоев"><i class="fa-solid fa-layer-group"></i></button>
     </div>
@@ -510,14 +508,6 @@
         <div class="map-style-card" onclick="SafeAction(this, (el) => MapStyles.set('osm', el), 'success')"><i class="fa-solid fa-map"></i><br>OSM Standard</div>
     </div>
 
-    <div style="background:#162032; border:1px solid var(--border); border-radius:16px; padding:14px; margin-bottom:16px;">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; font-size:12px;">
-            <span><i class="fa-solid fa-volume-high" style="color:var(--accent-cyan);"></i> Громкость звуков и эмбиента</span>
-            <span id="volumeValueLabel" style="font-family:var(--font-mono); font-weight:700; color:var(--accent-cyan);">70%</span>
-        </div>
-        <input type="range" id="volumeSlider" min="0" max="100" value="70" oninput="AudioSynth.setVolume(this.value)">
-    </div>
-
     <span class="hud-title" style="font-size:12px; color:#fff; margin-bottom:12px; display:block;">Профессиональный пульт слоев</span>
     <div class="layers-grid">
         <div class="layer-card">
@@ -556,8 +546,9 @@
 </div>
 
 <script>
+/* Премиальный синтезатор UI-звуков (в стиле iOS / macOS / передовых интерфейсов) */
 const AudioSynth = {
-    ctx: null, filter: null, noiseGain: null, isPlaying: false, masterVolume: 0.7,
+    ctx: null,
     
     initContext() {
         if (!this.ctx) {
@@ -568,94 +559,70 @@ const AudioSynth = {
         }
     },
 
-    setVolume(val) {
-        this.masterVolume = val / 100;
-        document.getElementById('volumeValueLabel').innerText = `${val}%`;
-        if (this.noiseGain && this.ctx) {
-            this.noiseGain.gain.setValueAtTime(this.masterVolume * 0.05, this.ctx.currentTime);
-        }
-    },
-
-    toggle() {
-        this.initContext();
-        this.isPlaying = !this.isPlaying;
-        document.getElementById('btnAudio').classList.toggle('active', this.isPlaying);
-        if(this.isPlaying) {
-            const buf = this.ctx.createBuffer(1, this.ctx.sampleRate * 2, this.ctx.sampleRate);
-            const data = buf.getChannelData(0);
-            for (let i = 0; i < buf.length; i++) data[i] = Math.random() * 2 - 1;
-            const noise = this.ctx.createBufferSource();
-            noise.buffer = buf; noise.loop = true;
-            this.filter = this.ctx.createBiquadFilter();
-            this.filter.type = 'lowpass'; this.filter.frequency.value = 220;
-            this.noiseGain = this.ctx.createGain(); 
-            this.noiseGain.gain.value = this.masterVolume * 0.05;
-            noise.connect(this.filter); this.filter.connect(this.noiseGain); this.noiseGain.connect(this.ctx.destination);
-            noise.start();
-        } else { this.ctx.suspend(); }
-    },
-
-    adjustByWind(windSpeed) {
-        if(this.filter && this.isPlaying) { this.filter.frequency.value = Math.min(180 + windSpeed * 15, 600); }
-    },
-
     playEffect(type = 'neutral') {
         try {
             this.initContext();
-            if (this.masterVolume <= 0) return;
-
             const now = this.ctx.currentTime;
             const osc = this.ctx.createOscillator();
             const gain = this.ctx.createGain();
             const filter = this.ctx.createBiquadFilter();
-            filter.type = 'lowpass';
             
+            filter.type = 'lowpass';
             osc.connect(filter);
             filter.connect(gain);
             gain.connect(this.ctx.destination);
-            
-            let baseVol = this.masterVolume;
 
             if (type === 'success') {
+                // Мягкий приятный «колокольчик / тик» (высокий чистый тон)
                 osc.type = 'sine';
-                filter.frequency.setValueAtTime(400, now);
-                osc.frequency.setValueAtTime(293.66, now);
-                osc.frequency.exponentialRampToValueAtTime(440, now + 0.15);
+                filter.frequency.setValueAtTime(1200, now);
+                osc.frequency.setValueAtTime(587.33, now); // Ре 5
+                osc.frequency.exponentialRampToValueAtTime(880, now + 0.08); // Ля 5
+                
                 gain.gain.setValueAtTime(0.001, now);
-                gain.gain.linearRampToValueAtTime(0.04 * baseVol, now + 0.03);
-                gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.25);
+                gain.gain.linearRampToValueAtTime(0.06, now + 0.015);
+                gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.12);
+                
                 osc.start(now);
-                osc.stop(now + 0.25);
+                osc.stop(now + 0.12);
             } else if (type === 'toggle') {
-                osc.type = 'sine';
-                filter.frequency.setValueAtTime(350, now);
-                osc.frequency.setValueAtTime(220, now);
-                osc.frequency.exponentialRampToValueAtTime(330, now + 0.1);
+                // Элегантный двойной щелчок (как переключатель тумблера в iOS)
+                osc.type = 'triangle';
+                filter.frequency.setValueAtTime(800, now);
+                osc.frequency.setValueAtTime(440, now);
+                osc.frequency.setValueAtTime(659.25, now + 0.03);
+                
                 gain.gain.setValueAtTime(0.001, now);
-                gain.gain.linearRampToValueAtTime(0.03 * baseVol, now + 0.02);
-                gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.15);
-                osc.start(now);
-                osc.stop(now + 0.15);
-            } else if (type === 'danger') {
-                osc.type = 'sine';
-                filter.frequency.setValueAtTime(250, now);
-                osc.frequency.setValueAtTime(196, now);
-                osc.frequency.exponentialRampToValueAtTime(146.83, now + 0.15);
-                gain.gain.setValueAtTime(0.001, now);
-                gain.gain.linearRampToValueAtTime(0.035 * baseVol, now + 0.02);
-                gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.2);
-                osc.start(now);
-                osc.stop(now + 0.2);
-            } else {
-                osc.type = 'sine';
-                filter.frequency.setValueAtTime(300, now);
-                osc.frequency.setValueAtTime(349.23, now);
-                osc.frequency.exponentialRampToValueAtTime(261.63, now + 0.06);
-                gain.gain.setValueAtTime(0.001, now);
-                gain.gain.linearRampToValueAtTime(0.025 * baseVol, now + 0.01);
+                gain.gain.linearRampToValueAtTime(0.05, now + 0.01);
                 gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.08);
+                
                 osc.start(now);
                 osc.stop(now + 0.08);
+            } else if (type === 'danger') {
+                // Плотный низкий «отклик закрытия»
+                osc.type = 'sine';
+                filter.frequency.setValueAtTime(400, now);
+                osc.frequency.setValueAtTime(300, now);
+                osc.frequency.exponentialRampToValueAtTime(150, now + 0.1);
+                
+                gain.gain.setValueAtTime(0.001, now);
+                gain.gain.linearRampToValueAtTime(0.05, now + 0.01);
+                gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.12);
+                
+                osc.start(now);
+                osc.stop(now + 0.12);
+            } else {
+                // Нейтральный короткий клик (как касание клавиши)
+                osc.type = 'sine';
+                filter.frequency.setValueAtTime(1000, now);
+                osc.frequency.setValueAtTime(523.25, now); // До 5
+                
+                gain.gain.setValueAtTime(0.001, now);
+                gain.gain.linearRampToValueAtTime(0.04, now + 0.01);
+                gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.06);
+                
+                osc.start(now);
+                osc.stop(now + 0.06);
             }
         } catch(e) {}
     }
@@ -663,33 +630,26 @@ const AudioSynth = {
 
 /* ЗАЩИТА ОТ ДВОЙНЫХ КЛИКОВ (DEBOUNCE/LOCK) + МГНОВЕННАЯ СМЕНА ЦВЕТА */
 function SafeAction(element, action, soundType = 'neutral') {
-    // Если кнопка уже заблокирована (защита от частых нажатий), ничего не делаем
     if (element.disabled || element.dataset.locked === "true") return;
 
-    // Блокируем элемент на 300мс для защиты от спама кликами
     element.dataset.locked = "true";
     element.disabled = true;
 
-    // Мгновенно подсвечиваем через inline стили или добавление класса стилизации
     element.style.background = "#1d4ed8";
     element.style.borderColor = "var(--accent)";
     element.style.color = "#ffffff";
 
-    // Воспроизводим звук
     AudioSynth.playEffect(soundType);
 
-    // Выполняем полезное действие
     try {
         action(element);
     } catch (e) {
         console.error(e);
     }
 
-    // Снимаем блокировку через небольшой тайм-аут
     setTimeout(() => {
         element.dataset.locked = "false";
         element.disabled = false;
-        // Возвращаем стили в зависимости от активности (класс active сам подхватит нужный цвет)
         if (!element.classList.contains('active')) {
             element.style.background = '';
             element.style.borderColor = '';
@@ -769,7 +729,6 @@ const QuantumEngine = {
         document.getElementById('valWind').innerText = `${Math.round(wind)} м/с`;
         document.getElementById('valDew').innerText = `${Math.round(cur.dew_point_2m)} °C`;
         document.getElementById('valPress').innerText = `${Math.round(cur.surface_pressure)} hPa`;
-        AudioSynth.adjustByWind(wind);
         if(hourly.surface_pressure) ChartEngine.update(hourly.surface_pressure.slice(0, 24));
     },
     setAltitude(alt, elem) {

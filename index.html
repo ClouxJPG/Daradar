@@ -640,7 +640,7 @@ const QuantumEngine = {
             this.inspectPoint(e.latlng.lat, e.latlng.lng);
         });
         WindCanvasLayer.init(this.map);
-        RadarCanvasLayer.init(this.map);
+        RadarImageOverlayLayer.init(this.map);
         TimeMachine.init();
         ChartEngine.init();
         this.inspectPoint(this.activeLocation[0], this.activeLocation[1], "Москва");
@@ -713,76 +713,44 @@ const QuantumEngine = {
     }
 };
 
-/* ДИНАМИЧЕСКИЙ CANVAS РАДАР (Composite BUFR без битых картинок) */
-const RadarCanvasLayer = {
-    map: null, canvas: null, ctx: null, active: false, currentFrameIndex: 0,
-    bounds: L.latLngBounds([41.0, 19.0], [82.0, 180.0]),
+/* ИНТЕГРИРОВАННЫЙ РАДАР ЧЕРЕЗ L.ImageOverlay (Бэкенд Node.js /frames/frame_X.png) */
+const RadarImageOverlayLayer = {
+    map: null,
+    active: false,
+    currentFrameIndex: 0,
+    imageOverlay: null,
+    radarBounds: L.latLngBounds([41.0, 19.0], [70.0, 65.0]), // Гео-границы покрытия радарных данных РФ
 
     init(map) {
         this.map = map;
-        const CanvasOverlay = L.Layer.extend({
-            onAdd: (map) => {
-                const pane = map.getPane('overlayPane');
-                this.canvas = L.DomUtil.create('canvas', 'leaflet-radar-layer');
-                this.canvas.style.pointerEvents = 'none'; 
-                this.canvas.style.position = 'absolute'; 
-                this.canvas.style.zIndex = '390';
-                pane.appendChild(this.canvas);
-                this.ctx = this.canvas.getContext('2d');
-                map.on('move end resize zoom', this.reset, this);
-                this.reset();
-            },
-            onRemove: (map) => { 
-                if (this.canvas) L.DomUtil.remove(this.canvas); 
-                map.off('move end resize zoom', this.reset, this); 
-            },
-            reset: () => {
-                if(!this.canvas) return;
-                const size = this.map.getSize();
-                L.DomUtil.setPosition(this.canvas, this.map.containerPointToLayerPoint([0, 0]));
-                this.canvas.width = size.x; this.canvas.height = size.y;
-                this.draw();
-            }
-        });
-        this.layer = new CanvasOverlay();
     },
 
     toggle(enable) {
         this.active = enable;
-        if(enable) { 
-            this.map.addLayer(this.layer); 
-            this.draw();
-        } else { 
-            this.map.removeLayer(this.layer); 
+        if (enable) {
+            this.setFrame(this.currentFrameIndex);
+        } else {
+            if (this.imageOverlay) {
+                this.map.removeLayer(this.imageOverlay);
+                this.imageOverlay = null;
+            }
         }
     },
 
     setFrame(index) {
         this.currentFrameIndex = index;
-        if(this.active) this.draw();
-    },
+        if (!this.active) return;
 
-    draw() {
-        if(!this.active || !this.ctx || !this.canvas) return;
-        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+        // Запрос кадра с вашего Node.js бэкенда (порт 3000)
+        const imageUrl = `http://localhost:3000/frames/frame_${index}.png`;
 
-        const seed = this.currentFrameIndex * 15;
-        
-        for(let i = 0; i < 12; i++) {
-            const offsetX = Math.sin(i * 3 + seed * 0.1) * 200 + (i * 45) % this.canvas.width;
-            const offsetY = Math.cos(i * 2 + seed * 0.1) * 150 + (i * 35) % this.canvas.height;
-            const radius = 60 + (i % 5) * 25;
-
-            const grad = this.ctx.createRadialGradient(offsetX, offsetY, 5, offsetX, offsetY, radius);
-            grad.addColorStop(0, 'rgba(16, 185, 129, 0.7)');
-            grad.addColorStop(0.4, 'rgba(59, 130, 246, 0.75)');
-            grad.addColorStop(0.7, 'rgba(245, 158, 11, 0.8)');
-            grad.addColorStop(1, 'rgba(239, 68, 68, 0)');
-
-            this.ctx.fillStyle = grad;
-            this.ctx.beginPath();
-            this.ctx.arc(offsetX, offsetY, radius, 0, Math.PI * 2);
-            this.ctx.fill();
+        if (this.imageOverlay) {
+            this.imageOverlay.setUrl(imageUrl);
+        } else {
+            this.imageOverlay = L.imageOverlay(imageUrl, this.radarBounds, {
+                opacity: 0.75,
+                interactive: false
+            }).addTo(this.map);
         }
     }
 };
@@ -886,7 +854,7 @@ const LayerManager = {
     toggle(type, enabled) {
         if(type === 'wind') WindCanvasLayer.toggle(enabled);
         if(type === 'radar') {
-            RadarCanvasLayer.toggle(enabled);
+            RadarImageOverlayLayer.toggle(enabled);
             if(enabled) TimeMachine.render();
         }
         if(type === 'lightning') {
@@ -936,13 +904,13 @@ const TimeMachine = {
     render() {
         if(!this.frames.length) return;
         const f = this.frames[this.index];
-        RadarCanvasLayer.setFrame(this.index);
+        RadarImageOverlayLayer.setFrame(this.index);
         document.getElementById('timeDisplay').innerText = f.label;
         document.getElementById('timeSlider').value = this.index;
     },
 
     clear() {
-        RadarCanvasLayer.setFrame(0);
+        RadarImageOverlayLayer.setFrame(0);
     },
 
     togglePlay() {

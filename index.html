@@ -391,6 +391,17 @@
         }
         .toast-banner.active { opacity: 1; transform: translate(-50%, 0) scale(1); }
 
+        .audio-settings-box {
+            background: #162032;
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 14px;
+            margin-bottom: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
         @media (max-width: 768px) {
             .right-hud { width: calc(100% - 32px); top: auto; bottom: 95px; height: 280px; }
             .map-style-grid { grid-template-columns: repeat(3, 1fr); }
@@ -493,9 +504,20 @@
 <div class="drawer-overlay" id="drawerOverlay" onclick="SafeAction(this, () => UIController.toggleDrawer(), 'click')"></div>
 <div class="drawer-panel" id="drawerPanel">
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
-        <span class="hud-title" style="font-size:12px; color:#fff;">Выбор подложки карты</span>
+        <span class="hud-title" style="font-size:12px; color:#fff;">Настройки звука и интерфейса</span>
         <i class="fa-solid fa-xmark" style="cursor:pointer; color:#fff; padding:4px;" onclick="SafeAction(this, () => UIController.toggleDrawer(), 'click')"></i>
     </div>
+
+    <div class="audio-settings-box">
+        <div style="display:flex; justify-content:space-between; align-items:center; font-size:12px; font-weight:700; color:#fff;">
+            <span><i class="fa-solid fa-volume-high" style="color:var(--accent-cyan);"></i> Громкость интерфейса</span>
+            <span id="volValue" style="font-family:var(--font-mono); color:var(--accent-cyan);">20%</span>
+        </div>
+        <input type="range" id="volSlider" min="0" max="100" value="20" oninput="AudioSynth.setVolume(this.value)">
+        <div style="font-size:10px; color:var(--text-muted);">Мягкие звуки кликов без оглушающего шума.</div>
+    </div>
+
+    <span class="hud-title" style="font-size:12px; color:#fff; margin-bottom:12px; display:block;">Выбор подложки карты</span>
 
     <div class="map-style-grid">
         <div class="map-style-card active" onclick="SafeAction(this, (el) => MapStyles.set('dark', el), 'click')"><i class="fa-solid fa-moon"></i><br>CARTO Cyber</div>
@@ -509,43 +531,44 @@
     <div class="layers-grid">
         <div class="layer-card">
             <span><i class="fa-solid fa-cloud-showers-heavy" style="color:var(--accent);"></i> Осадки (Радар)</span>
-            <label class="switch"><input type="checkbox" id="chkRadar" onchange="LayerManager.toggle('radar', this.checked)"><span class="slider-round"></span></label>
+            <label class="switch"><input type="checkbox" id="chkRadar" onchange="SafeAction(this, (el) => LayerManager.toggle('radar', el.checked), 'toggle')"><span class="slider-round"></span></label>
         </div>
         <div class="layer-card">
             <span><i class="fa-solid fa-wind" style="color:var(--accent-cyan);"></i> Векторы ветра</span>
-            <label class="switch"><input type="checkbox" id="chkWind" onchange="LayerManager.toggle('wind', this.checked)"><span class="slider-round"></span></label>
+            <label class="switch"><input type="checkbox" id="chkWind" onchange="SafeAction(this, (el) => LayerManager.toggle('wind', el.checked), 'toggle')"><span class="slider-round"></span></label>
         </div>
         <div class="layer-card">
             <span><i class="fa-solid fa-bolt" style="color:var(--warning);"></i> Грозы и Молнии</span>
-            <label class="switch"><input type="checkbox" id="chkLightning" onchange="LayerManager.toggle('lightning', this.checked)"><span class="slider-round"></span></label>
+            <label class="switch"><input type="checkbox" id="chkLightning" onchange="SafeAction(this, (el) => LayerManager.toggle('lightning', el.checked), 'toggle')"><span class="slider-round"></span></label>
         </div>
         <div class="layer-card">
             <span><i class="fa-solid fa-smog" style="color:var(--danger);"></i> Качество воздуха (AQI)</span>
-            <label class="switch"><input type="checkbox" id="chkAir" onchange="LayerManager.toggle('air', this.checked)"><span class="slider-round"></span></label>
+            <label class="switch"><input type="checkbox" id="chkAir" onchange="SafeAction(this, (el) => LayerManager.toggle('air', el.checked), 'toggle')"><span class="slider-round"></span></label>
         </div>
         <div class="layer-card">
             <span><i class="fa-solid fa-temperature-arrow-up" style="color:var(--accent-pink);"></i> Изотермы (Тепло)</span>
-            <label class="switch"><input type="checkbox" id="chkTemp" onchange="LayerManager.toggle('temperature', this.checked)"><span class="slider-round"></span></label>
+            <label class="switch"><input type="checkbox" id="chkTemp" onchange="SafeAction(this, (el) => LayerManager.toggle('temperature', el.checked), 'toggle')"><span class="slider-round"></span></label>
         </div>
         <div class="layer-card">
             <span><i class="fa-solid fa-water" style="color:var(--accent-cyan);"></i> Волны и течения</span>
-            <label class="switch"><input type="checkbox" id="chkMarine" onchange="LayerManager.toggle('marine', this.checked)"><span class="slider-round"></span></label>
+            <label class="switch"><input type="checkbox" id="chkMarine" onchange="SafeAction(this, (el) => LayerManager.toggle('marine', el.checked), 'toggle')"><span class="slider-round"></span></label>
         </div>
         <div class="layer-card">
             <span><i class="fa-solid fa-earth-americas" style="color:var(--warning);"></i> Сейсмичность (USGS)</span>
-            <label class="switch"><input type="checkbox" id="chkQuake" onchange="LayerManager.toggle('earthquake', this.checked)"><span class="slider-round"></span></label>
+            <label class="switch"><input type="checkbox" id="chkQuake" onchange="SafeAction(this, (el) => LayerManager.toggle('earthquake', el.checked), 'toggle')"><span class="slider-round"></span></label>
         </div>
         <div class="layer-card">
             <span><i class="fa-solid fa-satellite-dish" style="color:var(--success);"></i> ИК Спутник облаков</span>
-            <label class="switch"><input type="checkbox" id="chkSatelliteIR" onchange="LayerManager.toggle('satelliteir', this.checked)"><span class="slider-round"></span></label>
+            <label class="switch"><input type="checkbox" id="chkSatelliteIR" onchange="SafeAction(this, (el) => LayerManager.toggle('satelliteir', el.checked), 'toggle')"><span class="slider-round"></span></label>
         </div>
     </div>
 </div>
 
 <script>
-/* Строгие механические клики (громкость поднята, чтобы точно слышно было) */
+/* Мягкие, приятные звуки с регулируемой громкостью */
 const AudioSynth = {
     ctx: null,
+    volume: 0.2, // Умная комфортная громкость по умолчанию
     
     initContext() {
         if (!this.ctx) {
@@ -556,7 +579,13 @@ const AudioSynth = {
         }
     },
 
+    setVolume(val) {
+        this.volume = val / 100;
+        document.getElementById('volValue').innerText = `${val}%`;
+    },
+
     playEffect(type = 'click') {
+        if (this.volume <= 0) return;
         try {
             this.initContext();
             const now = this.ctx.currentTime;
@@ -564,41 +593,43 @@ const AudioSynth = {
             const gain = this.ctx.createGain();
             const filter = this.ctx.createBiquadFilter();
             
-            filter.type = 'bandpass';
+            filter.type = 'lowpass';
             osc.connect(filter);
             filter.connect(gain);
             gain.connect(this.ctx.destination);
 
             if (type === 'toggle') {
-                osc.type = 'triangle';
-                filter.frequency.setValueAtTime(500, now);
-                osc.frequency.setValueAtTime(200, now);
-                osc.frequency.setValueAtTime(300, now + 0.02);
-                
-                gain.gain.setValueAtTime(0.001, now);
-                gain.gain.linearRampToValueAtTime(0.12, now + 0.006);
-                gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.06);
-                
-                osc.start(now);
-                osc.stop(now + 0.06);
-            } else {
+                // Мягкий футуристичный щелчок переключателя
                 osc.type = 'sine';
-                filter.frequency.setValueAtTime(400, now);
-                osc.frequency.setValueAtTime(150, now);
-                osc.frequency.exponentialRampToValueAtTime(60, now + 0.03);
+                filter.frequency.setValueAtTime(800, now);
+                osc.frequency.setValueAtTime(440, now);
+                osc.frequency.exponentialRampToValueAtTime(880, now + 0.04);
                 
                 gain.gain.setValueAtTime(0.001, now);
-                gain.gain.linearRampToValueAtTime(0.15, now + 0.005);
-                gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.05);
+                gain.gain.linearRampToValueAtTime(0.08 * this.volume, now + 0.005);
+                gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.04);
                 
                 osc.start(now);
-                osc.stop(now + 0.05);
+                osc.stop(now + 0.04);
+            } else {
+                // Приглушенный деревянный тик для обычных кнопок
+                osc.type = 'triangle';
+                filter.frequency.setValueAtTime(300, now);
+                osc.frequency.setValueAtTime(220, now);
+                osc.frequency.exponentialRampToValueAtTime(110, now + 0.03);
+                
+                gain.gain.setValueAtTime(0.001, now);
+                gain.gain.linearRampToValueAtTime(0.1 * this.volume, now + 0.004);
+                gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.035);
+                
+                osc.start(now);
+                osc.stop(now + 0.035);
             }
         } catch(e) {}
     }
 };
 
-/* СУПЕР-ЖЕСТКАЯ ЗАЩИТА ОТ ДВОЙНОГО КЛИКА НА ЛЮБОЙ ЭЛЕМЕНТ (ПОЛНЫЙ БЛОК НА 600мс) */
+/* ТОТАЛЬНАЯ ЗАЩИТА НА ВСЕХ ЭЛЕМЕНТАХ ИНТЕРФЕЙСА (Блокировка повторных нажатий) */
 function SafeAction(element, action, soundType = 'click') {
     if (!element) return;
     if (element.dataset.locked === "true" || element.disabled) return;
@@ -617,7 +648,7 @@ function SafeAction(element, action, soundType = 'click') {
     setTimeout(() => {
         element.dataset.locked = "false";
         element.disabled = false;
-    }, 600);
+    }, 500);
 }
 
 const MapStyles = {
@@ -645,7 +676,6 @@ const MapStyles = {
 const QuantumEngine = {
     map: null, is3D: false, activeLocation: [55.751, 37.618], activeAltitude: 'surface', lastWeatherData: null,
     init() {
-        /* ОТКЛЮЧАЕМ двойной клик на карте полностью (никакого зума по двойному нажатию) */
         this.map = L.map('map', { 
             center: this.activeLocation, 
             zoom: 6, 
@@ -656,8 +686,8 @@ const QuantumEngine = {
         
         MapStyles.set('dark');
         
-        /* Обычный одиночный клик по карте */
         this.map.on('click', (e) => {
+            AudioSynth.playEffect('click');
             this.activeLocation = [e.latlng.lat, e.latlng.lng];
             this.inspectPoint(e.latlng.lat, e.latlng.lng);
         });

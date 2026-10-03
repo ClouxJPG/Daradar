@@ -766,9 +766,7 @@ const RadarCanvasLayer = {
         if(!this.active || !this.ctx || !this.canvas) return;
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
 
-        // Генерация реалистичных метео-кластеров осадков на основе текущего индекса кадра
         const seed = this.currentFrameIndex * 15;
-        const centerPoint = this.map.latLngToContainerPoint([55.75, 37.61]); // Сдвиг вокруг Москвы/Центра РФ
         
         for(let i = 0; i < 12; i++) {
             const offsetX = Math.sin(i * 3 + seed * 0.1) * 200 + (i * 45) % this.canvas.width;
@@ -776,10 +774,10 @@ const RadarCanvasLayer = {
             const radius = 60 + (i % 5) * 25;
 
             const grad = this.ctx.createRadialGradient(offsetX, offsetY, 5, offsetX, offsetY, radius);
-            grad.addColorStop(0, 'rgba(16, 185, 129, 0.7)'); // Зеленый (слабый дождь)
-            grad.addColorStop(0.4, 'rgba(59, 130, 246, 0.75)'); // Синий (умеренный)
-            grad.addColorStop(0.7, 'rgba(245, 158, 11, 0.8)'); // Желтый/Оранжевый (сильный)
-            grad.addColorStop(1, 'rgba(239, 68, 68, 0)'); // Затухание
+            grad.addColorStop(0, 'rgba(16, 185, 129, 0.7)');
+            grad.addColorStop(0.4, 'rgba(59, 130, 246, 0.75)');
+            grad.addColorStop(0.7, 'rgba(245, 158, 11, 0.8)');
+            grad.addColorStop(1, 'rgba(239, 68, 68, 0)');
 
             this.ctx.fillStyle = grad;
             this.ctx.beginPath();
@@ -914,7 +912,6 @@ const LayerManager = {
     }
 };
 
-/* ЧЕТКИЙ ТАЙМЛАЙН ПО ДОСТУПНЫМ КАДРАМ БЕЗ ОШИБОК */
 const TimeMachine = {
     frames: [
         { label: '23:31' },

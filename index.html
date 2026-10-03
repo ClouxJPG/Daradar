@@ -66,7 +66,6 @@
             transform-origin: center bottom;
         }
 
-        /* Отключение размытия для радарной GIF с жесткими цветами */
         .radanim-pixelated {
             image-rendering: pixelated;
             image-rendering: crisp-edges;
@@ -499,7 +498,7 @@
     <button class="play-master-btn" id="playBtn" onclick="SafeAction(this, () => TimeMachine.togglePlay(), 'click')"><i class="fa-solid fa-play"></i></button>
     <div class="timeline-body">
         <div style="display:flex; justify-content:space-between; align-items:center; font-size:11px; font-family:var(--font-mono);">
-            <span style="color:var(--success); font-weight:700;"><i class="fa-solid fa-satellite"></i> RADAR 10-MIN STEPS</span>
+            <span style="color:var(--success); font-weight:700;"><i class="fa-solid fa-satellite"></i> Composite BUFR</span>
             <span id="timeDisplay" style="color:#fff; font-weight:700;">--:--</span>
         </div>
         <input type="range" id="timeSlider" min="0" max="100" value="0" oninput="TimeMachine.onSeek(this.value)">
@@ -536,7 +535,7 @@
     <span class="hud-title" style="font-size:12px; color:#fff; margin-bottom:12px; display:block;">Профессиональный пульт слоев</span>
     <div class="layers-grid">
         <div class="layer-card">
-            <span><i class="fa-solid fa-cloud-showers-heavy" style="color:var(--accent);"></i> Осадки (Радар)</span>
+            <span><i class="fa-solid fa-cloud-showers-heavy" style="color:var(--accent);"></i> Composite BUFR</span>
             <label class="switch"><input type="checkbox" id="chkRadar" onchange="SafeAction(this, (el) => LayerManager.toggle('radar', el.checked), 'toggle')"><span class="slider-round"></span></label>
         </div>
         <div class="layer-card">
@@ -843,22 +842,31 @@ const LayerManager = {
     }
 };
 
-/* ИСПРАВЛЕННЫЙ ТАЙМЛАЙН: строго шаги в 10 минут, только прошлое/настоящее, покадровое переключение */
+/* ИСПРАВЛЕННЫЙ ТАЙМЛАЙН: строго доступные кадры по списку без скачков во времени + предзагрузка во избежание миганий */
 const TimeMachine = {
-    frames: [], index: 0, isPlaying: false, timer: null, imageOverlay: null,
+    // Четкий массив доступных кадров BUFR без ложных расчетных промежутков
+    frames: [
+        { label: '23:31', url: '/api/bufr/frame_0.gif' },
+        { label: '23:41', url: '/api/bufr/frame_1.gif' },
+        { label: '23:51', url: '/api/bufr/frame_2.gif' },
+        { label: '00:02', url: '/api/bufr/frame_3.gif' },
+        { label: '00:12', url: '/api/bufr/frame_4.gif' },
+        { label: '00:22', url: '/api/bufr/frame_5.gif' },
+        { label: '00:32', url: '/api/bufr/frame_6.gif' },
+        { label: '00:43', url: '/api/bufr/frame_7.gif' }
+    ],
+    index: 0, isPlaying: false, timer: null, imageOverlay: null,
     bounds: [[41.0, 19.0], [82.0, 180.0]], // Покрытие РФ
+    preloadedImages: [],
 
     init() {
-        const now = Math.floor(Date.now() / 1000);
-        this.frames = [];
-        // Создаем массив кадров за последние 2 часа с шагом ровно в 10 минут (600 секунд)
-        for(let i = 12; i >= 0; i--) {
-            const frameTime = now - (i * 600);
-            this.frames.push({
-                time: frameTime,
-                url: `/api/radanim/frame_${12 - i}.gif`
-            });
-        }
+        // Предзагружаем все кадры в кэш браузера, чтобы избежать задержек и черных вспышек
+        this.frames.forEach(f => {
+            const img = new Image();
+            img.src = f.url;
+            this.preloadedImages.push(img);
+        });
+
         this.index = this.frames.length - 1;
         const slider = document.getElementById('timeSlider');
         slider.min = 0;
@@ -870,22 +878,25 @@ const TimeMachine = {
         if(!this.frames.length) return;
         const f = this.frames[this.index];
         
-        if(this.imageOverlay) {
-            QuantumEngine.map.removeLayer(this.imageOverlay);
-        }
-
-        this.imageOverlay = L.imageOverlay(f.url, this.bounds, {
+        // Создаем новый слой и выводим его поверх, затем удаляем старый во избежание моргания
+        const newOverlay = L.imageOverlay(f.url, this.bounds, {
             opacity: 0.85,
             interactive: false,
             className: 'radanim-pixelated'
         });
 
         if(document.getElementById('chkRadar').checked) {
-            this.imageOverlay.addTo(QuantumEngine.map);
+            newOverlay.addTo(QuantumEngine.map);
+            if(this.imageOverlay) {
+                QuantumEngine.map.removeLayer(this.imageOverlay);
+            }
+            this.imageOverlay = newOverlay;
+        } else {
+            if(this.imageOverlay) QuantumEngine.map.removeLayer(this.imageOverlay);
+            this.imageOverlay = newOverlay;
         }
 
-        const d = new Date(f.time * 1000);
-        document.getElementById('timeDisplay').innerText = d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+        document.getElementById('timeDisplay').innerText = f.label;
         document.getElementById('timeSlider').value = this.index;
     },
 
@@ -905,7 +916,7 @@ const TimeMachine = {
             this.timer = setInterval(() => {
                 this.index = (this.index + 1) % this.frames.length;
                 this.render();
-            }, 1200);
+            }, 1000);
         } else {
             clearInterval(this.timer);
         }

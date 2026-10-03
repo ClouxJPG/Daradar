@@ -28,7 +28,9 @@
             --text-main: #f8fafc;
             --text-muted: #94a3b8;
             --font-mono: 'JetBrains Mono', monospace;
-            --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+            /* Самая плавная кривая Apple (Spring/EaseOut) */
+            --ease-apple: cubic-bezier(0.25, 1, 0.5, 1);
+            --transition-smooth: all 0.4s var(--ease-apple);
         }
 
         * {
@@ -54,7 +56,7 @@
         #map {
             width: 100%; height: 100%;
             background: #030508;
-            transition: transform 0.6s var(--ease-out);
+            transition: transform 0.7s var(--ease-apple);
         }
 
         body.mode-3d #map {
@@ -62,11 +64,11 @@
             transform-origin: center bottom;
         }
 
-        /* УБРАЛИ ПРОЗРАЧНОСТЬ И СДЕЛАЛИ ПЛАТФОРМУ СТРОГО ТВЁРДОЙ */
+        /* ТВЁРДЫЕ ПЛАТФОРМЫ БЕЗ ПРОЗРАЧНОСТИ */
         .solid-panel {
             background: var(--bg-solid);
             border: 1px solid var(--border);
-            border-radius: 16px;
+            border-radius: 20px;
             box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8);
         }
 
@@ -84,7 +86,7 @@
 
         .brand-badge {
             pointer-events: auto;
-            padding: 12px 18px;
+            padding: 12px 20px;
             display: flex;
             align-items: center;
             gap: 10px;
@@ -93,6 +95,9 @@
             letter-spacing: 1.5px;
             background: var(--bg-solid);
             border: 1px solid var(--border-glow);
+            border-radius: 18px;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.6);
+            transition: var(--transition-smooth);
         }
 
         .brand-badge i { color: var(--accent-cyan); }
@@ -107,10 +112,19 @@
         .search-input-wrap {
             display: flex;
             align-items: center;
-            padding: 0 16px;
-            height: 46px;
+            padding: 0 18px;
+            height: 48px;
             gap: 10px;
             background: var(--bg-solid);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.6);
+            transition: var(--transition-smooth);
+        }
+
+        .search-input-wrap:focus-within {
+            border-color: var(--accent);
+            box-shadow: 0 0 20px rgba(59, 130, 246, 0.3);
         }
 
         .search-input-wrap input {
@@ -120,14 +134,14 @@
 
         .search-dropdown {
             position: absolute;
-            top: 54px; left: 0; right: 0;
+            top: 56px; left: 0; right: 0;
             background: var(--bg-solid);
             border: 1px solid var(--border);
-            border-radius: 14px;
+            border-radius: 16px;
             overflow: hidden;
             display: none;
             z-index: 1100;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.9);
+            box-shadow: 0 15px 35px rgba(0,0,0,0.9);
         }
 
         .search-item {
@@ -137,7 +151,7 @@
             border-bottom: 1px solid var(--border);
             transition: background 0.2s;
         }
-        .search-item:hover { background: rgba(59, 130, 246, 0.3); }
+        .search-item:hover { background: #1e293b; }
 
         .top-actions {
             display: flex;
@@ -145,37 +159,43 @@
             pointer-events: auto;
         }
 
-        /* КНОПКИ БЕЗ ПРОЗРАЧНОСТИ И СТАБИЛЬНЫЕ ПРИ КЛИКЕ */
+        /* ВСЕ КНОПКИ СТРОГО ЗАКРУГЛЕНЫ, ТВЁРДЫЕ И ПЛАВНЫЕ (Apple Style) */
         .icon-btn {
-            width: 46px; height: 46px;
-            border-radius: 14px;
+            width: 48px; height: 48px;
+            border-radius: 18px; /* Полное скругление по стандартам iOS/macOS */
             display: flex; align-items: center; justify-content: center;
             color: var(--text-main);
             font-size: 15px;
             cursor: pointer;
             border: 1px solid var(--border);
             background: var(--bg-solid);
-            transition: background 0.2s, border-color 0.2s, color 0.2s;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.6);
+            transition: transform 0.2s var(--ease-apple), background 0.2s, border-color 0.2s, box-shadow 0.2s;
             position: relative;
         }
 
         .icon-btn:hover {
             border-color: rgba(255, 255, 255, 0.4);
-            background: #1e293b;
+            background: #162032;
+            transform: translateY(-2px);
         }
 
-        /* Состояние активной кнопки строго фиксированное, без прозрачности */
+        .icon-btn:active {
+            transform: scale(0.92);
+        }
+
+        /* Фиксированное активное состояние без прозрачности */
         .icon-btn.active {
             border-color: var(--accent);
             background: #1d4ed8;
             color: #ffffff;
-            box-shadow: 0 0 15px rgba(59, 130, 246, 0.6);
+            box-shadow: 0 0 20px rgba(59, 130, 246, 0.7);
         }
 
         /* ЛЕВАЯ ПАНЕЛЬ */
         .left-dock {
             position: absolute;
-            top: 78px; left: 16px;
+            top: 80px; left: 16px;
             z-index: 1000;
             display: flex;
             flex-direction: column;
@@ -183,10 +203,10 @@
             pointer-events: auto;
         }
 
-        /* ПРАВЫЙ HUD (ТВЁРДЫЙ) */
+        /* ПРАВЫЙ HUD (ТВЁРДЫЙ И ОКРУГЛЫЙ) */
         .right-hud {
             position: absolute;
-            top: 78px; right: 16px; bottom: 100px;
+            top: 80px; right: 16px; bottom: 100px;
             width: 340px;
             z-index: 1000;
             padding: 20px;
@@ -197,12 +217,14 @@
             overflow-y: auto;
             background: var(--bg-solid);
             border: 1px solid var(--border);
-            border-radius: 16px;
-            transition: transform 0.4s var(--ease-out), opacity 0.4s var(--ease-out);
+            border-radius: 24px;
+            box-shadow: 0 15px 40px rgba(0,0,0,0.8);
+            transform-origin: right center;
+            transition: transform 0.5s var(--ease-apple), opacity 0.4s var(--ease-apple);
         }
 
         .right-hud.collapsed {
-            transform: translateX(380px);
+            transform: translateX(380px) scale(0.95);
             opacity: 0;
             pointer-events: none;
         }
@@ -227,7 +249,7 @@
         .m-card {
             background: #162032;
             border: 1px solid var(--border);
-            border-radius: 12px;
+            border-radius: 16px;
             padding: 12px;
             display: flex; flex-direction: column; gap: 6px;
         }
@@ -244,19 +266,20 @@
         .alt-pills {
             display: flex;
             background: #090e17;
-            padding: 3px;
-            border-radius: 10px;
+            padding: 4px;
+            border-radius: 14px;
             border: 1px solid var(--border);
         }
 
         .alt-btn {
-            flex: 1; padding: 6px 0; border: none; background: transparent;
+            flex: 1; padding: 7px 0; border: none; background: transparent;
             color: var(--text-muted); font-size: 10px; font-weight: 700;
-            border-radius: 8px; cursor: pointer; transition: all 0.2s;
+            border-radius: 10px; cursor: pointer; transition: var(--transition-smooth);
         }
 
         .alt-btn.active {
             background: var(--accent); color: #fff;
+            box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4);
         }
 
         /* ТАЙМЛАЙН */
@@ -264,42 +287,47 @@
             position: absolute; bottom: 20px; left: 50%;
             transform: translateX(-50%); z-index: 1000;
             width: calc(100% - 32px); max-width: 760px;
-            padding: 14px 20px; border-radius: 20px;
+            padding: 14px 20px; border-radius: 24px;
             display: flex; align-items: center; gap: 16px;
             pointer-events: auto;
             background: var(--bg-solid);
             border: 1px solid var(--border);
+            box-shadow: 0 15px 40px rgba(0,0,0,0.8);
         }
 
         .play-master-btn {
-            width: 44px; height: 44px; border-radius: 14px;
+            width: 44px; height: 44px; border-radius: 16px;
             background: linear-gradient(135deg, var(--accent), var(--accent-purple));
-            border: none; color: #fff; font-size: 16px; cursor: pointer;
+            border: none; color: #fff; font-size: 15px; cursor: pointer;
             display: flex; align-items: center; justify-content: center; flex-shrink: 0;
-            box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4);
+            box-shadow: 0 6px 20px rgba(59, 130, 246, 0.4);
+            transition: transform 0.2s var(--ease-apple);
         }
+        .play-master-btn:active { transform: scale(0.9); }
 
         .timeline-body { flex: 1; display: flex; flex-direction: column; gap: 6px; }
 
         input[type="range"] {
-            -webkit-appearance: none; width: 100%; height: 5px;
+            -webkit-appearance: none; width: 100%; height: 6px;
             border-radius: 3px; background: rgba(255, 255, 255, 0.15); outline: none;
         }
 
         input[type="range"]::-webkit-slider-thumb {
-            -webkit-appearance: none; width: 16px; height: 16px;
+            -webkit-appearance: none; width: 18px; height: 18px;
             border-radius: 50%; background: #fff;
             border: 3px solid var(--accent-cyan); cursor: pointer;
-            box-shadow: 0 0 10px var(--accent-cyan);
+            box-shadow: 0 0 12px var(--accent-cyan);
+            transition: transform 0.2s;
         }
+        input[type="range"]::-webkit-slider-thumb:hover { transform: scale(1.2); }
 
         /* DRAWER СЛОЕВ И КАРТ */
         .drawer-overlay {
             position: fixed; inset: 0;
-            background: rgba(0, 0, 0, 0.7);
+            background: rgba(0, 0, 0, 0.75);
             z-index: 2000;
             opacity: 0; visibility: hidden;
-            transition: all 0.3s var(--ease-out);
+            transition: opacity 0.4s var(--ease-apple), visibility 0.4s;
         }
         .drawer-overlay.active { opacity: 1; visibility: visible; }
 
@@ -308,12 +336,12 @@
             z-index: 2001;
             background: var(--bg-solid);
             border-top: 1px solid var(--border-glow);
-            border-radius: 28px 28px 0 0;
+            border-radius: 32px 32px 0 0;
             padding: 24px; max-width: 720px; margin: 0 auto;
             transform: translateY(100%);
-            transition: transform 0.4s var(--ease-out);
+            transition: transform 0.5s var(--ease-apple);
             max-height: 85vh; overflow-y: auto;
-            box-shadow: 0 -20px 40px rgba(0,0,0,0.9);
+            box-shadow: 0 -20px 50px rgba(0,0,0,0.9);
         }
         .drawer-panel.active { transform: translateY(0); }
 
@@ -324,15 +352,17 @@
         .map-style-card {
             background: #162032;
             border: 1px solid var(--border);
-            border-radius: 12px; padding: 10px 4px;
+            border-radius: 16px; padding: 12px 4px;
             text-align: center; cursor: pointer; font-size: 10px; font-weight: 700;
-            transition: all 0.2s; color: var(--text-muted);
+            transition: var(--transition-smooth); color: var(--text-muted);
         }
 
-        .map-style-card:hover, .map-style-card.active {
+        .map-style-card:hover { transform: translateY(-2px); }
+        .map-style-card.active {
             border-color: var(--accent-cyan);
             background: #082f49;
             color: var(--accent-cyan);
+            box-shadow: 0 0 15px rgba(6, 182, 212, 0.3);
         }
 
         .layers-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
@@ -340,35 +370,37 @@
         .layer-card {
             background: #162032;
             border: 1px solid var(--border);
-            border-radius: 12px; padding: 12px;
+            border-radius: 16px; padding: 14px;
             display: flex; align-items: center; justify-content: space-between;
             font-size: 12px;
+            transition: var(--transition-smooth);
         }
+        .layer-card:hover { border-color: rgba(255,255,255,0.3); }
 
-        .switch { position: relative; width: 38px; height: 22px; flex-shrink: 0; }
+        .switch { position: relative; width: 42px; height: 24px; flex-shrink: 0; }
         .switch input { opacity: 0; width: 0; height: 0; }
         .slider-round {
             position: absolute; inset: 0; background: #334155;
-            border-radius: 22px; cursor: pointer; transition: 0.2s;
+            border-radius: 24px; cursor: pointer; transition: 0.3s var(--ease-apple);
         }
         .slider-round:before {
-            position: absolute; content: ""; height: 16px; width: 16px; left: 3px; bottom: 3px;
-            background: #fff; border-radius: 50%; transition: 0.2s;
+            position: absolute; content: ""; height: 18px; width: 18px; left: 3px; bottom: 3px;
+            background: #fff; border-radius: 50%; transition: 0.3s var(--ease-apple);
         }
         input:checked + .slider-round { background: var(--accent); }
-        input:checked + .slider-round:before { transform: translateX(16px); }
+        input:checked + .slider-round:before { transform: translateX(18px); }
 
         .toast-banner {
-            position: fixed; top: 76px; left: 50%;
-            transform: translate(-50%, -20px); z-index: 3000;
-            background: #0f172a;
+            position: fixed; top: 80px; left: 50%;
+            transform: translate(-50%, -30px) scale(0.95); z-index: 3000;
+            background: var(--bg-solid);
             border: 1px solid var(--accent);
-            color: #fff; padding: 10px 20px; border-radius: 30px;
-            font-size: 12px; font-weight: 600; box-shadow: 0 10px 30px rgba(0,0,0,0.8);
-            opacity: 0; pointer-events: none; transition: all 0.3s var(--ease-out);
-            display: flex; align-items: center; gap: 8px;
+            color: #fff; padding: 12px 24px; border-radius: 20px;
+            font-size: 12px; font-weight: 600; box-shadow: 0 15px 35px rgba(0,0,0,0.9);
+            opacity: 0; pointer-events: none; transition: var(--transition-smooth);
+            display: flex; align-items: center; gap: 10px;
         }
-        .toast-banner.active { opacity: 1; transform: translate(-50%, 0); }
+        .toast-banner.active { opacity: 1; transform: translate(-50%, 0) scale(1); }
 
         @media (max-width: 768px) {
             .right-hud { width: calc(100% - 32px); top: auto; bottom: 95px; height: 280px; }
@@ -396,26 +428,25 @@
     </div>
 
     <div class="top-actions">
-        <button class="icon-btn" onclick="QuantumEngine.toggle3D()" id="btn3d" title="3D Перспектива"><i class="fa-solid fa-cube"></i></button>
-        <button class="icon-btn" onclick="AudioSynth.toggle()" id="btnAudio" title="Акустический эмбиент ветра"><i class="fa-solid fa-volume-high"></i></button>
-        <button class="icon-btn" onclick="VoiceBriefing.speak()" title="AI Озвучка сводки"><i class="fa-solid fa-bullhorn"></i></button>
-        <button class="icon-btn" onclick="UIController.toggleHUD()" id="btnHud" title="Аналитика"><i class="fa-solid fa-chart-pie"></i></button>
-        <button class="icon-btn" onclick="UIController.toggleDrawer()" title="Выбор карты и слоев"><i class="fa-solid fa-layer-group"></i></button>
+        <button class="icon-btn" onclick="UIActionWithSound(() => QuantumEngine.toggle3D())" id="btn3d" title="3D Перспектива"><i class="fa-solid fa-cube"></i></button>
+        <button class="icon-btn" onclick="UIActionWithSound(() => AudioSynth.toggle())" id="btnAudio" title="Акустический эмбиент ветра"><i class="fa-solid fa-volume-high"></i></button>
+        <button class="icon-btn" onclick="UIActionWithSound(() => UIController.toggleHUD())" id="btnHud" title="Аналитика"><i class="fa-solid fa-chart-pie"></i></button>
+        <button class="icon-btn" onclick="UIActionWithSound(() => UIController.toggleDrawer())" title="Выбор карты и слоев"><i class="fa-solid fa-layer-group"></i></button>
     </div>
 </div>
 
 <!-- ЛЕВАЯ ПАНЕЛЬ -->
 <div class="left-dock">
-    <button class="icon-btn" onclick="QuantumEngine.locateUser()" title="Моя локация"><i class="fa-solid fa-crosshairs"></i></button>
-    <button class="icon-btn" onclick="LayerManager.toggleFlights()" id="btnFlights" title="Самолеты Live (OpenSky)"><i class="fa-solid fa-plane"></i></button>
-    <button class="icon-btn" onclick="LayerManager.toggleTerminator()" id="btnTerminator" title="Терминатор День/Ночь"><i class="fa-solid fa-moon"></i></button>
+    <button class="icon-btn" onclick="UIActionWithSound(() => QuantumEngine.locateUser())" title="Моя локация"><i class="fa-solid fa-crosshairs"></i></button>
+    <button class="icon-btn" onclick="UIActionWithSound(() => LayerManager.toggleFlights())" id="btnFlights" title="Самолеты Live (OpenSky)"><i class="fa-solid fa-plane"></i></button>
+    <button class="icon-btn" onclick="UIActionWithSound(() => LayerManager.toggleTerminator())" id="btnTerminator" title="Терминатор День/Ночь"><i class="fa-solid fa-moon"></i></button>
 </div>
 
 <!-- ПРАВЫЙ HUD -->
 <div class="right-hud collapsed" id="rightHud">
     <div class="hud-header" style="display:flex; justify-content:space-between; align-items:center;">
         <span class="hud-title">Квантовый скрининг</span>
-        <i class="fa-solid fa-xmark" style="cursor:pointer; color:var(--text-muted);" onclick="UIController.toggleHUD()"></i>
+        <i class="fa-solid fa-xmark" style="cursor:pointer; color:var(--text-muted); padding:4px;" onclick="UIActionWithSound(() => UIController.toggleHUD())"></i>
     </div>
 
     <div>
@@ -426,10 +457,10 @@
     <div>
         <span class="hud-title" style="font-size:9px; display:block; margin-bottom:6px;">Атмосферный срез (Изобары)</span>
         <div class="alt-pills">
-            <button class="alt-btn active" onclick="QuantumEngine.setAltitude('surface', this)">Поверхность</button>
-            <button class="alt-btn" onclick="QuantumEngine.setAltitude('850hpa', this)">850 hPa</button>
-            <button class="alt-btn" onclick="QuantumEngine.setAltitude('500hpa', this)">500 hPa</button>
-            <button class="alt-btn" onclick="QuantumEngine.setAltitude('jetstream', this)">250 hPa (Jet)</button>
+            <button class="alt-btn active" onclick="UIActionWithSound(function(el){ QuantumEngine.setAltitude('surface', el); }, this)">Поверхность</button>
+            <button class="alt-btn" onclick="UIActionWithSound(function(el){ QuantumEngine.setAltitude('850hpa', el); }, this)">850 hPa</button>
+            <button class="alt-btn" onclick="UIActionWithSound(function(el){ QuantumEngine.setAltitude('500hpa', el); }, this)">500 hPa</button>
+            <button class="alt-btn" onclick="UIActionWithSound(function(el){ QuantumEngine.setAltitude('jetstream', el); }, this)">250 hPa (Jet)</button>
         </div>
     </div>
 
@@ -460,7 +491,7 @@
 
 <!-- ТАЙМЛАЙН -->
 <div class="time-deck">
-    <button class="play-master-btn" id="playBtn" onclick="TimeMachine.togglePlay()"><i class="fa-solid fa-play"></i></button>
+    <button class="play-master-btn" id="playBtn" onclick="UIActionWithSound(() => TimeMachine.togglePlay())"><i class="fa-solid fa-play"></i></button>
     <div class="timeline-body">
         <div style="display:flex; justify-content:space-between; align-items:center; font-size:11px; font-family:var(--font-mono);">
             <span style="color:var(--success); font-weight:700;"><i class="fa-solid fa-satellite"></i> RAINVIEWER LIVE</span>
@@ -471,59 +502,94 @@
 </div>
 
 <!-- DRAWER СЛОЕВ И ВЫБОРА КАРТЫ -->
-<div class="drawer-overlay" id="drawerOverlay" onclick="UIController.toggleDrawer()"></div>
+<div class="drawer-overlay" id="drawerOverlay" onclick="UIActionWithSound(() => UIController.toggleDrawer())"></div>
 <div class="drawer-panel" id="drawerPanel">
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
         <span class="hud-title" style="font-size:12px; color:#fff;">Выбор подложки карты</span>
-        <i class="fa-solid fa-xmark" style="cursor:pointer; color:#fff;" onclick="UIController.toggleDrawer()"></i>
+        <i class="fa-solid fa-xmark" style="cursor:pointer; color:#fff; padding:4px;" onclick="UIActionWithSound(() => UIController.toggleDrawer())"></i>
     </div>
 
     <div class="map-style-grid">
-        <div class="map-style-card active" onclick="MapStyles.set('dark', this)"><i class="fa-solid fa-moon"></i><br>CARTO Cyber</div>
-        <div class="map-style-card" onclick="MapStyles.set('satellite', this)"><i class="fa-solid fa-globe"></i><br>Esri Satellite</div>
-        <div class="map-style-card" onclick="MapStyles.set('topo', this)"><i class="fa-solid fa-mountain"></i><br>OpenTopoMap</div>
-        <div class="map-style-card" onclick="MapStyles.set('light', this)"><i class="fa-solid fa-sun"></i><br>CARTO Light</div>
-        <div class="map-style-card" onclick="MapStyles.set('osm', this)"><i class="fa-solid fa-map"></i><br>OSM Standard</div>
+        <div class="map-style-card active" onclick="UIActionWithSound(function(el){ MapStyles.set('dark', el); }, this)"><i class="fa-solid fa-moon"></i><br>CARTO Cyber</div>
+        <div class="map-style-card" onclick="UIActionWithSound(function(el){ MapStyles.set('satellite', el); }, this)"><i class="fa-solid fa-globe"></i><br>Esri Satellite</div>
+        <div class="map-style-card" onclick="UIActionWithSound(function(el){ MapStyles.set('topo', el); }, this)"><i class="fa-solid fa-mountain"></i><br>OpenTopoMap</div>
+        <div class="map-style-card" onclick="UIActionWithSound(function(el){ MapStyles.set('light', el); }, this)"><i class="fa-solid fa-sun"></i><br>CARTO Light</div>
+        <div class="map-style-card" onclick="UIActionWithSound(function(el){ MapStyles.set('osm', el); }, this)"><i class="fa-solid fa-map"></i><br>OSM Standard</div>
     </div>
 
     <span class="hud-title" style="font-size:12px; color:#fff; margin-bottom:12px; display:block;">Профессиональный пульт слоев</span>
     <div class="layers-grid">
         <div class="layer-card">
             <span><i class="fa-solid fa-cloud-showers-heavy" style="color:var(--accent);"></i> Осадки (Радар)</span>
-            <label class="switch"><input type="checkbox" id="chkRadar" onchange="LayerManager.toggle('radar', this.checked)"><span class="slider-round"></span></label>
+            <label class="switch"><input type="checkbox" id="chkRadar" onchange="UIActionWithSound(() => LayerManager.toggle('radar', this.checked))"><span class="slider-round"></span></label>
         </div>
         <div class="layer-card">
             <span><i class="fa-solid fa-wind" style="color:var(--accent-cyan);"></i> Векторы ветра</span>
-            <label class="switch"><input type="checkbox" id="chkWind" onchange="LayerManager.toggle('wind', this.checked)"><span class="slider-round"></span></label>
+            <label class="switch"><input type="checkbox" id="chkWind" onchange="UIActionWithSound(() => LayerManager.toggle('wind', this.checked))"><span class="slider-round"></span></label>
         </div>
         <div class="layer-card">
             <span><i class="fa-solid fa-bolt" style="color:var(--warning);"></i> Грозы и Молнии (Live)</span>
-            <label class="switch"><input type="checkbox" id="chkLightning" onchange="LayerManager.toggle('lightning', this.checked)"><span class="slider-round"></span></label>
+            <label class="switch"><input type="checkbox" id="chkLightning" onchange="UIActionWithSound(() => LayerManager.toggle('lightning', this.checked))"><span class="slider-round"></span></label>
         </div>
         <div class="layer-card">
             <span><i class="fa-solid fa-smog" style="color:var(--danger);"></i> Качество воздуха (AQI)</span>
-            <label class="switch"><input type="checkbox" id="chkAir" onchange="LayerManager.toggle('air', this.checked)"><span class="slider-round"></span></label>
+            <label class="switch"><input type="checkbox" id="chkAir" onchange="UIActionWithSound(() => LayerManager.toggle('air', this.checked))"><span class="slider-round"></span></label>
         </div>
         <div class="layer-card">
             <span><i class="fa-solid fa-temperature-arrow-up" style="color:var(--accent-pink);"></i> Изотермы (Тепло)</span>
-            <label class="switch"><input type="checkbox" id="chkTemp" onchange="LayerManager.toggle('temperature', this.checked)"><span class="slider-round"></span></label>
+            <label class="switch"><input type="checkbox" id="chkTemp" onchange="UIActionWithSound(() => LayerManager.toggle('temperature', this.checked))"><span class="slider-round"></span></label>
         </div>
         <div class="layer-card">
             <span><i class="fa-solid fa-water" style="color:var(--accent-cyan);"></i> Волны и течения</span>
-            <label class="switch"><input type="checkbox" id="chkMarine" onchange="LayerManager.toggle('marine', this.checked)"><span class="slider-round"></span></label>
+            <label class="switch"><input type="checkbox" id="chkMarine" onchange="UIActionWithSound(() => LayerManager.toggle('marine', this.checked))"><span class="slider-round"></span></label>
         </div>
         <div class="layer-card">
             <span><i class="fa-solid fa-earth-americas" style="color:var(--warning);"></i> Сейсмичность (USGS)</span>
-            <label class="switch"><input type="checkbox" id="chkQuake" onchange="LayerManager.toggle('earthquake', this.checked)"><span class="slider-round"></span></label>
+            <label class="switch"><input type="checkbox" id="chkQuake" onchange="UIActionWithSound(() => LayerManager.toggle('earthquake', this.checked))"><span class="slider-round"></span></label>
         </div>
         <div class="layer-card">
             <span><i class="fa-solid fa-satellite-dish" style="color:var(--success);"></i> ИК Спутник облаков</span>
-            <label class="switch"><input type="checkbox" id="chkSatelliteIR" onchange="LayerManager.toggle('satelliteir', this.checked)"><span class="slider-round"></span></label>
+            <label class="switch"><input type="checkbox" id="chkSatelliteIR" onchange="UIActionWithSound(() => LayerManager.toggle('satelliteir', this.checked))"><span class="slider-round"></span></label>
         </div>
     </div>
 </div>
 
 <script>
+/* МЯГКИЙ ЗВУК КЛИКОВ (Web Audio API) */
+let uiAudioCtx = null;
+function playClickSound() {
+    try {
+        if (!uiAudioCtx) {
+            uiAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        if (uiAudioCtx.state === 'suspended') {
+            uiAudioCtx.resume();
+        }
+        const osc = uiAudioCtx.createOscillator();
+        const gain = uiAudioCtx.createGain();
+        
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(600, uiAudioCtx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(150, uiAudioCtx.currentTime + 0.04);
+        
+        gain.gain.setValueAtTime(0.08, uiAudioCtx.currentTime); // тихий и приятный уровень громкости
+        gain.gain.exponentialRampToValueAtTime(0.001, uiAudioCtx.currentTime + 0.04);
+        
+        osc.connect(gain);
+        gain.connect(uiAudioCtx.destination);
+        
+        osc.start();
+        osc.stop(uiAudioCtx.currentTime + 0.04);
+    } catch(e) {}
+}
+
+function UIActionWithSound(action, param) {
+    playClickSound();
+    if (typeof action === 'function') {
+        action(param);
+    }
+}
+
 const MapStyles = {
     providers: {
         dark: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
@@ -610,7 +676,7 @@ const QuantumEngine = {
             const data = await res.json();
             if(data.length) {
                 box.innerHTML = data.map(item => `
-                    <div class="search-item" onclick="QuantumEngine.selectLocation(${item.lat}, ${item.lon}, '${item.display_name.split(',')[0]}')">
+                    <div class="search-item" onclick="UIActionWithSound(() => QuantumEngine.selectLocation(${item.lat}, ${item.lon}, '${item.display_name.split(',')[0]}'))">
                         ${item.display_name}
                     </div>
                 `).join('');
@@ -870,19 +936,6 @@ const AudioSynth = {
     },
     adjustByWind(windSpeed) {
         if(this.filter && this.isPlaying) { this.filter.frequency.value = Math.min(200 + windSpeed * 25, 1200); }
-    }
-};
-
-const VoiceBriefing = {
-    speak() {
-        if (!('speechSynthesis' in window)) return;
-        const city = document.getElementById('locName').innerText;
-        const temp = document.getElementById('valTemp').innerText;
-        const wind = document.getElementById('valWind').innerText;
-        const msg = new SpeechSynthesisUtterance(`Сводка для ${city}. Температура: ${temp}. Скорость ветра: ${wind}.`);
-        msg.lang = 'ru-RU';
-        window.speechSynthesis.speak(msg);
-        UIController.showToast("Озвучивание метеосводки");
     }
 };
 

@@ -28,7 +28,6 @@
             --text-main: #f8fafc;
             --text-muted: #94a3b8;
             --font-mono: 'JetBrains Mono', monospace;
-            /* Самая плавная кривая Apple (Spring/EaseOut) */
             --ease-apple: cubic-bezier(0.25, 1, 0.5, 1);
             --transition-smooth: all 0.4s var(--ease-apple);
         }
@@ -64,7 +63,6 @@
             transform-origin: center bottom;
         }
 
-        /* ТВЁРДЫЕ ПЛАТФОРМЫ БЕЗ ПРОЗРАЧНОСТИ */
         .solid-panel {
             background: var(--bg-solid);
             border: 1px solid var(--border);
@@ -72,7 +70,6 @@
             box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8);
         }
 
-        /* ВЕРХНИЙ БАР */
         .top-bar {
             position: absolute;
             top: 16px; left: 16px; right: 16px;
@@ -159,10 +156,9 @@
             pointer-events: auto;
         }
 
-        /* ВСЕ КНОПКИ СТРОГО ЗАКРУГЛЕНЫ, ТВЁРДЫЕ И ПЛАВНЫЕ (Apple Style) */
         .icon-btn {
             width: 48px; height: 48px;
-            border-radius: 18px; /* Полное скругление по стандартам iOS/macOS */
+            border-radius: 18px;
             display: flex; align-items: center; justify-content: center;
             color: var(--text-main);
             font-size: 15px;
@@ -184,7 +180,6 @@
             transform: scale(0.92);
         }
 
-        /* Фиксированное активное состояние без прозрачности */
         .icon-btn.active {
             border-color: var(--accent);
             background: #1d4ed8;
@@ -192,7 +187,6 @@
             box-shadow: 0 0 20px rgba(59, 130, 246, 0.7);
         }
 
-        /* ЛЕВАЯ ПАНЕЛЬ */
         .left-dock {
             position: absolute;
             top: 80px; left: 16px;
@@ -203,7 +197,6 @@
             pointer-events: auto;
         }
 
-        /* ПРАВЫЙ HUD (ТВЁРДЫЙ И ОКРУГЛЫЙ) */
         .right-hud {
             position: absolute;
             top: 80px; right: 16px; bottom: 100px;
@@ -282,7 +275,6 @@
             box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4);
         }
 
-        /* ТАЙМЛАЙН */
         .time-deck {
             position: absolute; bottom: 20px; left: 50%;
             transform: translateX(-50%); z-index: 1000;
@@ -321,7 +313,6 @@
         }
         input[type="range"]::-webkit-slider-thumb:hover { transform: scale(1.2); }
 
-        /* DRAWER СЛОЕВ И КАРТ */
         .drawer-overlay {
             position: fixed; inset: 0;
             background: rgba(0, 0, 0, 0.75);
@@ -428,25 +419,25 @@
     </div>
 
     <div class="top-actions">
-        <button class="icon-btn" onclick="UIActionWithSound(() => QuantumEngine.toggle3D())" id="btn3d" title="3D Перспектива"><i class="fa-solid fa-cube"></i></button>
-        <button class="icon-btn" onclick="UIActionWithSound(() => AudioSynth.toggle())" id="btnAudio" title="Акустический эмбиент ветра"><i class="fa-solid fa-volume-high"></i></button>
-        <button class="icon-btn" onclick="UIActionWithSound(() => UIController.toggleHUD())" id="btnHud" title="Аналитика"><i class="fa-solid fa-chart-pie"></i></button>
-        <button class="icon-btn" onclick="UIActionWithSound(() => UIController.toggleDrawer())" title="Выбор карты и слоев"><i class="fa-solid fa-layer-group"></i></button>
+        <button class="icon-btn" onclick="UIActionWithSound(() => QuantumEngine.toggle3D(), 'success')" id="btn3d" title="3D Перспектива"><i class="fa-solid fa-cube"></i></button>
+        <button class="icon-btn" onclick="UIActionWithSound(() => AudioSynth.toggle(), 'toggle')" id="btnAudio" title="Акустический эмбиент ветра"><i class="fa-solid fa-volume-high"></i></button>
+        <button class="icon-btn" onclick="UIActionWithSound(() => UIController.toggleHUD(), 'neutral')" id="btnHud" title="Аналитика"><i class="fa-solid fa-chart-pie"></i></button>
+        <button class="icon-btn" onclick="UIActionWithSound(() => UIController.toggleDrawer(), 'neutral')" title="Выбор карты и слоев"><i class="fa-solid fa-layer-group"></i></button>
     </div>
 </div>
 
 <!-- ЛЕВАЯ ПАНЕЛЬ -->
 <div class="left-dock">
-    <button class="icon-btn" onclick="UIActionWithSound(() => QuantumEngine.locateUser())" title="Моя локация"><i class="fa-solid fa-crosshairs"></i></button>
-    <button class="icon-btn" onclick="UIActionWithSound(() => LayerManager.toggleFlights())" id="btnFlights" title="Самолеты Live (OpenSky)"><i class="fa-solid fa-plane"></i></button>
-    <button class="icon-btn" onclick="UIActionWithSound(() => LayerManager.toggleTerminator())" id="btnTerminator" title="Терминатор День/Ночь"><i class="fa-solid fa-moon"></i></button>
+    <button class="icon-btn" onclick="UIActionWithSound(() => QuantumEngine.locateUser(), 'success')" title="Моя локация"><i class="fa-solid fa-crosshairs"></i></button>
+    <button class="icon-btn" onclick="UIActionWithSound(() => LayerManager.toggleFlights(), 'toggle')" id="btnFlights" title="Самолеты Live (OpenSky)"><i class="fa-solid fa-plane"></i></button>
+    <button class="icon-btn" onclick="UIActionWithSound(() => LayerManager.toggleTerminator(), 'toggle')" id="btnTerminator" title="Терминатор День/Ночь"><i class="fa-solid fa-moon"></i></button>
 </div>
 
 <!-- ПРАВЫЙ HUD -->
 <div class="right-hud collapsed" id="rightHud">
     <div class="hud-header" style="display:flex; justify-content:space-between; align-items:center;">
         <span class="hud-title">Квантовый скрининг</span>
-        <i class="fa-solid fa-xmark" style="cursor:pointer; color:var(--text-muted); padding:4px;" onclick="UIActionWithSound(() => UIController.toggleHUD())"></i>
+        <i class="fa-solid fa-xmark" style="cursor:pointer; color:var(--text-muted); padding:4px;" onclick="UIActionWithSound(() => UIController.toggleHUD(), 'danger')"></i>
     </div>
 
     <div>
@@ -457,10 +448,10 @@
     <div>
         <span class="hud-title" style="font-size:9px; display:block; margin-bottom:6px;">Атмосферный срез (Изобары)</span>
         <div class="alt-pills">
-            <button class="alt-btn active" onclick="UIActionWithSound(function(el){ QuantumEngine.setAltitude('surface', el); }, this)">Поверхность</button>
-            <button class="alt-btn" onclick="UIActionWithSound(function(el){ QuantumEngine.setAltitude('850hpa', el); }, this)">850 hPa</button>
-            <button class="alt-btn" onclick="UIActionWithSound(function(el){ QuantumEngine.setAltitude('500hpa', el); }, this)">500 hPa</button>
-            <button class="alt-btn" onclick="UIActionWithSound(function(el){ QuantumEngine.setAltitude('jetstream', el); }, this)">250 hPa (Jet)</button>
+            <button class="alt-btn active" onclick="UIActionWithSound(function(el){ QuantumEngine.setAltitude('surface', el); }, 'neutral', this)">Поверхность</button>
+            <button class="alt-btn" onclick="UIActionWithSound(function(el){ QuantumEngine.setAltitude('850hpa', el); }, 'neutral', this)">850 hPa</button>
+            <button class="alt-btn" onclick="UIActionWithSound(function(el){ QuantumEngine.setAltitude('500hpa', el); }, 'neutral', this)">500 hPa</button>
+            <button class="alt-btn" onclick="UIActionWithSound(function(el){ QuantumEngine.setAltitude('jetstream', el); }, 'neutral', this)">250 hPa (Jet)</button>
         </div>
     </div>
 
@@ -491,7 +482,7 @@
 
 <!-- ТАЙМЛАЙН -->
 <div class="time-deck">
-    <button class="play-master-btn" id="playBtn" onclick="UIActionWithSound(() => TimeMachine.togglePlay())"><i class="fa-solid fa-play"></i></button>
+    <button class="play-master-btn" id="playBtn" onclick="UIActionWithSound(() => TimeMachine.togglePlay(), 'success')"><i class="fa-solid fa-play"></i></button>
     <div class="timeline-body">
         <div style="display:flex; justify-content:space-between; align-items:center; font-size:11px; font-family:var(--font-mono);">
             <span style="color:var(--success); font-weight:700;"><i class="fa-solid fa-satellite"></i> RAINVIEWER LIVE</span>
@@ -502,62 +493,63 @@
 </div>
 
 <!-- DRAWER СЛОЕВ И ВЫБОРА КАРТЫ -->
-<div class="drawer-overlay" id="drawerOverlay" onclick="UIActionWithSound(() => UIController.toggleDrawer())"></div>
+<div class="drawer-overlay" id="drawerOverlay" onclick="UIActionWithSound(() => UIController.toggleDrawer(), 'danger')"></div>
 <div class="drawer-panel" id="drawerPanel">
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
         <span class="hud-title" style="font-size:12px; color:#fff;">Выбор подложки карты</span>
-        <i class="fa-solid fa-xmark" style="cursor:pointer; color:#fff; padding:4px;" onclick="UIActionWithSound(() => UIController.toggleDrawer())"></i>
+        <i class="fa-solid fa-xmark" style="cursor:pointer; color:#fff; padding:4px;" onclick="UIActionWithSound(() => UIController.toggleDrawer(), 'danger')"></i>
     </div>
 
     <div class="map-style-grid">
-        <div class="map-style-card active" onclick="UIActionWithSound(function(el){ MapStyles.set('dark', el); }, this)"><i class="fa-solid fa-moon"></i><br>CARTO Cyber</div>
-        <div class="map-style-card" onclick="UIActionWithSound(function(el){ MapStyles.set('satellite', el); }, this)"><i class="fa-solid fa-globe"></i><br>Esri Satellite</div>
-        <div class="map-style-card" onclick="UIActionWithSound(function(el){ MapStyles.set('topo', el); }, this)"><i class="fa-solid fa-mountain"></i><br>OpenTopoMap</div>
-        <div class="map-style-card" onclick="UIActionWithSound(function(el){ MapStyles.set('light', el); }, this)"><i class="fa-solid fa-sun"></i><br>CARTO Light</div>
-        <div class="map-style-card" onclick="UIActionWithSound(function(el){ MapStyles.set('osm', el); }, this)"><i class="fa-solid fa-map"></i><br>OSM Standard</div>
+        <div class="map-style-card active" onclick="UIActionWithSound(function(el){ MapStyles.set('dark', el); }, 'success', this)"><i class="fa-solid fa-moon"></i><br>CARTO Cyber</div>
+        <div class="map-style-card" onclick="UIActionWithSound(function(el){ MapStyles.set('satellite', el); }, 'success', this)"><i class="fa-solid fa-globe"></i><br>Esri Satellite</div>
+        <div class="map-style-card" onclick="UIActionWithSound(function(el){ MapStyles.set('topo', el); }, 'success', this)"><i class="fa-solid fa-mountain"></i><br>OpenTopoMap</div>
+        <div class="map-style-card" onclick="UIActionWithSound(function(el){ MapStyles.set('light', el); }, 'success', this)"><i class="fa-solid fa-sun"></i><br>CARTO Light</div>
+        <div class="map-style-card" onclick="UIActionWithSound(function(el){ MapStyles.set('osm', el); }, 'success', this)"><i class="fa-solid fa-map"></i><br>OSM Standard</div>
     </div>
 
     <span class="hud-title" style="font-size:12px; color:#fff; margin-bottom:12px; display:block;">Профессиональный пульт слоев</span>
     <div class="layers-grid">
         <div class="layer-card">
             <span><i class="fa-solid fa-cloud-showers-heavy" style="color:var(--accent);"></i> Осадки (Радар)</span>
-            <label class="switch"><input type="checkbox" id="chkRadar" onchange="UIActionWithSound(() => LayerManager.toggle('radar', this.checked))"><span class="slider-round"></span></label>
+            <label class="switch"><input type="checkbox" id="chkRadar" onchange="UIActionWithSound(() => LayerManager.toggle('radar', this.checked), 'toggle')"><span class="slider-round"></span></label>
         </div>
         <div class="layer-card">
             <span><i class="fa-solid fa-wind" style="color:var(--accent-cyan);"></i> Векторы ветра</span>
-            <label class="switch"><input type="checkbox" id="chkWind" onchange="UIActionWithSound(() => LayerManager.toggle('wind', this.checked))"><span class="slider-round"></span></label>
+            <label class="switch"><input type="checkbox" id="chkWind" onchange="UIActionWithSound(() => LayerManager.toggle('wind', this.checked), 'toggle')"><span class="slider-round"></span></label>
         </div>
         <div class="layer-card">
             <span><i class="fa-solid fa-bolt" style="color:var(--warning);"></i> Грозы и Молнии (Live)</span>
-            <label class="switch"><input type="checkbox" id="chkLightning" onchange="UIActionWithSound(() => LayerManager.toggle('lightning', this.checked))"><span class="slider-round"></span></label>
+            <label class="switch"><input type="checkbox" id="chkLightning" onchange="UIActionWithSound(() => LayerManager.toggle('lightning', this.checked), 'toggle')"><span class="slider-round"></span></label>
         </div>
         <div class="layer-card">
             <span><i class="fa-solid fa-smog" style="color:var(--danger);"></i> Качество воздуха (AQI)</span>
-            <label class="switch"><input type="checkbox" id="chkAir" onchange="UIActionWithSound(() => LayerManager.toggle('air', this.checked))"><span class="slider-round"></span></label>
+            <label class="switch"><input type="checkbox" id="chkAir" onchange="UIActionWithSound(() => LayerManager.toggle('air', this.checked), 'toggle')"><span class="slider-round"></span></label>
         </div>
         <div class="layer-card">
             <span><i class="fa-solid fa-temperature-arrow-up" style="color:var(--accent-pink);"></i> Изотермы (Тепло)</span>
-            <label class="switch"><input type="checkbox" id="chkTemp" onchange="UIActionWithSound(() => LayerManager.toggle('temperature', this.checked))"><span class="slider-round"></span></label>
+            <label class="switch"><input type="checkbox" id="chkTemp" onchange="UIActionWithSound(() => LayerManager.toggle('temperature', this.checked), 'toggle')"><span class="slider-round"></span></label>
         </div>
         <div class="layer-card">
             <span><i class="fa-solid fa-water" style="color:var(--accent-cyan);"></i> Волны и течения</span>
-            <label class="switch"><input type="checkbox" id="chkMarine" onchange="UIActionWithSound(() => LayerManager.toggle('marine', this.checked))"><span class="slider-round"></span></label>
+            <label class="switch"><input type="checkbox" id="chkMarine" onchange="UIActionWithSound(() => LayerManager.toggle('marine', this.checked), 'toggle')"><span class="slider-round"></span></label>
         </div>
         <div class="layer-card">
             <span><i class="fa-solid fa-earth-americas" style="color:var(--warning);"></i> Сейсмичность (USGS)</span>
-            <label class="switch"><input type="checkbox" id="chkQuake" onchange="UIActionWithSound(() => LayerManager.toggle('earthquake', this.checked))"><span class="slider-round"></span></label>
+            <label class="switch"><input type="checkbox" id="chkQuake" onchange="UIActionWithSound(() => LayerManager.toggle('earthquake', this.checked), 'toggle')"><span class="slider-round"></span></label>
         </div>
         <div class="layer-card">
             <span><i class="fa-solid fa-satellite-dish" style="color:var(--success);"></i> ИК Спутник облаков</span>
-            <label class="switch"><input type="checkbox" id="chkSatelliteIR" onchange="UIActionWithSound(() => LayerManager.toggle('satelliteir', this.checked))"><span class="slider-round"></span></label>
+            <label class="switch"><input type="checkbox" id="chkSatelliteIR" onchange="UIActionWithSound(() => LayerManager.toggle('satelliteir', this.checked), 'toggle')"><span class="slider-round"></span></label>
         </div>
     </div>
 </div>
 
 <script>
-/* МЯГКИЙ ЗВУК КЛИКОВ (Web Audio API) */
+/* РАЗНООБРАЗНАЯ СИСТЕМА ЗВУКОВ НА WEB AUDIO API (Без рандома) */
 let uiAudioCtx = null;
-function playClickSound() {
+
+function playSoundEffect(type = 'neutral') {
     try {
         if (!uiAudioCtx) {
             uiAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -565,26 +557,59 @@ function playClickSound() {
         if (uiAudioCtx.state === 'suspended') {
             uiAudioCtx.resume();
         }
+        
+        const now = uiAudioCtx.currentTime;
         const osc = uiAudioCtx.createOscillator();
         const gain = uiAudioCtx.createGain();
-        
-        osc.type = 'sine';
-        osc.frequency.setValueAtTime(600, uiAudioCtx.currentTime);
-        osc.frequency.exponentialRampToValueAtTime(150, uiAudioCtx.currentTime + 0.04);
-        
-        gain.gain.setValueAtTime(0.08, uiAudioCtx.currentTime); // тихий и приятный уровень громкости
-        gain.gain.exponentialRampToValueAtTime(0.001, uiAudioCtx.currentTime + 0.04);
         
         osc.connect(gain);
         gain.connect(uiAudioCtx.destination);
         
-        osc.start();
-        osc.stop(uiAudioCtx.currentTime + 0.04);
+        if (type === 'success') {
+            // Восходящий мелодичный звук успешного действия (например, 3D, Моя локация, Воспроизведение таймлайна)
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(440, now);
+            osc.frequency.exponentialRampToValueAtTime(880, now + 0.08);
+            gain.gain.setValueAtTime(0.06, now);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.09);
+            osc.start(now);
+            osc.stop(now + 0.09);
+        } 
+        else if (type === 'toggle') {
+            // Четкий щелчок тумблера/переключателя (слои, аудио эмбиент)
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(320, now);
+            osc.frequency.exponentialRampToValueAtTime(640, now + 0.05);
+            gain.gain.setValueAtTime(0.08, now);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
+            osc.start(now);
+            osc.stop(now + 0.05);
+        } 
+        else if (type === 'danger') {
+            // Глуховатый низкий тук для закрытия панелей / отмены
+            osc.type = 'sawtooth';
+            osc.frequency.setValueAtTime(180, now);
+            osc.frequency.exponentialRampToValueAtTime(90, now + 0.06);
+            gain.gain.setValueAtTime(0.05, now);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.06);
+            osc.start(now);
+            osc.stop(now + 0.06);
+        } 
+        else {
+            // Стандартный нейтральный короткий клик (вкладки, фильтры высоты, меню)
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(550, now);
+            osc.frequency.exponentialRampToValueAtTime(200, now + 0.04);
+            gain.gain.setValueAtTime(0.07, now);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.04);
+            osc.start(now);
+            osc.stop(now + 0.04);
+        }
     } catch(e) {}
 }
 
-function UIActionWithSound(action, param) {
-    playClickSound();
+function UIActionWithSound(action, soundType = 'neutral', param) {
+    playSoundEffect(soundType);
     if (typeof action === 'function') {
         action(param);
     }
@@ -676,7 +701,7 @@ const QuantumEngine = {
             const data = await res.json();
             if(data.length) {
                 box.innerHTML = data.map(item => `
-                    <div class="search-item" onclick="UIActionWithSound(() => QuantumEngine.selectLocation(${item.lat}, ${item.lon}, '${item.display_name.split(',')[0]}'))">
+                    <div class="search-item" onclick="UIActionWithSound(() => QuantumEngine.selectLocation(${item.lat}, ${item.lon}, '${item.display_name.split(',')[0]}'), 'neutral')">
                         ${item.display_name}
                     </div>
                 `).join('');

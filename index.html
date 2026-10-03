@@ -168,13 +168,20 @@
             border: 1px solid var(--border);
             background: var(--bg-solid);
             box-shadow: 0 8px 25px rgba(0,0,0,0.6);
-            transition: background 0.2s, border-color 0.2s;
+            transition: border-color 0.15s, background 0.15s, transform 0.05s;
             position: relative;
         }
 
         .icon-btn:hover:not(.locked) {
             border-color: rgba(255, 255, 255, 0.4);
             background: #162032;
+        }
+
+        .icon-btn:active:not(.locked) {
+            transform: scale(0.92);
+            background: #1d4ed8;
+            border-color: var(--accent);
+            color: #ffffff;
         }
 
         .icon-btn.locked {
@@ -268,7 +275,11 @@
         .alt-btn {
             flex: 1; padding: 7px 0; border: none; background: transparent;
             color: var(--text-muted); font-size: 10px; font-weight: 700;
-            border-radius: 10px; cursor: pointer; transition: var(--transition-smooth);
+            border-radius: 10px; cursor: pointer; transition: transform 0.05s, background 0.2s;
+        }
+
+        .alt-btn:active {
+            transform: scale(0.95);
         }
 
         .alt-btn.active {
@@ -294,6 +305,11 @@
             border: none; color: #fff; font-size: 15px; cursor: pointer;
             display: flex; align-items: center; justify-content: center; flex-shrink: 0;
             box-shadow: 0 6px 20px rgba(59, 130, 246, 0.4);
+            transition: transform 0.05s;
+        }
+
+        .play-master-btn:active {
+            transform: scale(0.92);
         }
 
         .timeline-body { flex: 1; display: flex; flex-direction: column; gap: 6px; }
@@ -342,7 +358,11 @@
             border: 1px solid var(--border);
             border-radius: 16px; padding: 12px 4px;
             text-align: center; cursor: pointer; font-size: 10px; font-weight: 700;
-            transition: var(--transition-smooth); color: var(--text-muted);
+            transition: transform 0.05s, background 0.2s, border-color 0.2s; color: var(--text-muted);
+        }
+
+        .map-style-card:active {
+            transform: scale(0.94);
         }
 
         .map-style-card.active {

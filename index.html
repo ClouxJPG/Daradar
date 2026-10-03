@@ -66,6 +66,12 @@
             transform-origin: center bottom;
         }
 
+        /* Отключение размытия для радарной GIF с жесткими цветами */
+        .radanim-pixelated {
+            image-rendering: pixelated;
+            image-rendering: crisp-edges;
+        }
+
         .solid-panel {
             background: var(--bg-solid);
             border: 1px solid var(--border);
@@ -493,7 +499,7 @@
     <button class="play-master-btn" id="playBtn" onclick="SafeAction(this, () => TimeMachine.togglePlay(), 'click')"><i class="fa-solid fa-play"></i></button>
     <div class="timeline-body">
         <div style="display:flex; justify-content:space-between; align-items:center; font-size:11px; font-family:var(--font-mono);">
-            <span style="color:var(--success); font-weight:700;"><i class="fa-solid fa-satellite"></i> RAINVIEWER LIVE</span>
+            <span style="color:var(--success); font-weight:700;"><i class="fa-solid fa-satellite"></i> RADANIM SERVER LIVE</span>
             <span id="timeDisplay" style="color:#fff; font-weight:700;">--:--</span>
         </div>
         <input type="range" id="timeSlider" min="0" max="100" value="100" oninput="TimeMachine.onSeek(this.value)">
@@ -568,7 +574,7 @@
 /* Мягкие, приятные звуки с регулируемой громкостью */
 const AudioSynth = {
     ctx: null,
-    volume: 0.2, // Умная комфортная громкость по умолчанию
+    volume: 0.2,
     
     initContext() {
         if (!this.ctx) {
@@ -599,7 +605,6 @@ const AudioSynth = {
             gain.connect(this.ctx.destination);
 
             if (type === 'toggle') {
-                // Мягкий футуристичный щелчок переключателя
                 osc.type = 'sine';
                 filter.frequency.setValueAtTime(800, now);
                 osc.frequency.setValueAtTime(440, now);
@@ -612,7 +617,6 @@ const AudioSynth = {
                 osc.start(now);
                 osc.stop(now + 0.04);
             } else {
-                // Приглушенный деревянный тик для обычных кнопок
                 osc.type = 'triangle';
                 filter.frequency.setValueAtTime(300, now);
                 osc.frequency.setValueAtTime(220, now);
@@ -629,7 +633,6 @@ const AudioSynth = {
     }
 };
 
-/* ТОТАЛЬНАЯ ЗАЩИТА НА ВСЕХ ЭЛЕМЕНТАХ ИНТЕРФЕЙСА (Блокировка повторных нажатий) */
 function SafeAction(element, action, soundType = 'click') {
     if (!element) return;
     if (element.dataset.locked === "true" || element.disabled) return;
@@ -852,7 +855,6 @@ const LayerManager = {
     flightGroup: L.layerGroup(),
     flightsActive: false,
     terminatorLayer: null,
-    radarLayer: null,
     lightningGroup: L.layerGroup(),
     airGroup: L.layerGroup(),
     tempGroup: L.layerGroup(),
@@ -908,8 +910,12 @@ const LayerManager = {
     async toggle(type, enabled) {
         if(type === 'wind') WindCanvasLayer.toggle(enabled);
         if(type === 'radar') {
-            if(enabled && TimeMachine.frames.length) TimeMachine.render();
-            else if(!enabled && this.radarLayer) QuantumEngine.map.removeLayer(this.radarLayer);
+            if(enabled) {
+                if(TimeMachine.imageOverlay) TimeMachine.imageOverlay.addTo(QuantumEngine.map);
+                else TimeMachine.render();
+            } else {
+                if(TimeMachine.imageOverlay) QuantumEngine.map.removeLayer(TimeMachine.imageOverlay);
+            }
         }
         if(type === 'lightning') {
             if(enabled) {
@@ -994,25 +1000,51 @@ const LayerManager = {
     }
 };
 
+/* Модифицированная Машина времени под серверные GIF кадры с точной геопривязкой */
 const TimeMachine = {
-    frames: [], index: 0, isPlaying: false, timer: null,
+    frames: [], 
+    index: 0, 
+    isPlaying: false, 
+    timer: null,
+    imageOverlay: null,
+    
+    // Географические границы для наложения радарных данных по России [Юг, Запад], [Север, Восток]
+    bounds: [[41.0, 19.0], [82.0, 180.0]],
+
     async init() {
-        try {
-            const res = await fetch('https://api.rainviewer.com/public/weather-maps.json');
-            const data = await res.json();
-            this.frames = data.radar?.past || [];
-            if(this.frames.length) this.index = this.frames.length - 1;
-        } catch(e) {}
+        // Эндпоинты серверных обработанных GIF кадров radanim
+        this.frames = [
+            { time: 1726243200, url: '/api/radanim/frame_0.gif' },
+            { time: 1726246800, url: '/api/radanim/frame_1.gif' },
+            { time: 1726250400, url: '/api/radanim/frame_2.gif' },
+            { time: 1726254000, url: '/api/radanim/frame_3.gif' }
+        ];
+        if(this.frames.length) this.index = this.frames.length - 1;
     },
+
     render() {
         if(!this.frames.length) return;
         const f = this.frames[this.index];
-        const url = `https://tilecache.rainviewer.com/v2/radar/${f.time}/256/{z}/{x}/{y}/2/1_1.png`;
-        if(LayerManager.radarLayer) QuantumEngine.map.removeLayer(LayerManager.radarLayer);
-        LayerManager.radarLayer = L.tileLayer(url, { opacity: 0.8, zIndex: 100 }).addTo(QuantumEngine.map);
+        
+        if(this.imageOverlay) {
+            QuantumEngine.map.removeLayer(this.imageOverlay);
+        }
+
+        // Создаем оверлей с отключенным сглаживанием цветов (.radanim-pixelated)
+        this.imageOverlay = L.imageOverlay(f.url, this.bounds, {
+            opacity: 0.85,
+            interactive: false,
+            className: 'radanim-pixelated'
+        });
+
+        if(document.getElementById('chkRadar').checked) {
+            this.imageOverlay.addTo(QuantumEngine.map);
+        }
+
         const d = new Date(f.time * 1000);
         document.getElementById('timeDisplay').innerText = d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
     },
+
     togglePlay() {
         if(!document.getElementById('chkRadar').checked) {
             document.getElementById('chkRadar').checked = true;
@@ -1020,13 +1052,17 @@ const TimeMachine = {
         }
         this.isPlaying = !this.isPlaying;
         document.getElementById('playBtn').innerHTML = this.isPlaying ? '<i class="fa-solid fa-pause"></i>' : '<i class="fa-solid fa-play"></i>';
+        
         if(this.isPlaying) {
             this.timer = setInterval(() => {
                 this.index = (this.index + 1) % this.frames.length;
                 this.render();
             }, 1000);
-        } else clearInterval(this.timer);
+        } else {
+            clearInterval(this.timer);
+        }
     },
+
     onSeek(val) {
         if(!this.frames.length) return;
         this.index = Math.round((val / 100) * (this.frames.length - 1));

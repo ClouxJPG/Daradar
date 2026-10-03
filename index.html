@@ -546,7 +546,7 @@
 </div>
 
 <script>
-/* РАЗНООБРАЗНАЯ СИСТЕМА ЗВУКОВ НА WEB AUDIO API (Без рандома) */
+/* МЯГКИЕ, КОМФОРТНЫЕ И АТМОСФЕРНЫЕ ЗВУКИ НА WEB AUDIO API */
 let uiAudioCtx = null;
 
 function playSoundEffect(type = 'neutral') {
@@ -562,48 +562,69 @@ function playSoundEffect(type = 'neutral') {
         const osc = uiAudioCtx.createOscillator();
         const gain = uiAudioCtx.createGain();
         
-        osc.connect(gain);
+        // Низкочастотный фильтр для полного отсутствия резких металлических обертонов
+        const filter = uiAudioCtx.createBiquadFilter();
+        filter.type = 'lowpass';
+        
+        osc.connect(filter);
+        filter.connect(gain);
         gain.connect(uiAudioCtx.destination);
         
         if (type === 'success') {
-            // Восходящий мелодичный звук успешного действия (например, 3D, Моя локация, Воспроизведение таймлайна)
-            osc.type = 'triangle';
-            osc.frequency.setValueAtTime(440, now);
-            osc.frequency.exponentialRampToValueAtTime(880, now + 0.08);
-            gain.gain.setValueAtTime(0.06, now);
-            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.09);
+            // Мягкая теплая капля / колокольчик (активация 3D, локация, старт)
+            osc.type = 'sine';
+            filter.frequency.setValueAtTime(400, now);
+            osc.frequency.setValueAtTime(293.66, now); // Нота D4
+            osc.frequency.exponentialRampToValueAtTime(440, now + 0.15); // Переход к A4
+            
+            gain.gain.setValueAtTime(0.001, now);
+            gain.gain.linearRampToValueAtTime(0.04, now + 0.03);
+            gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.25);
+            
             osc.start(now);
-            osc.stop(now + 0.09);
+            osc.stop(now + 0.25);
         } 
         else if (type === 'toggle') {
-            // Четкий щелчок тумблера/переключателя (слои, аудио эмбиент)
+            // Воздушный, очень мягкий пузырек / переключатель слоев
             osc.type = 'sine';
-            osc.frequency.setValueAtTime(320, now);
-            osc.frequency.exponentialRampToValueAtTime(640, now + 0.05);
-            gain.gain.setValueAtTime(0.08, now);
-            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
+            filter.frequency.setValueAtTime(350, now);
+            osc.frequency.setValueAtTime(220, now);
+            osc.frequency.exponentialRampToValueAtTime(330, now + 0.1);
+            
+            gain.gain.setValueAtTime(0.001, now);
+            gain.gain.linearRampToValueAtTime(0.03, now + 0.02);
+            gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.15);
+            
             osc.start(now);
-            osc.stop(now + 0.05);
+            osc.stop(now + 0.15);
         } 
         else if (type === 'danger') {
-            // Глуховатый низкий тук для закрытия панелей / отмены
-            osc.type = 'sawtooth';
-            osc.frequency.setValueAtTime(180, now);
-            osc.frequency.exponentialRampToValueAtTime(90, now + 0.06);
-            gain.gain.setValueAtTime(0.05, now);
-            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.06);
+            // Успокаивающий глубокий низкий тон (закрытие панелей)
+            osc.type = 'sine';
+            filter.frequency.setValueAtTime(250, now);
+            osc.frequency.setValueAtTime(196, now); // Нота G3
+            osc.frequency.exponentialRampToValueAtTime(146.83, now + 0.15); // Нота D3
+            
+            gain.gain.setValueAtTime(0.001, now);
+            gain.gain.linearRampToValueAtTime(0.035, now + 0.02);
+            gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.2);
+            
             osc.start(now);
-            osc.stop(now + 0.06);
+            osc.stop(now + 0.2);
         } 
         else {
-            // Стандартный нейтральный короткий клик (вкладки, фильтры высоты, меню)
+            // Шелковистый микро-щелчок (нейтральный клик по кнопкам и вкладкам)
             osc.type = 'sine';
-            osc.frequency.setValueAtTime(550, now);
-            osc.frequency.exponentialRampToValueAtTime(200, now + 0.04);
-            gain.gain.setValueAtTime(0.07, now);
-            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.04);
+            filter.frequency.setValueAtTime(300, now);
+            osc.frequency.setValueAtTime(349.23, now); // Нота F4
+            osc.frequency.exponentialRampToValueAtTime(261.63, now + 0.06); // Нота C4
+            
+            gain.gain.setValueAtTime(0.001, now);
+            gain.gain.linearRampToValueAtTime(0.025, now + 0.01);
+            gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.08);
+            
             osc.start(now);
-            osc.stop(now + 0.04);
+            osc.stop(now + 0.08);
         }
     } catch(e) {}
 }
@@ -953,14 +974,14 @@ const AudioSynth = {
             const noise = this.ctx.createBufferSource();
             noise.buffer = buf; noise.loop = true;
             this.filter = this.ctx.createBiquadFilter();
-            this.filter.type = 'lowpass'; this.filter.frequency.value = 300;
-            const gain = this.ctx.createGain(); gain.gain.value = 0.1;
+            this.filter.type = 'lowpass'; this.filter.frequency.value = 220; // Более глубокий, уютный гул
+            const gain = this.ctx.createGain(); gain.gain.value = 0.05; // Сниженная громкость для комфорта
             noise.connect(this.filter); this.filter.connect(gain); gain.connect(this.ctx.destination);
             noise.start();
         } else { this.ctx.suspend(); }
     },
     adjustByWind(windSpeed) {
-        if(this.filter && this.isPlaying) { this.filter.frequency.value = Math.min(200 + windSpeed * 25, 1200); }
+        if(this.filter && this.isPlaying) { this.filter.frequency.value = Math.min(180 + windSpeed * 15, 600); }
     }
 };
 

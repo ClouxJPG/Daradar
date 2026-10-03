@@ -14,10 +14,10 @@
     <style>
         :root {
             --bg-dark: #05070c;
-            --bg-glass: rgba(10, 15, 26, 0.85);
-            --bg-card: rgba(16, 24, 40, 0.92);
-            --border: rgba(255, 255, 255, 0.12);
-            --border-glow: rgba(59, 130, 246, 0.5);
+            --bg-solid: #0d1322;
+            --bg-card: #111827;
+            --border: rgba(255, 255, 255, 0.15);
+            --border-glow: rgba(59, 130, 246, 0.6);
             --accent: #3b82f6;
             --accent-cyan: #06b6d4;
             --accent-purple: #8b5cf6;
@@ -26,7 +26,7 @@
             --success: #10b981;
             --warning: #f59e0b;
             --text-main: #f8fafc;
-            --text-muted: #64748b;
+            --text-muted: #94a3b8;
             --font-mono: 'JetBrains Mono', monospace;
             --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
         }
@@ -49,7 +49,6 @@
         #map-container {
             width: 100%; height: 100%;
             position: absolute;
-            perspective: 1000px;
         }
 
         #map {
@@ -63,14 +62,12 @@
             transform-origin: center bottom;
         }
 
-        .glass {
-            background: var(--bg-glass);
-            backdrop-filter: blur(24px);
-            -webkit-backdrop-filter: blur(24px);
+        /* УБРАЛИ ПРОЗРАЧНОСТЬ И СДЕЛАЛИ ПЛАТФОРМУ СТРОГО ТВЁРДОЙ */
+        .solid-panel {
+            background: var(--bg-solid);
             border: 1px solid var(--border);
             border-radius: 16px;
-            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
-            transition: all 0.3s var(--ease-out);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8);
         }
 
         /* ВЕРХНИЙ БАР */
@@ -87,14 +84,14 @@
 
         .brand-badge {
             pointer-events: auto;
-            padding: 10px 18px;
+            padding: 12px 18px;
             display: flex;
             align-items: center;
             gap: 10px;
             font-weight: 800;
             font-size: 13px;
             letter-spacing: 1.5px;
-            background: linear-gradient(135deg, rgba(59,130,246,0.2), rgba(139,92,246,0.1));
+            background: var(--bg-solid);
             border: 1px solid var(--border-glow);
         }
 
@@ -113,6 +110,7 @@
             padding: 0 16px;
             height: 46px;
             gap: 10px;
+            background: var(--bg-solid);
         }
 
         .search-input-wrap input {
@@ -123,12 +121,13 @@
         .search-dropdown {
             position: absolute;
             top: 54px; left: 0; right: 0;
-            background: var(--bg-card);
+            background: var(--bg-solid);
             border: 1px solid var(--border);
             border-radius: 14px;
             overflow: hidden;
             display: none;
             z-index: 1100;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.9);
         }
 
         .search-item {
@@ -138,7 +137,7 @@
             border-bottom: 1px solid var(--border);
             transition: background 0.2s;
         }
-        .search-item:hover { background: rgba(59, 130, 246, 0.2); }
+        .search-item:hover { background: rgba(59, 130, 246, 0.3); }
 
         .top-actions {
             display: flex;
@@ -146,6 +145,7 @@
             pointer-events: auto;
         }
 
+        /* КНОПКИ БЕЗ ПРОЗРАЧНОСТИ И СТАБИЛЬНЫЕ ПРИ КЛИКЕ */
         .icon-btn {
             width: 46px; height: 46px;
             border-radius: 14px;
@@ -154,22 +154,22 @@
             font-size: 15px;
             cursor: pointer;
             border: 1px solid var(--border);
-            background: var(--bg-glass);
-            transition: all 0.25s var(--ease-out);
+            background: var(--bg-solid);
+            transition: background 0.2s, border-color 0.2s, color 0.2s;
             position: relative;
         }
 
         .icon-btn:hover {
-            transform: translateY(-2px);
-            border-color: rgba(255, 255, 255, 0.3);
-            background: rgba(255, 255, 255, 0.08);
+            border-color: rgba(255, 255, 255, 0.4);
+            background: #1e293b;
         }
 
+        /* Состояние активной кнопки строго фиксированное, без прозрачности */
         .icon-btn.active {
             border-color: var(--accent);
-            background: rgba(59, 130, 246, 0.25);
-            color: var(--accent-cyan);
-            box-shadow: 0 0 20px rgba(59, 130, 246, 0.4);
+            background: #1d4ed8;
+            color: #ffffff;
+            box-shadow: 0 0 15px rgba(59, 130, 246, 0.6);
         }
 
         /* ЛЕВАЯ ПАНЕЛЬ */
@@ -183,7 +183,7 @@
             pointer-events: auto;
         }
 
-        /* ПРАВЫЙ HUD */
+        /* ПРАВЫЙ HUD (ТВЁРДЫЙ) */
         .right-hud {
             position: absolute;
             top: 78px; right: 16px; bottom: 100px;
@@ -195,6 +195,9 @@
             gap: 16px;
             pointer-events: auto;
             overflow-y: auto;
+            background: var(--bg-solid);
+            border: 1px solid var(--border);
+            border-radius: 16px;
             transition: transform 0.4s var(--ease-out), opacity 0.4s var(--ease-out);
         }
 
@@ -222,7 +225,7 @@
         }
 
         .m-card {
-            background: rgba(255, 255, 255, 0.02);
+            background: #162032;
             border: 1px solid var(--border);
             border-radius: 12px;
             padding: 12px;
@@ -240,7 +243,7 @@
 
         .alt-pills {
             display: flex;
-            background: rgba(0,0,0,0.4);
+            background: #090e17;
             padding: 3px;
             border-radius: 10px;
             border: 1px solid var(--border);
@@ -254,7 +257,6 @@
 
         .alt-btn.active {
             background: var(--accent); color: #fff;
-            box-shadow: 0 0 10px rgba(59, 130, 246, 0.4);
         }
 
         /* ТАЙМЛАЙН */
@@ -265,6 +267,8 @@
             padding: 14px 20px; border-radius: 20px;
             display: flex; align-items: center; gap: 16px;
             pointer-events: auto;
+            background: var(--bg-solid);
+            border: 1px solid var(--border);
         }
 
         .play-master-btn {
@@ -292,8 +296,7 @@
         /* DRAWER СЛОЕВ И КАРТ */
         .drawer-overlay {
             position: fixed; inset: 0;
-            background: rgba(0, 0, 0, 0.6);
-            backdrop-filter: blur(8px);
+            background: rgba(0, 0, 0, 0.7);
             z-index: 2000;
             opacity: 0; visibility: hidden;
             transition: all 0.3s var(--ease-out);
@@ -303,13 +306,14 @@
         .drawer-panel {
             position: fixed; bottom: 0; left: 0; right: 0;
             z-index: 2001;
-            background: var(--bg-card);
+            background: var(--bg-solid);
             border-top: 1px solid var(--border-glow);
             border-radius: 28px 28px 0 0;
             padding: 24px; max-width: 720px; margin: 0 auto;
             transform: translateY(100%);
             transition: transform 0.4s var(--ease-out);
             max-height: 85vh; overflow-y: auto;
+            box-shadow: 0 -20px 40px rgba(0,0,0,0.9);
         }
         .drawer-panel.active { transform: translateY(0); }
 
@@ -318,23 +322,23 @@
         }
 
         .map-style-card {
-            background: rgba(255,255,255,0.03);
+            background: #162032;
             border: 1px solid var(--border);
             border-radius: 12px; padding: 10px 4px;
             text-align: center; cursor: pointer; font-size: 10px; font-weight: 700;
-            transition: all 0.2s;
+            transition: all 0.2s; color: var(--text-muted);
         }
 
         .map-style-card:hover, .map-style-card.active {
             border-color: var(--accent-cyan);
-            background: rgba(6, 182, 212, 0.15);
+            background: #082f49;
             color: var(--accent-cyan);
         }
 
         .layers-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 
         .layer-card {
-            background: rgba(255, 255, 255, 0.02);
+            background: #162032;
             border: 1px solid var(--border);
             border-radius: 12px; padding: 12px;
             display: flex; align-items: center; justify-content: space-between;
@@ -344,7 +348,7 @@
         .switch { position: relative; width: 38px; height: 22px; flex-shrink: 0; }
         .switch input { opacity: 0; width: 0; height: 0; }
         .slider-round {
-            position: absolute; inset: 0; background: rgba(255, 255, 255, 0.15);
+            position: absolute; inset: 0; background: #334155;
             border-radius: 22px; cursor: pointer; transition: 0.2s;
         }
         .slider-round:before {
@@ -357,10 +361,10 @@
         .toast-banner {
             position: fixed; top: 76px; left: 50%;
             transform: translate(-50%, -20px); z-index: 3000;
-            background: rgba(16, 24, 40, 0.95);
+            background: #0f172a;
             border: 1px solid var(--accent);
             color: #fff; padding: 10px 20px; border-radius: 30px;
-            font-size: 12px; font-weight: 600; box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            font-size: 12px; font-weight: 600; box-shadow: 0 10px 30px rgba(0,0,0,0.8);
             opacity: 0; pointer-events: none; transition: all 0.3s var(--ease-out);
             display: flex; align-items: center; gap: 8px;
         }
@@ -381,10 +385,10 @@
 
 <!-- ВЕРХНИЙ БАР -->
 <div class="top-bar">
-    <div class="glass brand-badge"><i class="fa-solid fa-atom"></i> QUANTUM METEO</div>
+    <div class="brand-badge"><i class="fa-solid fa-atom"></i> QUANTUM METEO</div>
 
     <div class="search-box">
-        <div class="glass search-input-wrap">
+        <div class="search-input-wrap">
             <i class="fa-solid fa-magnifying-glass" style="color: var(--text-muted);"></i>
             <input type="text" id="searchInput" placeholder="Поиск городов и гео-координат..." oninput="QuantumEngine.searchLocation(this.value)">
         </div>
@@ -408,7 +412,7 @@
 </div>
 
 <!-- ПРАВЫЙ HUD -->
-<div class="glass right-hud collapsed" id="rightHud">
+<div class="right-hud collapsed" id="rightHud">
     <div class="hud-header" style="display:flex; justify-content:space-between; align-items:center;">
         <span class="hud-title">Квантовый скрининг</span>
         <i class="fa-solid fa-xmark" style="cursor:pointer; color:var(--text-muted);" onclick="UIController.toggleHUD()"></i>
@@ -455,7 +459,7 @@
 </div>
 
 <!-- ТАЙМЛАЙН -->
-<div class="glass time-deck">
+<div class="time-deck">
     <button class="play-master-btn" id="playBtn" onclick="TimeMachine.togglePlay()"><i class="fa-solid fa-play"></i></button>
     <div class="timeline-body">
         <div style="display:flex; justify-content:space-between; align-items:center; font-size:11px; font-family:var(--font-mono);">
@@ -471,7 +475,7 @@
 <div class="drawer-panel" id="drawerPanel">
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
         <span class="hud-title" style="font-size:12px; color:#fff;">Выбор подложки карты</span>
-        <i class="fa-solid fa-xmark" style="cursor:pointer;" onclick="UIController.toggleDrawer()"></i>
+        <i class="fa-solid fa-xmark" style="cursor:pointer; color:#fff;" onclick="UIController.toggleDrawer()"></i>
     </div>
 
     <div class="map-style-grid">
@@ -674,9 +678,9 @@ const WindCanvasLayer = {
     },
     loop() {
         if(!this.active || !this.ctx) return;
-        this.ctx.fillStyle = 'rgba(5, 7, 12, 0.15)';
+        this.ctx.fillStyle = 'rgba(5, 7, 12, 0.2)';
         this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
-        this.ctx.strokeStyle = 'rgba(6, 182, 212, 0.8)';
+        this.ctx.strokeStyle = 'rgba(6, 182, 212, 0.9)';
         this.ctx.lineWidth = 1.5;
         this.ctx.beginPath();
         const bounds = this.map.getBounds();
@@ -751,7 +755,7 @@ const LayerManager = {
             coords.push([lat, lon]);
         }
         coords.push([-90, 180], [-90, -180]);
-        this.terminatorLayer = L.polygon(coords, { color: '#000', fillColor: '#000', fillOpacity: 0.45, weight: 1 }).addTo(QuantumEngine.map);
+        this.terminatorLayer = L.polygon(coords, { color: '#000', fillColor: '#000', fillOpacity: 0.6, weight: 1 }).addTo(QuantumEngine.map);
         document.getElementById('btnTerminator').classList.add('active');
     },
 
@@ -764,10 +768,9 @@ const LayerManager = {
         if(type === 'lightning') {
             if(enabled) {
                 this.lightningGroup.addTo(QuantumEngine.map);
-                UIController.showToast("Запрос реальных грозовых данных...");
+                UIController.showToast("Синхронизация грозовых фронтов...");
                 try {
                     const b = QuantumEngine.map.getBounds();
-                    // Запрос к реальному публичному бэкенду Blitzortung
                     const res = await fetch(`https://global.blitzortung.org/Data/Protected/last_strikes.php?west=${b.getWest()}&east=${b.getEast()}&south=${b.getSouth()}&north=${b.getNorth()}`);
                     const text = await res.text();
                     this.lightningGroup.clearLayers();
@@ -779,19 +782,15 @@ const LayerManager = {
                             const strike = JSON.parse(line);
                             if(strike.lat && strike.lon) {
                                 L.circleMarker([strike.lat, strike.lon], { 
-                                    radius: 7, color: '#f59e0b', fillColor: '#f59e0b', fillOpacity: 0.9 
-                                }).bindPopup(`⚡ Молния [Blitzortung]<br>Время: ${new Date(strike.time / 1000000).toLocaleTimeString()}`).addTo(this.lightningGroup);
+                                    radius: 6, color: '#f59e0b', fillColor: '#f59e0b', fillOpacity: 1 
+                                }).bindPopup(`⚡ Разряд молнии<br>Время: ${new Date(strike.time / 1000000).toLocaleTimeString()}`).addTo(this.lightningGroup);
                                 count++;
                             }
                         } catch(err){}
                     }
-                    if(count === 0) {
-                        UIController.showToast("В текущей видимой области молний не зафиксировано");
-                    } else {
-                        UIController.showToast(`Загружено реальных разрядов: ${count}`);
-                    }
+                    UIController.showToast(count ? `Загружено разрядов: ${count}` : "В этой зоне разрядов нет");
                 } catch(e) {
-                    UIController.showToast("Сетевой шлюз гроз недоступен (CORS/Сеть)");
+                    UIController.showToast("Шлюз молний недоступен (CORS)");
                 }
             } else { 
                 QuantumEngine.map.removeLayer(this.lightningGroup); 
@@ -808,7 +807,7 @@ const LayerManager = {
                     data.features.slice(0, 25).forEach(eq => {
                         const coords = eq.geometry.coordinates;
                         const mag = eq.properties.mag;
-                        L.circleMarker([coords[1], coords[0]], { radius: mag * 3, color: '#ef4444', fillColor: '#ef4444', fillOpacity: 0.5 })
+                        L.circleMarker([coords[1], coords[0]], { radius: mag * 3, color: '#ef4444', fillColor: '#ef4444', fillOpacity: 0.8 })
                          .bindPopup(`Землетрясение: M${mag}, ${eq.properties.title}`).addTo(this.quakeGroup);
                     });
                     UIController.showToast("Сейсмические данные USGS загружены");
@@ -821,7 +820,7 @@ const LayerManager = {
                 const b = QuantumEngine.map.getBounds();
                 for(let lat = b.getSouth(); lat < b.getNorth(); lat += 3) {
                     for(let lon = b.getWest(); lon < b.getEast(); lon += 3) {
-                        L.circle([lat, lon], { radius: 80000, color: 'transparent', fillColor: '#ec4899', fillOpacity: 0.15 }).addTo(this.tempGroup);
+                        L.circle([lat, lon], { radius: 80000, color: 'transparent', fillColor: '#ec4899', fillOpacity: 0.2 }).addTo(this.tempGroup);
                     }
                 }
             } else { QuantumEngine.map.removeLayer(this.tempGroup); this.tempGroup.clearLayers(); }
@@ -830,21 +829,21 @@ const LayerManager = {
             if(enabled) {
                 this.airGroup.addTo(QuantumEngine.map);
                 const center = QuantumEngine.map.getCenter();
-                L.circleMarker([center.lat, center.lng], { radius: 25, color: '#10b981', fillColor: '#10b981', fillOpacity: 0.6 })
-                 .bindPopup("AQI Индекс качества воздуха: Отлично (12 µg/m³ PM2.5)").addTo(this.airGroup);
+                L.circleMarker([center.lat, center.lng], { radius: 25, color: '#10b981', fillColor: '#10b981', fillOpacity: 0.8 })
+                 .bindPopup("AQI Индекс качества воздуха: Отлично").addTo(this.airGroup);
             } else { QuantumEngine.map.removeLayer(this.airGroup); this.airGroup.clearLayers(); }
         }
         if(type === 'satelliteir') {
             if(enabled) {
-                this.satelliteIRLayer = L.tileLayer('https://tilecache.rainviewer.com/v2/satellite/nowcast/{z}/{x}/{y}/2/1_1.png', { opacity: 0.6 }).addTo(QuantumEngine.map);
-                UIController.showToast("ИК Спутниковый слой облаков активирован");
+                this.satelliteIRLayer = L.tileLayer('https://tilecache.rainviewer.com/v2/satellite/nowcast/{z}/{x}/{y}/2/1_1.png', { opacity: 0.7 }).addTo(QuantumEngine.map);
+                UIController.showToast("ИК Спутниковый слой активен");
             } else if(this.satelliteIRLayer) {
                 QuantumEngine.map.removeLayer(this.satelliteIRLayer);
                 this.satelliteIRLayer = null;
             }
         }
         if(type === 'marine') {
-            UIController.showToast(enabled ? "Морские течения и волны активированы" : "Морской слой отключен");
+            UIController.showToast(enabled ? "Морские течения активированы" : "Морской слой отключен");
         }
     }
 };
@@ -902,7 +901,7 @@ const TimeMachine = {
         const f = this.frames[this.index];
         const url = `https://tilecache.rainviewer.com/v2/radar/${f.time}/256/{z}/{x}/{y}/2/1_1.png`;
         if(LayerManager.radarLayer) QuantumEngine.map.removeLayer(LayerManager.radarLayer);
-        LayerManager.radarLayer = L.tileLayer(url, { opacity: 0.7, zIndex: 100 }).addTo(QuantumEngine.map);
+        LayerManager.radarLayer = L.tileLayer(url, { opacity: 0.8, zIndex: 100 }).addTo(QuantumEngine.map);
         const d = new Date(f.time * 1000);
         document.getElementById('timeDisplay').innerText = d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
     },

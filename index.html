@@ -43,7 +43,7 @@
         body, html {
             width: 100%; height: 100%;
             overflow: hidden;
-            position: fixed; /* Жесткая фиксация против скролла страницы */
+            position: fixed;
             background: var(--bg-dark);
             color: var(--text-main);
         }
@@ -168,24 +168,17 @@
             border: 1px solid var(--border);
             background: var(--bg-solid);
             box-shadow: 0 8px 25px rgba(0,0,0,0.6);
-            transition: transform 0.2s var(--ease-apple), background 0.2s, border-color 0.2s, opacity 0.2s;
+            transition: background 0.2s, border-color 0.2s;
             position: relative;
         }
 
         .icon-btn:hover:not(.locked) {
             border-color: rgba(255, 255, 255, 0.4);
             background: #162032;
-            transform: translateY(-2px);
-        }
-
-        .icon-btn:active:not(.locked) {
-            transform: scale(0.92);
         }
 
         .icon-btn.locked {
-            opacity: 0.5;
             cursor: not-allowed;
-            transform: none !important;
         }
 
         .icon-btn.active {
@@ -301,9 +294,7 @@
             border: none; color: #fff; font-size: 15px; cursor: pointer;
             display: flex; align-items: center; justify-content: center; flex-shrink: 0;
             box-shadow: 0 6px 20px rgba(59, 130, 246, 0.4);
-            transition: transform 0.2s var(--ease-apple);
         }
-        .play-master-btn:active { transform: scale(0.9); }
 
         .timeline-body { flex: 1; display: flex; flex-direction: column; gap: 6px; }
 
@@ -317,9 +308,7 @@
             border-radius: 50%; background: #fff;
             border: 3px solid var(--accent-cyan); cursor: pointer;
             box-shadow: 0 0 12px var(--accent-cyan);
-            transition: transform 0.2s;
         }
-        input[type="range"]::-webkit-slider-thumb:hover { transform: scale(1.2); }
 
         .drawer-overlay {
             position: fixed; inset: 0;
@@ -356,7 +345,6 @@
             transition: var(--transition-smooth); color: var(--text-muted);
         }
 
-        .map-style-card:hover { transform: translateY(-2px); }
         .map-style-card.active {
             border-color: var(--accent-cyan);
             background: #082f49;
@@ -372,9 +360,7 @@
             border-radius: 16px; padding: 14px;
             display: flex; align-items: center; justify-content: space-between;
             font-size: 12px;
-            transition: var(--transition-smooth);
         }
-        .layer-card:hover { border-color: rgba(255,255,255,0.3); }
 
         .switch { position: relative; width: 42px; height: 24px; flex-shrink: 0; }
         .switch input { opacity: 0; width: 0; height: 0; }
@@ -437,7 +423,7 @@
 <!-- ЛЕВАЯ ПАНЕЛЬ -->
 <div class="left-dock">
     <button class="icon-btn" onclick="UIActionWithSound(() => QuantumEngine.locateUser(), 'success')" title="Моя локация"><i class="fa-solid fa-crosshairs"></i></button>
-    <button class="icon-btn" onclick="UIActionWithSound(() => LayerManager.toggleFlights(), 'toggle')" id="btnFlights" title="Самолеты Live (OpenSky)"><i class="fa-solid fa-plane"></i></button>
+    <button class="icon-btn" onclick="UIActionWithSound(() => LayerManager.toggleFlights(), 'toggle')" id="btnFlights" title="Самолеты Live"><i class="fa-solid fa-plane"></i></button>
     <button class="icon-btn" onclick="UIActionWithSound(() => LayerManager.toggleTerminator(), 'toggle')" id="btnTerminator" title="Терминатор День/Ночь"><i class="fa-solid fa-moon"></i></button>
 </div>
 
@@ -454,7 +440,7 @@
     </div>
 
     <div>
-        <span class="hud-title" style="font-size:9px; display:block; margin-bottom:6px;">Атмосферный срез (Изобары)</span>
+        <span class="hud-title" style="font-size:9px; display:block; margin-bottom:6px;">Атмосферный срез</span>
         <div class="alt-pills">
             <button class="alt-btn active" onclick="UIActionWithSound(function(el){ QuantumEngine.setAltitude('surface', el); }, 'neutral', this)">Поверхность</button>
             <button class="alt-btn" onclick="UIActionWithSound(function(el){ QuantumEngine.setAltitude('850hpa', el); }, 'neutral', this)">850 hPa</button>
@@ -500,7 +486,7 @@
     </div>
 </div>
 
-<!-- DRAWER СЛОЕВ И ВЫБОРА КАРТЫ -->
+<!-- DRAWER -->
 <div class="drawer-overlay" id="drawerOverlay" onclick="UIActionWithSound(() => UIController.toggleDrawer(), 'danger')"></div>
 <div class="drawer-panel" id="drawerPanel">
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
@@ -516,7 +502,6 @@
         <div class="map-style-card" onclick="UIActionWithSound(function(el){ MapStyles.set('osm', el); }, 'success', this)"><i class="fa-solid fa-map"></i><br>OSM Standard</div>
     </div>
 
-    <!-- НАСТРОЙКА ГРОМКОСТИ ЗВУКОВ -->
     <div style="background:#162032; border:1px solid var(--border); border-radius:16px; padding:14px; margin-bottom:16px;">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; font-size:12px;">
             <span><i class="fa-solid fa-volume-high" style="color:var(--accent-cyan);"></i> Громкость звуков и эмбиента</span>
@@ -536,7 +521,7 @@
             <label class="switch"><input type="checkbox" id="chkWind" onchange="UIActionWithSound(() => LayerManager.toggle('wind', this.checked), 'toggle')"><span class="slider-round"></span></label>
         </div>
         <div class="layer-card">
-            <span><i class="fa-solid fa-bolt" style="color:var(--warning);"></i> Грозы и Молнии (Live)</span>
+            <span><i class="fa-solid fa-bolt" style="color:var(--warning);"></i> Грозы и Молнии</span>
             <label class="switch"><input type="checkbox" id="chkLightning" onchange="UIActionWithSound(() => LayerManager.toggle('lightning', this.checked), 'toggle')"><span class="slider-round"></span></label>
         </div>
         <div class="layer-card">
@@ -563,11 +548,18 @@
 </div>
 
 <script>
-let uiAudioCtx = null;
-
 const AudioSynth = {
     ctx: null, filter: null, noiseGain: null, isPlaying: false, masterVolume: 0.7,
     
+    initContext() {
+        if (!this.ctx) {
+            this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        if (this.ctx.state === 'suspended') {
+            this.ctx.resume();
+        }
+    },
+
     setVolume(val) {
         this.masterVolume = val / 100;
         document.getElementById('volumeValueLabel').innerText = `${val}%`;
@@ -577,11 +569,10 @@ const AudioSynth = {
     },
 
     toggle() {
-        if(!this.ctx) this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+        this.initContext();
         this.isPlaying = !this.isPlaying;
         document.getElementById('btnAudio').classList.toggle('active', this.isPlaying);
         if(this.isPlaying) {
-            this.ctx.resume();
             const buf = this.ctx.createBuffer(1, this.ctx.sampleRate * 2, this.ctx.sampleRate);
             const data = buf.getChannelData(0);
             for (let i = 0; i < buf.length; i++) data[i] = Math.random() * 2 - 1;
@@ -602,13 +593,7 @@ const AudioSynth = {
 
     playEffect(type = 'neutral') {
         try {
-            if (!this.ctx) {
-                this.ctx = new (window.AudioContext || window.webkitAudioContext)();
-            }
-            if (this.ctx.state === 'suspended') {
-                this.ctx.resume();
-            }
-            
+            this.initContext();
             if (this.masterVolume <= 0) return;
 
             const now = this.ctx.currentTime;
@@ -628,50 +613,39 @@ const AudioSynth = {
                 filter.frequency.setValueAtTime(400, now);
                 osc.frequency.setValueAtTime(293.66, now);
                 osc.frequency.exponentialRampToValueAtTime(440, now + 0.15);
-                
                 gain.gain.setValueAtTime(0.001, now);
                 gain.gain.linearRampToValueAtTime(0.04 * baseVol, now + 0.03);
                 gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.25);
-                
                 osc.start(now);
                 osc.stop(now + 0.25);
-            } 
-            else if (type === 'toggle') {
+            } else if (type === 'toggle') {
                 osc.type = 'sine';
                 filter.frequency.setValueAtTime(350, now);
                 osc.frequency.setValueAtTime(220, now);
                 osc.frequency.exponentialRampToValueAtTime(330, now + 0.1);
-                
                 gain.gain.setValueAtTime(0.001, now);
                 gain.gain.linearRampToValueAtTime(0.03 * baseVol, now + 0.02);
                 gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.15);
-                
                 osc.start(now);
                 osc.stop(now + 0.15);
-            } 
-            else if (type === 'danger') {
+            } else if (type === 'danger') {
                 osc.type = 'sine';
                 filter.frequency.setValueAtTime(250, now);
                 osc.frequency.setValueAtTime(196, now);
                 osc.frequency.exponentialRampToValueAtTime(146.83, now + 0.15);
-                
                 gain.gain.setValueAtTime(0.001, now);
                 gain.gain.linearRampToValueAtTime(0.035 * baseVol, now + 0.02);
                 gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.2);
-                
                 osc.start(now);
                 osc.stop(now + 0.2);
-            } 
-            else {
+            } else {
                 osc.type = 'sine';
                 filter.frequency.setValueAtTime(300, now);
                 osc.frequency.setValueAtTime(349.23, now);
                 osc.frequency.exponentialRampToValueAtTime(261.63, now + 0.06);
-                
                 gain.gain.setValueAtTime(0.001, now);
                 gain.gain.linearRampToValueAtTime(0.025 * baseVol, now + 0.01);
                 gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.08);
-                
                 osc.start(now);
                 osc.stop(now + 0.08);
             }
@@ -679,16 +653,7 @@ const AudioSynth = {
     }
 };
 
-/* ЗАЩИТА ОТ ДВОЙНОГО НАЖАТИЯ (Debounce / Lock) */
 function UIActionWithSound(action, soundType = 'neutral', param) {
-    const caller = event ? event.currentTarget : null;
-    if (caller && caller.classList.contains('locked')) return;
-
-    if (caller) {
-        caller.classList.add('locked');
-        setTimeout(() => caller.classList.remove('locked'), 350);
-    }
-
     AudioSynth.playEffect(soundType);
     if (typeof action === 'function') {
         action(param);

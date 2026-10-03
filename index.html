@@ -29,7 +29,7 @@
             --text-muted: #94a3b8;
             --font-mono: 'JetBrains Mono', monospace;
             --ease-apple: cubic-bezier(0.25, 1, 0.5, 1);
-            --transition-smooth: all 0.2s var(--ease-apple);
+            --transition-smooth: all 0.15s var(--ease-apple);
         }
 
         * {
@@ -97,6 +97,7 @@
             border: 1px solid var(--border-glow);
             border-radius: 18px;
             box-shadow: 0 8px 25px rgba(0,0,0,0.6);
+            cursor: default;
         }
 
         .brand-badge i { color: var(--accent-cyan); }
@@ -168,7 +169,7 @@
             border: 1px solid var(--border);
             background: var(--bg-solid);
             box-shadow: 0 8px 25px rgba(0,0,0,0.6);
-            transition: background 0.1s, border-color 0.1s, transform 0.05s;
+            transition: border-color 0.15s, background-color 0.15s;
             position: relative;
         }
 
@@ -177,8 +178,7 @@
             background: #162032;
         }
 
-        .icon-btn:active, .icon-btn.active {
-            transform: scale(0.92);
+        .icon-btn.active {
             background: #1d4ed8 !important;
             border-color: var(--accent) !important;
             color: #ffffff !important;
@@ -186,7 +186,6 @@
         }
 
         .icon-btn:disabled {
-            opacity: 0.5;
             cursor: not-allowed;
             pointer-events: none;
         }
@@ -232,10 +231,11 @@
             font-size: 11px; font-weight: 700;
             text-transform: uppercase; letter-spacing: 1.2px;
             color: var(--text-muted);
+            cursor: default;
         }
 
-        .loc-name { font-size: 18px; font-weight: 800; color: #fff; }
-        .loc-coords { font-size: 11px; font-family: var(--font-mono); color: var(--accent-cyan); }
+        .loc-name { font-size: 18px; font-weight: 800; color: #fff; cursor: default; }
+        .loc-coords { font-size: 11px; font-family: var(--font-mono); color: var(--accent-cyan); cursor: default; }
 
         .metrics-grid {
             display: grid;
@@ -249,6 +249,7 @@
             border-radius: 16px;
             padding: 12px;
             display: flex; flex-direction: column; gap: 6px;
+            cursor: default;
         }
 
         .m-label {
@@ -271,10 +272,8 @@
         .alt-btn {
             flex: 1; padding: 7px 0; border: none; background: transparent;
             color: var(--text-muted); font-size: 10px; font-weight: 700;
-            border-radius: 10px; cursor: pointer; transition: transform 0.05s, background 0.15s, color 0.15s;
+            border-radius: 10px; cursor: pointer; transition: background 0.15s, color 0.15s;
         }
-
-        .alt-btn:active { transform: scale(0.95); }
 
         .alt-btn.active {
             background: var(--accent); color: #fff;
@@ -299,9 +298,7 @@
             border: none; color: #fff; font-size: 15px; cursor: pointer;
             display: flex; align-items: center; justify-content: center; flex-shrink: 0;
             box-shadow: 0 6px 20px rgba(59, 130, 246, 0.4);
-            transition: transform 0.05s;
         }
-        .play-master-btn:active { transform: scale(0.92); }
 
         .timeline-body { flex: 1; display: flex; flex-direction: column; gap: 6px; }
 
@@ -349,9 +346,8 @@
             border: 1px solid var(--border);
             border-radius: 16px; padding: 12px 4px;
             text-align: center; cursor: pointer; font-size: 10px; font-weight: 700;
-            transition: transform 0.05s, background 0.15s, border-color 0.15s; color: var(--text-muted);
+            transition: background 0.15s, border-color 0.15s; color: var(--text-muted);
         }
-        .map-style-card:active { transform: scale(0.94); }
         .map-style-card.active {
             border-color: var(--accent-cyan);
             background: #082f49;
@@ -367,6 +363,7 @@
             border-radius: 16px; padding: 14px;
             display: flex; align-items: center; justify-content: space-between;
             font-size: 12px;
+            cursor: default;
         }
 
         .switch { position: relative; width: 42px; height: 24px; flex-shrink: 0; }
@@ -420,15 +417,15 @@
     </div>
 
     <div class="top-actions">
-        <button class="icon-btn" onclick="SafeAction(this, () => QuantumEngine.toggle3D(), 'success')" id="btn3d" title="3D Перспектива"><i class="fa-solid fa-cube"></i></button>
-        <button class="icon-btn" onclick="SafeAction(this, () => UIController.toggleHUD(), 'neutral')" id="btnHud" title="Аналитика"><i class="fa-solid fa-chart-pie"></i></button>
-        <button class="icon-btn" onclick="SafeAction(this, () => UIController.toggleDrawer(), 'neutral')" title="Выбор карты и слоев"><i class="fa-solid fa-layer-group"></i></button>
+        <button class="icon-btn" onclick="SafeAction(this, () => QuantumEngine.toggle3D(), 'click')" id="btn3d" title="3D Перспектива"><i class="fa-solid fa-cube"></i></button>
+        <button class="icon-btn" onclick="SafeAction(this, () => UIController.toggleHUD(), 'click')" id="btnHud" title="Аналитика"><i class="fa-solid fa-chart-pie"></i></button>
+        <button class="icon-btn" onclick="SafeAction(this, () => UIController.toggleDrawer(), 'click')" title="Выбор карты и слоев"><i class="fa-solid fa-layer-group"></i></button>
     </div>
 </div>
 
 <!-- ЛЕВАЯ ПАНЕЛЬ -->
 <div class="left-dock">
-    <button class="icon-btn" onclick="SafeAction(this, () => QuantumEngine.locateUser(), 'success')" title="Моя локация"><i class="fa-solid fa-crosshairs"></i></button>
+    <button class="icon-btn" onclick="SafeAction(this, () => QuantumEngine.locateUser(), 'click')" title="Моя локация"><i class="fa-solid fa-crosshairs"></i></button>
     <button class="icon-btn" onclick="SafeAction(this, () => LayerManager.toggleFlights(), 'toggle')" id="btnFlights" title="Самолеты Live"><i class="fa-solid fa-plane"></i></button>
     <button class="icon-btn" onclick="SafeAction(this, () => LayerManager.toggleTerminator(), 'toggle')" id="btnTerminator" title="Терминатор День/Ночь"><i class="fa-solid fa-moon"></i></button>
 </div>
@@ -437,7 +434,7 @@
 <div class="right-hud collapsed" id="rightHud">
     <div class="hud-header" style="display:flex; justify-content:space-between; align-items:center;">
         <span class="hud-title">Квантовый скрининг</span>
-        <i class="fa-solid fa-xmark" style="cursor:pointer; color:var(--text-muted); padding:4px;" onclick="SafeAction(this, () => UIController.toggleHUD(), 'danger')"></i>
+        <i class="fa-solid fa-xmark" style="cursor:pointer; color:var(--text-muted); padding:4px;" onclick="SafeAction(this, () => UIController.toggleHUD(), 'click')"></i>
     </div>
 
     <div>
@@ -448,10 +445,10 @@
     <div>
         <span class="hud-title" style="font-size:9px; display:block; margin-bottom:6px;">Атмосферный срез</span>
         <div class="alt-pills">
-            <button class="alt-btn active" onclick="SafeAction(this, (el) => QuantumEngine.setAltitude('surface', el), 'neutral')">Поверхность</button>
-            <button class="alt-btn" onclick="SafeAction(this, (el) => QuantumEngine.setAltitude('850hpa', el), 'neutral')">850 hPa</button>
-            <button class="alt-btn" onclick="SafeAction(this, (el) => QuantumEngine.setAltitude('500hpa', el), 'neutral')">500 hPa</button>
-            <button class="alt-btn" onclick="SafeAction(this, (el) => QuantumEngine.setAltitude('jetstream', el), 'neutral')">250 hPa (Jet)</button>
+            <button class="alt-btn active" onclick="SafeAction(this, (el) => QuantumEngine.setAltitude('surface', el), 'click')">Поверхность</button>
+            <button class="alt-btn" onclick="SafeAction(this, (el) => QuantumEngine.setAltitude('850hpa', el), 'click')">850 hPa</button>
+            <button class="alt-btn" onclick="SafeAction(this, (el) => QuantumEngine.setAltitude('500hpa', el), 'click')">500 hPa</button>
+            <button class="alt-btn" onclick="SafeAction(this, (el) => QuantumEngine.setAltitude('jetstream', el), 'click')">250 hPa (Jet)</button>
         </div>
     </div>
 
@@ -482,7 +479,7 @@
 
 <!-- ТАЙМЛАЙН -->
 <div class="time-deck">
-    <button class="play-master-btn" id="playBtn" onclick="SafeAction(this, () => TimeMachine.togglePlay(), 'success')"><i class="fa-solid fa-play"></i></button>
+    <button class="play-master-btn" id="playBtn" onclick="SafeAction(this, () => TimeMachine.togglePlay(), 'click')"><i class="fa-solid fa-play"></i></button>
     <div class="timeline-body">
         <div style="display:flex; justify-content:space-between; align-items:center; font-size:11px; font-family:var(--font-mono);">
             <span style="color:var(--success); font-weight:700;"><i class="fa-solid fa-satellite"></i> RAINVIEWER LIVE</span>
@@ -493,19 +490,19 @@
 </div>
 
 <!-- DRAWER -->
-<div class="drawer-overlay" id="drawerOverlay" onclick="SafeAction(this, () => UIController.toggleDrawer(), 'danger')"></div>
+<div class="drawer-overlay" id="drawerOverlay" onclick="SafeAction(this, () => UIController.toggleDrawer(), 'click')"></div>
 <div class="drawer-panel" id="drawerPanel">
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
         <span class="hud-title" style="font-size:12px; color:#fff;">Выбор подложки карты</span>
-        <i class="fa-solid fa-xmark" style="cursor:pointer; color:#fff; padding:4px;" onclick="SafeAction(this, () => UIController.toggleDrawer(), 'danger')"></i>
+        <i class="fa-solid fa-xmark" style="cursor:pointer; color:#fff; padding:4px;" onclick="SafeAction(this, () => UIController.toggleDrawer(), 'click')"></i>
     </div>
 
     <div class="map-style-grid">
-        <div class="map-style-card active" onclick="SafeAction(this, (el) => MapStyles.set('dark', el), 'success')"><i class="fa-solid fa-moon"></i><br>CARTO Cyber</div>
-        <div class="map-style-card" onclick="SafeAction(this, (el) => MapStyles.set('satellite', el), 'success')"><i class="fa-solid fa-globe"></i><br>Esri Satellite</div>
-        <div class="map-style-card" onclick="SafeAction(this, (el) => MapStyles.set('topo', el), 'success')"><i class="fa-solid fa-mountain"></i><br>OpenTopoMap</div>
-        <div class="map-style-card" onclick="SafeAction(this, (el) => MapStyles.set('light', el), 'success')"><i class="fa-solid fa-sun"></i><br>CARTO Light</div>
-        <div class="map-style-card" onclick="SafeAction(this, (el) => MapStyles.set('osm', el), 'success')"><i class="fa-solid fa-map"></i><br>OSM Standard</div>
+        <div class="map-style-card active" onclick="SafeAction(this, (el) => MapStyles.set('dark', el), 'click')"><i class="fa-solid fa-moon"></i><br>CARTO Cyber</div>
+        <div class="map-style-card" onclick="SafeAction(this, (el) => MapStyles.set('satellite', el), 'click')"><i class="fa-solid fa-globe"></i><br>Esri Satellite</div>
+        <div class="map-style-card" onclick="SafeAction(this, (el) => MapStyles.set('topo', el), 'click')"><i class="fa-solid fa-mountain"></i><br>OpenTopoMap</div>
+        <div class="map-style-card" onclick="SafeAction(this, (el) => MapStyles.set('light', el), 'click')"><i class="fa-solid fa-sun"></i><br>CARTO Light</div>
+        <div class="map-style-card" onclick="SafeAction(this, (el) => MapStyles.set('osm', el), 'click')"><i class="fa-solid fa-map"></i><br>OSM Standard</div>
     </div>
 
     <span class="hud-title" style="font-size:12px; color:#fff; margin-bottom:12px; display:block;">Профессиональный пульт слоев</span>
@@ -546,7 +543,7 @@
 </div>
 
 <script>
-/* Премиальный синтезатор UI-звуков (в стиле iOS / macOS / передовых интерфейсов) */
+/* Сухой, строгий и незаметный звуковой движок механических кликов */
 const AudioSynth = {
     ctx: null,
     
@@ -559,7 +556,7 @@ const AudioSynth = {
         }
     },
 
-    playEffect(type = 'neutral') {
+    playEffect(type = 'click') {
         try {
             this.initContext();
             const now = this.ctx.currentTime;
@@ -567,77 +564,48 @@ const AudioSynth = {
             const gain = this.ctx.createGain();
             const filter = this.ctx.createBiquadFilter();
             
-            filter.type = 'lowpass';
+            filter.type = 'bandpass';
             osc.connect(filter);
             filter.connect(gain);
             gain.connect(this.ctx.destination);
 
-            if (type === 'success') {
-                // Мягкий приятный «колокольчик / тик» (высокий чистый тон)
-                osc.type = 'sine';
-                filter.frequency.setValueAtTime(1200, now);
-                osc.frequency.setValueAtTime(587.33, now); // Ре 5
-                osc.frequency.exponentialRampToValueAtTime(880, now + 0.08); // Ля 5
-                
-                gain.gain.setValueAtTime(0.001, now);
-                gain.gain.linearRampToValueAtTime(0.06, now + 0.015);
-                gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.12);
-                
-                osc.start(now);
-                osc.stop(now + 0.12);
-            } else if (type === 'toggle') {
-                // Элегантный двойной щелчок (как переключатель тумблера в iOS)
+            if (type === 'toggle') {
+                // Короткий сдвоенный механический щелчок тумблера
                 osc.type = 'triangle';
-                filter.frequency.setValueAtTime(800, now);
-                osc.frequency.setValueAtTime(440, now);
-                osc.frequency.setValueAtTime(659.25, now + 0.03);
+                filter.frequency.setValueAtTime(600, now);
+                osc.frequency.setValueAtTime(180, now);
+                osc.frequency.setValueAtTime(260, now + 0.015);
                 
                 gain.gain.setValueAtTime(0.001, now);
-                gain.gain.linearRampToValueAtTime(0.05, now + 0.01);
-                gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.08);
+                gain.gain.linearRampToValueAtTime(0.04, now + 0.005);
+                gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.04);
                 
                 osc.start(now);
-                osc.stop(now + 0.08);
-            } else if (type === 'danger') {
-                // Плотный низкий «отклик закрытия»
-                osc.type = 'sine';
-                filter.frequency.setValueAtTime(400, now);
-                osc.frequency.setValueAtTime(300, now);
-                osc.frequency.exponentialRampToValueAtTime(150, now + 0.1);
-                
-                gain.gain.setValueAtTime(0.001, now);
-                gain.gain.linearRampToValueAtTime(0.05, now + 0.01);
-                gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.12);
-                
-                osc.start(now);
-                osc.stop(now + 0.12);
+                osc.stop(now + 0.04);
             } else {
-                // Нейтральный короткий клик (как касание клавиши)
+                // Строгий одиночный глухой клик (без веселья и мелодичности)
                 osc.type = 'sine';
-                filter.frequency.setValueAtTime(1000, now);
-                osc.frequency.setValueAtTime(523.25, now); // До 5
+                filter.frequency.setValueAtTime(350, now);
+                osc.frequency.setValueAtTime(120, now);
+                osc.frequency.exponentialRampToValueAtTime(40, now + 0.025);
                 
                 gain.gain.setValueAtTime(0.001, now);
-                gain.gain.linearRampToValueAtTime(0.04, now + 0.01);
-                gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.06);
+                gain.gain.linearRampToValueAtTime(0.035, now + 0.004);
+                gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.03);
                 
                 osc.start(now);
-                osc.stop(now + 0.06);
+                osc.stop(now + 0.03);
             }
         } catch(e) {}
     }
 };
 
-/* ЗАЩИТА ОТ ДВОЙНЫХ КЛИКОВ (DEBOUNCE/LOCK) + МГНОВЕННАЯ СМЕНА ЦВЕТА */
-function SafeAction(element, action, soundType = 'neutral') {
+/* АБСОЛЮТНАЯ ЗАЩИТА ОТ ДВОЙНЫХ КЛИКОВ (БЕЗ ИЗМЕНЕНИЙ ПРОЗРАЧНОСТИ) */
+function SafeAction(element, action, soundType = 'click') {
     if (element.disabled || element.dataset.locked === "true") return;
 
     element.dataset.locked = "true";
     element.disabled = true;
-
-    element.style.background = "#1d4ed8";
-    element.style.borderColor = "var(--accent)";
-    element.style.color = "#ffffff";
 
     AudioSynth.playEffect(soundType);
 
@@ -650,12 +618,7 @@ function SafeAction(element, action, soundType = 'neutral') {
     setTimeout(() => {
         element.dataset.locked = "false";
         element.disabled = false;
-        if (!element.classList.contains('active')) {
-            element.style.background = '';
-            element.style.borderColor = '';
-            element.style.color = '';
-        }
-    }, 350);
+    }, 400);
 }
 
 const MapStyles = {
@@ -670,15 +633,9 @@ const MapStyles = {
     set(type, elem) {
         document.querySelectorAll('.map-style-card').forEach(c => {
             c.classList.remove('active');
-            c.style.background = '';
-            c.style.borderColor = '';
-            c.style.color = '';
         });
         if(elem) {
             elem.classList.add('active');
-            elem.style.background = '#082f49';
-            elem.style.borderColor = 'var(--accent-cyan)';
-            elem.style.color = 'var(--accent-cyan)';
         }
         if(this.currentTileLayer) QuantumEngine.map.removeLayer(this.currentTileLayer);
         this.currentTileLayer = L.tileLayer(this.providers[type], { maxZoom: 18 }).addTo(QuantumEngine.map);
@@ -689,7 +646,7 @@ const MapStyles = {
 const QuantumEngine = {
     map: null, is3D: false, activeLocation: [55.751, 37.618], activeAltitude: 'surface', lastWeatherData: null,
     init() {
-        this.map = L.map('map', { center: this.activeLocation, zoom: 6, zoomControl: false, attributionControl: false });
+        this.map = L.map('map', { center: this.activeLocation, zoom: 6, zoomControl: false, attributionControl: false, doubleClickZoom: false });
         MapStyles.set('dark');
         this.map.on('click', (e) => {
             this.activeLocation = [e.latlng.lat, e.latlng.lng];
@@ -734,15 +691,9 @@ const QuantumEngine = {
     setAltitude(alt, elem) {
         document.querySelectorAll('.alt-btn').forEach(b => {
             b.classList.remove('active');
-            b.style.background = '';
-            b.style.color = '';
-            b.style.boxShadow = '';
         });
         if(elem) {
             elem.classList.add('active');
-            elem.style.background = 'var(--accent)';
-            elem.style.color = '#fff';
-            elem.style.boxShadow = '0 4px 15px rgba(59, 130, 246, 0.4)';
         }
         this.activeAltitude = alt;
         this.renderMetrics();
@@ -764,7 +715,7 @@ const QuantumEngine = {
             const data = await res.json();
             if(data.length) {
                 box.innerHTML = data.map(item => `
-                    <div class="search-item" onclick="SafeAction(this, () => QuantumEngine.selectLocation(${item.lat}, ${item.lon}, '${item.display_name.split(',')[0]}'), 'neutral')">
+                    <div class="search-item" onclick="SafeAction(this, () => QuantumEngine.selectLocation(${item.lat}, ${item.lon}, '${item.display_name.split(',')[0]}'), 'click')">
                         ${item.display_name}
                     </div>
                 `).join('');

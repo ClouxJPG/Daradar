@@ -29,7 +29,7 @@
             --text-muted: #94a3b8;
             --font-mono: 'JetBrains Mono', monospace;
             --ease-apple: cubic-bezier(0.25, 1, 0.5, 1);
-            --transition-smooth: all 0.4s var(--ease-apple);
+            --transition-smooth: all 0.2s var(--ease-apple);
         }
 
         * {
@@ -168,31 +168,28 @@
             border: 1px solid var(--border);
             background: var(--bg-solid);
             box-shadow: 0 8px 25px rgba(0,0,0,0.6);
-            transition: border-color 0.15s, background 0.15s, transform 0.05s;
+            transition: background 0.1s, border-color 0.1s, transform 0.05s;
             position: relative;
         }
 
-        .icon-btn:hover:not(.locked) {
+        .icon-btn:hover:not(:disabled) {
             border-color: rgba(255, 255, 255, 0.4);
             background: #162032;
         }
 
-        .icon-btn:active:not(.locked) {
+        /* Мгновенная реакция по клику / активному состоянию */
+        .icon-btn:active, .icon-btn.active {
             transform: scale(0.92);
-            background: #1d4ed8;
-            border-color: var(--accent);
-            color: #ffffff;
+            background: #1d4ed8 !important;
+            border-color: var(--accent) !important;
+            color: #ffffff !important;
+            box-shadow: 0 0 15px rgba(59, 130, 246, 0.6);
         }
 
-        .icon-btn.locked {
+        .icon-btn:disabled {
+            opacity: 0.5;
             cursor: not-allowed;
-        }
-
-        .icon-btn.active {
-            border-color: var(--accent);
-            background: #1d4ed8;
-            color: #ffffff;
-            box-shadow: 0 0 20px rgba(59, 130, 246, 0.7);
+            pointer-events: none;
         }
 
         .left-dock {
@@ -221,7 +218,7 @@
             border-radius: 24px;
             box-shadow: 0 15px 40px rgba(0,0,0,0.8);
             transform-origin: right center;
-            transition: transform 0.5s var(--ease-apple), opacity 0.4s var(--ease-apple);
+            transition: transform 0.4s var(--ease-apple), opacity 0.3s var(--ease-apple);
         }
 
         .right-hud.collapsed {
@@ -275,12 +272,10 @@
         .alt-btn {
             flex: 1; padding: 7px 0; border: none; background: transparent;
             color: var(--text-muted); font-size: 10px; font-weight: 700;
-            border-radius: 10px; cursor: pointer; transition: transform 0.05s, background 0.2s;
+            border-radius: 10px; cursor: pointer; transition: transform 0.05s, background 0.15s, color 0.15s;
         }
 
-        .alt-btn:active {
-            transform: scale(0.95);
-        }
+        .alt-btn:active { transform: scale(0.95); }
 
         .alt-btn.active {
             background: var(--accent); color: #fff;
@@ -307,10 +302,7 @@
             box-shadow: 0 6px 20px rgba(59, 130, 246, 0.4);
             transition: transform 0.05s;
         }
-
-        .play-master-btn:active {
-            transform: scale(0.92);
-        }
+        .play-master-btn:active { transform: scale(0.92); }
 
         .timeline-body { flex: 1; display: flex; flex-direction: column; gap: 6px; }
 
@@ -331,7 +323,7 @@
             background: rgba(0, 0, 0, 0.75);
             z-index: 2000;
             opacity: 0; visibility: hidden;
-            transition: opacity 0.4s var(--ease-apple), visibility 0.4s;
+            transition: opacity 0.3s var(--ease-apple), visibility 0.3s;
         }
         .drawer-overlay.active { opacity: 1; visibility: visible; }
 
@@ -343,7 +335,7 @@
             border-radius: 32px 32px 0 0;
             padding: 24px; max-width: 720px; margin: 0 auto;
             transform: translateY(100%);
-            transition: transform 0.5s var(--ease-apple);
+            transition: transform 0.4s var(--ease-apple);
             max-height: 85vh; overflow-y: auto;
             box-shadow: 0 -20px 50px rgba(0,0,0,0.9);
         }
@@ -358,13 +350,9 @@
             border: 1px solid var(--border);
             border-radius: 16px; padding: 12px 4px;
             text-align: center; cursor: pointer; font-size: 10px; font-weight: 700;
-            transition: transform 0.05s, background 0.2s, border-color 0.2s; color: var(--text-muted);
+            transition: transform 0.05s, background 0.15s, border-color 0.15s; color: var(--text-muted);
         }
-
-        .map-style-card:active {
-            transform: scale(0.94);
-        }
-
+        .map-style-card:active { transform: scale(0.94); }
         .map-style-card.active {
             border-color: var(--accent-cyan);
             background: #082f49;
@@ -386,11 +374,11 @@
         .switch input { opacity: 0; width: 0; height: 0; }
         .slider-round {
             position: absolute; inset: 0; background: #334155;
-            border-radius: 24px; cursor: pointer; transition: 0.3s var(--ease-apple);
+            border-radius: 24px; cursor: pointer; transition: 0.2s var(--ease-apple);
         }
         .slider-round:before {
             position: absolute; content: ""; height: 18px; width: 18px; left: 3px; bottom: 3px;
-            background: #fff; border-radius: 50%; transition: 0.3s var(--ease-apple);
+            background: #fff; border-radius: 50%; transition: 0.2s var(--ease-apple);
         }
         input:checked + .slider-round { background: var(--accent); }
         input:checked + .slider-round:before { transform: translateX(18px); }
@@ -433,25 +421,25 @@
     </div>
 
     <div class="top-actions">
-        <button class="icon-btn" onclick="UIActionWithSound(() => QuantumEngine.toggle3D(), 'success')" id="btn3d" title="3D Перспектива"><i class="fa-solid fa-cube"></i></button>
-        <button class="icon-btn" onclick="UIActionWithSound(() => AudioSynth.toggle(), 'toggle')" id="btnAudio" title="Акустический эмбиент ветра"><i class="fa-solid fa-volume-high"></i></button>
-        <button class="icon-btn" onclick="UIActionWithSound(() => UIController.toggleHUD(), 'neutral')" id="btnHud" title="Аналитика"><i class="fa-solid fa-chart-pie"></i></button>
-        <button class="icon-btn" onclick="UIActionWithSound(() => UIController.toggleDrawer(), 'neutral')" title="Выбор карты и слоев"><i class="fa-solid fa-layer-group"></i></button>
+        <button class="icon-btn" onclick="SafeAction(this, () => QuantumEngine.toggle3D(), 'success')" id="btn3d" title="3D Перспектива"><i class="fa-solid fa-cube"></i></button>
+        <button class="icon-btn" onclick="SafeAction(this, () => AudioSynth.toggle(), 'toggle')" id="btnAudio" title="Акустический эмбиент ветра"><i class="fa-solid fa-volume-high"></i></button>
+        <button class="icon-btn" onclick="SafeAction(this, () => UIController.toggleHUD(), 'neutral')" id="btnHud" title="Аналитика"><i class="fa-solid fa-chart-pie"></i></button>
+        <button class="icon-btn" onclick="SafeAction(this, () => UIController.toggleDrawer(), 'neutral')" title="Выбор карты и слоев"><i class="fa-solid fa-layer-group"></i></button>
     </div>
 </div>
 
 <!-- ЛЕВАЯ ПАНЕЛЬ -->
 <div class="left-dock">
-    <button class="icon-btn" onclick="UIActionWithSound(() => QuantumEngine.locateUser(), 'success')" title="Моя локация"><i class="fa-solid fa-crosshairs"></i></button>
-    <button class="icon-btn" onclick="UIActionWithSound(() => LayerManager.toggleFlights(), 'toggle')" id="btnFlights" title="Самолеты Live"><i class="fa-solid fa-plane"></i></button>
-    <button class="icon-btn" onclick="UIActionWithSound(() => LayerManager.toggleTerminator(), 'toggle')" id="btnTerminator" title="Терминатор День/Ночь"><i class="fa-solid fa-moon"></i></button>
+    <button class="icon-btn" onclick="SafeAction(this, () => QuantumEngine.locateUser(), 'success')" title="Моя локация"><i class="fa-solid fa-crosshairs"></i></button>
+    <button class="icon-btn" onclick="SafeAction(this, () => LayerManager.toggleFlights(), 'toggle')" id="btnFlights" title="Самолеты Live"><i class="fa-solid fa-plane"></i></button>
+    <button class="icon-btn" onclick="SafeAction(this, () => LayerManager.toggleTerminator(), 'toggle')" id="btnTerminator" title="Терминатор День/Ночь"><i class="fa-solid fa-moon"></i></button>
 </div>
 
 <!-- ПРАВЫЙ HUD -->
 <div class="right-hud collapsed" id="rightHud">
     <div class="hud-header" style="display:flex; justify-content:space-between; align-items:center;">
         <span class="hud-title">Квантовый скрининг</span>
-        <i class="fa-solid fa-xmark" style="cursor:pointer; color:var(--text-muted); padding:4px;" onclick="UIActionWithSound(() => UIController.toggleHUD(), 'danger')"></i>
+        <i class="fa-solid fa-xmark" style="cursor:pointer; color:var(--text-muted); padding:4px;" onclick="SafeAction(this, () => UIController.toggleHUD(), 'danger')"></i>
     </div>
 
     <div>
@@ -462,10 +450,10 @@
     <div>
         <span class="hud-title" style="font-size:9px; display:block; margin-bottom:6px;">Атмосферный срез</span>
         <div class="alt-pills">
-            <button class="alt-btn active" onclick="UIActionWithSound(function(el){ QuantumEngine.setAltitude('surface', el); }, 'neutral', this)">Поверхность</button>
-            <button class="alt-btn" onclick="UIActionWithSound(function(el){ QuantumEngine.setAltitude('850hpa', el); }, 'neutral', this)">850 hPa</button>
-            <button class="alt-btn" onclick="UIActionWithSound(function(el){ QuantumEngine.setAltitude('500hpa', el); }, 'neutral', this)">500 hPa</button>
-            <button class="alt-btn" onclick="UIActionWithSound(function(el){ QuantumEngine.setAltitude('jetstream', el); }, 'neutral', this)">250 hPa (Jet)</button>
+            <button class="alt-btn active" onclick="SafeAction(this, (el) => QuantumEngine.setAltitude('surface', el), 'neutral')">Поверхность</button>
+            <button class="alt-btn" onclick="SafeAction(this, (el) => QuantumEngine.setAltitude('850hpa', el), 'neutral')">850 hPa</button>
+            <button class="alt-btn" onclick="SafeAction(this, (el) => QuantumEngine.setAltitude('500hpa', el), 'neutral')">500 hPa</button>
+            <button class="alt-btn" onclick="SafeAction(this, (el) => QuantumEngine.setAltitude('jetstream', el), 'neutral')">250 hPa (Jet)</button>
         </div>
     </div>
 
@@ -496,7 +484,7 @@
 
 <!-- ТАЙМЛАЙН -->
 <div class="time-deck">
-    <button class="play-master-btn" id="playBtn" onclick="UIActionWithSound(() => TimeMachine.togglePlay(), 'success')"><i class="fa-solid fa-play"></i></button>
+    <button class="play-master-btn" id="playBtn" onclick="SafeAction(this, () => TimeMachine.togglePlay(), 'success')"><i class="fa-solid fa-play"></i></button>
     <div class="timeline-body">
         <div style="display:flex; justify-content:space-between; align-items:center; font-size:11px; font-family:var(--font-mono);">
             <span style="color:var(--success); font-weight:700;"><i class="fa-solid fa-satellite"></i> RAINVIEWER LIVE</span>
@@ -507,19 +495,19 @@
 </div>
 
 <!-- DRAWER -->
-<div class="drawer-overlay" id="drawerOverlay" onclick="UIActionWithSound(() => UIController.toggleDrawer(), 'danger')"></div>
+<div class="drawer-overlay" id="drawerOverlay" onclick="SafeAction(this, () => UIController.toggleDrawer(), 'danger')"></div>
 <div class="drawer-panel" id="drawerPanel">
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
         <span class="hud-title" style="font-size:12px; color:#fff;">Выбор подложки карты</span>
-        <i class="fa-solid fa-xmark" style="cursor:pointer; color:#fff; padding:4px;" onclick="UIActionWithSound(() => UIController.toggleDrawer(), 'danger')"></i>
+        <i class="fa-solid fa-xmark" style="cursor:pointer; color:#fff; padding:4px;" onclick="SafeAction(this, () => UIController.toggleDrawer(), 'danger')"></i>
     </div>
 
     <div class="map-style-grid">
-        <div class="map-style-card active" onclick="UIActionWithSound(function(el){ MapStyles.set('dark', el); }, 'success', this)"><i class="fa-solid fa-moon"></i><br>CARTO Cyber</div>
-        <div class="map-style-card" onclick="UIActionWithSound(function(el){ MapStyles.set('satellite', el); }, 'success', this)"><i class="fa-solid fa-globe"></i><br>Esri Satellite</div>
-        <div class="map-style-card" onclick="UIActionWithSound(function(el){ MapStyles.set('topo', el); }, 'success', this)"><i class="fa-solid fa-mountain"></i><br>OpenTopoMap</div>
-        <div class="map-style-card" onclick="UIActionWithSound(function(el){ MapStyles.set('light', el); }, 'success', this)"><i class="fa-solid fa-sun"></i><br>CARTO Light</div>
-        <div class="map-style-card" onclick="UIActionWithSound(function(el){ MapStyles.set('osm', el); }, 'success', this)"><i class="fa-solid fa-map"></i><br>OSM Standard</div>
+        <div class="map-style-card active" onclick="SafeAction(this, (el) => MapStyles.set('dark', el), 'success')"><i class="fa-solid fa-moon"></i><br>CARTO Cyber</div>
+        <div class="map-style-card" onclick="SafeAction(this, (el) => MapStyles.set('satellite', el), 'success')"><i class="fa-solid fa-globe"></i><br>Esri Satellite</div>
+        <div class="map-style-card" onclick="SafeAction(this, (el) => MapStyles.set('topo', el), 'success')"><i class="fa-solid fa-mountain"></i><br>OpenTopoMap</div>
+        <div class="map-style-card" onclick="SafeAction(this, (el) => MapStyles.set('light', el), 'success')"><i class="fa-solid fa-sun"></i><br>CARTO Light</div>
+        <div class="map-style-card" onclick="SafeAction(this, (el) => MapStyles.set('osm', el), 'success')"><i class="fa-solid fa-map"></i><br>OSM Standard</div>
     </div>
 
     <div style="background:#162032; border:1px solid var(--border); border-radius:16px; padding:14px; margin-bottom:16px;">
@@ -534,35 +522,35 @@
     <div class="layers-grid">
         <div class="layer-card">
             <span><i class="fa-solid fa-cloud-showers-heavy" style="color:var(--accent);"></i> Осадки (Радар)</span>
-            <label class="switch"><input type="checkbox" id="chkRadar" onchange="UIActionWithSound(() => LayerManager.toggle('radar', this.checked), 'toggle')"><span class="slider-round"></span></label>
+            <label class="switch"><input type="checkbox" id="chkRadar" onchange="LayerManager.toggle('radar', this.checked)"><span class="slider-round"></span></label>
         </div>
         <div class="layer-card">
             <span><i class="fa-solid fa-wind" style="color:var(--accent-cyan);"></i> Векторы ветра</span>
-            <label class="switch"><input type="checkbox" id="chkWind" onchange="UIActionWithSound(() => LayerManager.toggle('wind', this.checked), 'toggle')"><span class="slider-round"></span></label>
+            <label class="switch"><input type="checkbox" id="chkWind" onchange="LayerManager.toggle('wind', this.checked)"><span class="slider-round"></span></label>
         </div>
         <div class="layer-card">
             <span><i class="fa-solid fa-bolt" style="color:var(--warning);"></i> Грозы и Молнии</span>
-            <label class="switch"><input type="checkbox" id="chkLightning" onchange="UIActionWithSound(() => LayerManager.toggle('lightning', this.checked), 'toggle')"><span class="slider-round"></span></label>
+            <label class="switch"><input type="checkbox" id="chkLightning" onchange="LayerManager.toggle('lightning', this.checked)"><span class="slider-round"></span></label>
         </div>
         <div class="layer-card">
             <span><i class="fa-solid fa-smog" style="color:var(--danger);"></i> Качество воздуха (AQI)</span>
-            <label class="switch"><input type="checkbox" id="chkAir" onchange="UIActionWithSound(() => LayerManager.toggle('air', this.checked), 'toggle')"><span class="slider-round"></span></label>
+            <label class="switch"><input type="checkbox" id="chkAir" onchange="LayerManager.toggle('air', this.checked)"><span class="slider-round"></span></label>
         </div>
         <div class="layer-card">
             <span><i class="fa-solid fa-temperature-arrow-up" style="color:var(--accent-pink);"></i> Изотермы (Тепло)</span>
-            <label class="switch"><input type="checkbox" id="chkTemp" onchange="UIActionWithSound(() => LayerManager.toggle('temperature', this.checked), 'toggle')"><span class="slider-round"></span></label>
+            <label class="switch"><input type="checkbox" id="chkTemp" onchange="LayerManager.toggle('temperature', this.checked)"><span class="slider-round"></span></label>
         </div>
         <div class="layer-card">
             <span><i class="fa-solid fa-water" style="color:var(--accent-cyan);"></i> Волны и течения</span>
-            <label class="switch"><input type="checkbox" id="chkMarine" onchange="UIActionWithSound(() => LayerManager.toggle('marine', this.checked), 'toggle')"><span class="slider-round"></span></label>
+            <label class="switch"><input type="checkbox" id="chkMarine" onchange="LayerManager.toggle('marine', this.checked)"><span class="slider-round"></span></label>
         </div>
         <div class="layer-card">
             <span><i class="fa-solid fa-earth-americas" style="color:var(--warning);"></i> Сейсмичность (USGS)</span>
-            <label class="switch"><input type="checkbox" id="chkQuake" onchange="UIActionWithSound(() => LayerManager.toggle('earthquake', this.checked), 'toggle')"><span class="slider-round"></span></label>
+            <label class="switch"><input type="checkbox" id="chkQuake" onchange="LayerManager.toggle('earthquake', this.checked)"><span class="slider-round"></span></label>
         </div>
         <div class="layer-card">
             <span><i class="fa-solid fa-satellite-dish" style="color:var(--success);"></i> ИК Спутник облаков</span>
-            <label class="switch"><input type="checkbox" id="chkSatelliteIR" onchange="UIActionWithSound(() => LayerManager.toggle('satelliteir', this.checked), 'toggle')"><span class="slider-round"></span></label>
+            <label class="switch"><input type="checkbox" id="chkSatelliteIR" onchange="LayerManager.toggle('satelliteir', this.checked)"><span class="slider-round"></span></label>
         </div>
     </div>
 </div>
@@ -673,11 +661,41 @@ const AudioSynth = {
     }
 };
 
-function UIActionWithSound(action, soundType = 'neutral', param) {
+/* ЗАЩИТА ОТ ДВОЙНЫХ КЛИКОВ (DEBOUNCE/LOCK) + МГНОВЕННАЯ СМЕНА ЦВЕТА */
+function SafeAction(element, action, soundType = 'neutral') {
+    // Если кнопка уже заблокирована (защита от частых нажатий), ничего не делаем
+    if (element.disabled || element.dataset.locked === "true") return;
+
+    // Блокируем элемент на 300мс для защиты от спама кликами
+    element.dataset.locked = "true";
+    element.disabled = true;
+
+    // Мгновенно подсвечиваем через inline стили или добавление класса стилизации
+    element.style.background = "#1d4ed8";
+    element.style.borderColor = "var(--accent)";
+    element.style.color = "#ffffff";
+
+    // Воспроизводим звук
     AudioSynth.playEffect(soundType);
-    if (typeof action === 'function') {
-        action(param);
+
+    // Выполняем полезное действие
+    try {
+        action(element);
+    } catch (e) {
+        console.error(e);
     }
+
+    // Снимаем блокировку через небольшой тайм-аут
+    setTimeout(() => {
+        element.dataset.locked = "false";
+        element.disabled = false;
+        // Возвращаем стили в зависимости от активности (класс active сам подхватит нужный цвет)
+        if (!element.classList.contains('active')) {
+            element.style.background = '';
+            element.style.borderColor = '';
+            element.style.color = '';
+        }
+    }, 350);
 }
 
 const MapStyles = {
@@ -690,8 +708,18 @@ const MapStyles = {
     },
     currentTileLayer: null,
     set(type, elem) {
-        document.querySelectorAll('.map-style-card').forEach(c => c.classList.remove('active'));
-        if(elem) elem.classList.add('active');
+        document.querySelectorAll('.map-style-card').forEach(c => {
+            c.classList.remove('active');
+            c.style.background = '';
+            c.style.borderColor = '';
+            c.style.color = '';
+        });
+        if(elem) {
+            elem.classList.add('active');
+            elem.style.background = '#082f49';
+            elem.style.borderColor = 'var(--accent-cyan)';
+            elem.style.color = 'var(--accent-cyan)';
+        }
         if(this.currentTileLayer) QuantumEngine.map.removeLayer(this.currentTileLayer);
         this.currentTileLayer = L.tileLayer(this.providers[type], { maxZoom: 18 }).addTo(QuantumEngine.map);
         UIController.showToast(`Карта: ${type.toUpperCase()}`);
@@ -715,7 +743,8 @@ const QuantumEngine = {
     toggle3D() {
         this.is3D = !this.is3D;
         document.body.classList.toggle('mode-3d', this.is3D);
-        document.getElementById('btn3d').classList.toggle('active', this.is3D);
+        const btn = document.getElementById('btn3d');
+        btn.classList.toggle('active', this.is3D);
     },
     async inspectPoint(lat, lon, label) {
         document.getElementById('locName').innerText = label || "Гео-анализ";
@@ -744,8 +773,18 @@ const QuantumEngine = {
         if(hourly.surface_pressure) ChartEngine.update(hourly.surface_pressure.slice(0, 24));
     },
     setAltitude(alt, elem) {
-        document.querySelectorAll('.alt-btn').forEach(b => b.classList.remove('active'));
-        if(elem) elem.classList.add('active');
+        document.querySelectorAll('.alt-btn').forEach(b => {
+            b.classList.remove('active');
+            b.style.background = '';
+            b.style.color = '';
+            b.style.boxShadow = '';
+        });
+        if(elem) {
+            elem.classList.add('active');
+            elem.style.background = 'var(--accent)';
+            elem.style.color = '#fff';
+            elem.style.boxShadow = '0 4px 15px rgba(59, 130, 246, 0.4)';
+        }
         this.activeAltitude = alt;
         this.renderMetrics();
         WindCanvasLayer.setAltitude(alt);
@@ -766,7 +805,7 @@ const QuantumEngine = {
             const data = await res.json();
             if(data.length) {
                 box.innerHTML = data.map(item => `
-                    <div class="search-item" onclick="UIActionWithSound(() => QuantumEngine.selectLocation(${item.lat}, ${item.lon}, '${item.display_name.split(',')[0]}'), 'neutral')">
+                    <div class="search-item" onclick="SafeAction(this, () => QuantumEngine.selectLocation(${item.lat}, ${item.lon}, '${item.display_name.split(',')[0]}'), 'neutral')">
                         ${item.display_name}
                     </div>
                 `).join('');
@@ -895,10 +934,12 @@ const LayerManager = {
         } catch(e) {}
     },
     toggleTerminator() {
-        if(this.terminatorLayer) {
-            QuantumEngine.map.removeLayer(this.terminatorLayer);
-            this.terminatorLayer = null;
-            document.getElementById('btnTerminator').classList.remove('active');
+        const isAct = document.getElementById('btnTerminator').classList.toggle('active');
+        if(!isAct) {
+            if(this.terminatorLayer) {
+                QuantumEngine.map.removeLayer(this.terminatorLayer);
+                this.terminatorLayer = null;
+            }
             return;
         }
         const now = new Date();
@@ -912,7 +953,6 @@ const LayerManager = {
         }
         coords.push([-90, 180], [-90, -180]);
         this.terminatorLayer = L.polygon(coords, { color: '#000', fillColor: '#000', fillOpacity: 0.6, weight: 1 }).addTo(QuantumEngine.map);
-        document.getElementById('btnTerminator').classList.add('active');
     },
 
     async toggle(type, enabled) {

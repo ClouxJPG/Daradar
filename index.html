@@ -499,10 +499,10 @@
     <button class="play-master-btn" id="playBtn" onclick="SafeAction(this, () => TimeMachine.togglePlay(), 'click')"><i class="fa-solid fa-play"></i></button>
     <div class="timeline-body">
         <div style="display:flex; justify-content:space-between; align-items:center; font-size:11px; font-family:var(--font-mono);">
-            <span style="color:var(--success); font-weight:700;"><i class="fa-solid fa-satellite"></i> RADANIM SERVER LIVE</span>
+            <span style="color:var(--success); font-weight:700;"><i class="fa-solid fa-satellite"></i> RADAR 10-MIN STEPS</span>
             <span id="timeDisplay" style="color:#fff; font-weight:700;">--:--</span>
         </div>
-        <input type="range" id="timeSlider" min="0" max="100" value="100" oninput="TimeMachine.onSeek(this.value)">
+        <input type="range" id="timeSlider" min="0" max="100" value="0" oninput="TimeMachine.onSeek(this.value)">
     </div>
 </div>
 
@@ -571,25 +571,17 @@
 </div>
 
 <script>
-/* Мягкие, приятные звуки с регулируемой громкостью */
 const AudioSynth = {
     ctx: null,
     volume: 0.2,
-    
     initContext() {
-        if (!this.ctx) {
-            this.ctx = new (window.AudioContext || window.webkitAudioContext)();
-        }
-        if (this.ctx.state === 'suspended') {
-            this.ctx.resume();
-        }
+        if (!this.ctx) this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+        if (this.ctx.state === 'suspended') this.ctx.resume();
     },
-
     setVolume(val) {
         this.volume = val / 100;
         document.getElementById('volValue').innerText = `${val}%`;
     },
-
     playEffect(type = 'click') {
         if (this.volume <= 0) return;
         try {
@@ -598,60 +590,31 @@ const AudioSynth = {
             const osc = this.ctx.createOscillator();
             const gain = this.ctx.createGain();
             const filter = this.ctx.createBiquadFilter();
-            
             filter.type = 'lowpass';
-            osc.connect(filter);
-            filter.connect(gain);
-            gain.connect(this.ctx.destination);
-
+            osc.connect(filter); filter.connect(gain); gain.connect(this.ctx.destination);
             if (type === 'toggle') {
-                osc.type = 'sine';
-                filter.frequency.setValueAtTime(800, now);
-                osc.frequency.setValueAtTime(440, now);
-                osc.frequency.exponentialRampToValueAtTime(880, now + 0.04);
-                
-                gain.gain.setValueAtTime(0.001, now);
-                gain.gain.linearRampToValueAtTime(0.08 * this.volume, now + 0.005);
+                osc.type = 'sine'; filter.frequency.setValueAtTime(800, now);
+                osc.frequency.setValueAtTime(440, now); osc.frequency.exponentialRampToValueAtTime(880, now + 0.04);
+                gain.gain.setValueAtTime(0.001, now); gain.gain.linearRampToValueAtTime(0.08 * this.volume, now + 0.005);
                 gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.04);
-                
-                osc.start(now);
-                osc.stop(now + 0.04);
+                osc.start(now); osc.stop(now + 0.04);
             } else {
-                osc.type = 'triangle';
-                filter.frequency.setValueAtTime(300, now);
-                osc.frequency.setValueAtTime(220, now);
-                osc.frequency.exponentialRampToValueAtTime(110, now + 0.03);
-                
-                gain.gain.setValueAtTime(0.001, now);
-                gain.gain.linearRampToValueAtTime(0.1 * this.volume, now + 0.004);
+                osc.type = 'triangle'; filter.frequency.setValueAtTime(300, now);
+                osc.frequency.setValueAtTime(220, now); osc.frequency.exponentialRampToValueAtTime(110, now + 0.03);
+                gain.gain.setValueAtTime(0.001, now); gain.gain.linearRampToValueAtTime(0.1 * this.volume, now + 0.004);
                 gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.035);
-                
-                osc.start(now);
-                osc.stop(now + 0.035);
+                osc.start(now); osc.stop(now + 0.035);
             }
         } catch(e) {}
     }
 };
 
 function SafeAction(element, action, soundType = 'click') {
-    if (!element) return;
-    if (element.dataset.locked === "true" || element.disabled) return;
-
-    element.dataset.locked = "true";
-    element.disabled = true;
-
+    if (!element || element.dataset.locked === "true" || element.disabled) return;
+    element.dataset.locked = "true"; element.disabled = true;
     AudioSynth.playEffect(soundType);
-
-    try {
-        action(element);
-    } catch (e) {
-        console.error(e);
-    }
-
-    setTimeout(() => {
-        element.dataset.locked = "false";
-        element.disabled = false;
-    }, 500);
+    try { action(element); } catch (e) {}
+    setTimeout(() => { element.dataset.locked = "false"; element.disabled = false; }, 500);
 }
 
 const MapStyles = {
@@ -664,12 +627,8 @@ const MapStyles = {
     },
     currentTileLayer: null,
     set(type, elem) {
-        document.querySelectorAll('.map-style-card').forEach(c => {
-            c.classList.remove('active');
-        });
-        if(elem) {
-            elem.classList.add('active');
-        }
+        document.querySelectorAll('.map-style-card').forEach(c => c.classList.remove('active'));
+        if(elem) elem.classList.add('active');
         if(this.currentTileLayer) QuantumEngine.map.removeLayer(this.currentTileLayer);
         this.currentTileLayer = L.tileLayer(this.providers[type], { maxZoom: 18 }).addTo(QuantumEngine.map);
         UIController.showToast(`Карта: ${type.toUpperCase()}`);
@@ -679,22 +638,13 @@ const MapStyles = {
 const QuantumEngine = {
     map: null, is3D: false, activeLocation: [55.751, 37.618], activeAltitude: 'surface', lastWeatherData: null,
     init() {
-        this.map = L.map('map', { 
-            center: this.activeLocation, 
-            zoom: 6, 
-            zoomControl: false, 
-            attributionControl: false, 
-            doubleClickZoom: false 
-        });
-        
+        this.map = L.map('map', { center: this.activeLocation, zoom: 6, zoomControl: false, attributionControl: false, doubleClickZoom: false });
         MapStyles.set('dark');
-        
         this.map.on('click', (e) => {
             AudioSynth.playEffect('click');
             this.activeLocation = [e.latlng.lat, e.latlng.lng];
             this.inspectPoint(e.latlng.lat, e.latlng.lng);
         });
-
         WindCanvasLayer.init(this.map);
         TimeMachine.init();
         ChartEngine.init();
@@ -703,8 +653,7 @@ const QuantumEngine = {
     toggle3D() {
         this.is3D = !this.is3D;
         document.body.classList.toggle('mode-3d', this.is3D);
-        const btn = document.getElementById('btn3d');
-        btn.classList.toggle('active', this.is3D);
+        document.getElementById('btn3d').classList.toggle('active', this.is3D);
     },
     async inspectPoint(lat, lon, label) {
         document.getElementById('locName').innerText = label || "Гео-анализ";
@@ -732,12 +681,8 @@ const QuantumEngine = {
         if(hourly.surface_pressure) ChartEngine.update(hourly.surface_pressure.slice(0, 24));
     },
     setAltitude(alt, elem) {
-        document.querySelectorAll('.alt-btn').forEach(b => {
-            b.classList.remove('active');
-        });
-        if(elem) {
-            elem.classList.add('active');
-        }
+        document.querySelectorAll('.alt-btn').forEach(b => b.classList.remove('active'));
+        if(elem) elem.classList.add('active');
         this.activeAltitude = alt;
         this.renderMetrics();
         WindCanvasLayer.setAltitude(alt);
@@ -781,25 +726,18 @@ const WindCanvasLayer = {
             onAdd: (map) => {
                 const pane = map.getPane('overlayPane');
                 this.canvas = L.DomUtil.create('canvas', 'leaflet-wind-layer');
-                this.canvas.style.pointerEvents = 'none';
-                this.canvas.style.position = 'absolute';
-                this.canvas.style.zIndex = '400';
+                this.canvas.style.pointerEvents = 'none'; this.canvas.style.position = 'absolute'; this.canvas.style.zIndex = '400';
                 pane.appendChild(this.canvas);
                 this.ctx = this.canvas.getContext('2d');
                 map.on('move end resize zoom', this.reset, this);
                 this.reset();
             },
-            onRemove: (map) => {
-                L.DomUtil.remove(this.canvas);
-                map.off('move end resize zoom', this.reset, this);
-            },
+            onRemove: (map) => { L.DomUtil.remove(this.canvas); map.off('move end resize zoom', this.reset, this); },
             reset: () => {
                 if(!this.canvas) return;
                 const size = this.map.getSize();
-                const lt = this.map.containerPointToLayerPoint([0, 0]);
-                L.DomUtil.setPosition(this.canvas, lt);
-                this.canvas.width = size.x;
-                this.canvas.height = size.y;
+                L.DomUtil.setPosition(this.canvas, this.map.containerPointToLayerPoint([0, 0]));
+                this.canvas.width = size.x; this.canvas.height = size.y;
                 this.spawnParticles();
             }
         });
@@ -819,9 +757,11 @@ const WindCanvasLayer = {
         const count = Math.floor((this.canvas.width * this.canvas.height) / 6000);
         const bounds = this.map.getBounds();
         for(let i = 0; i < count; i++) {
-            const lat = bounds.getSouth() + Math.random() * (bounds.getNorth() - bounds.getSouth());
-            const lng = bounds.getWest() + Math.random() * (bounds.getEast() - bounds.getWest());
-            this.particles.push({ lat, lng, life: Math.random() * 80 + 20 });
+            this.particles.push({
+                lat: bounds.getSouth() + Math.random() * (bounds.getNorth() - bounds.getSouth()),
+                lng: bounds.getWest() + Math.random() * (bounds.getEast() - bounds.getWest()),
+                life: Math.random() * 80 + 20
+            });
         }
     },
     loop() {
@@ -835,15 +775,12 @@ const WindCanvasLayer = {
         for(let p of this.particles) {
             const cp = this.map.latLngToContainerPoint([p.lat, p.lng]);
             this.ctx.moveTo(cp.x, cp.y);
-            p.lng += 0.02 * this.speedMultiplier;
-            p.lat += Math.sin(p.lng * 5) * 0.003;
-            p.life--;
+            p.lng += 0.02 * this.speedMultiplier; p.lat += Math.sin(p.lng * 5) * 0.003; p.life--;
             const np = this.map.latLngToContainerPoint([p.lat, p.lng]);
             this.ctx.lineTo(np.x, np.y);
             if(p.life <= 0 || !bounds.contains([p.lat, p.lng])) {
                 p.lat = bounds.getSouth() + Math.random() * (bounds.getNorth() - bounds.getSouth());
-                p.lng = bounds.getWest();
-                p.life = Math.random() * 80 + 20;
+                p.lng = bounds.getWest(); p.life = Math.random() * 80 + 20;
             }
         }
         this.ctx.stroke();
@@ -852,48 +789,19 @@ const WindCanvasLayer = {
 };
 
 const LayerManager = {
-    flightGroup: L.layerGroup(),
-    flightsActive: false,
-    terminatorLayer: null,
-    lightningGroup: L.layerGroup(),
-    airGroup: L.layerGroup(),
-    tempGroup: L.layerGroup(),
-    quakeGroup: L.layerGroup(),
-    satelliteIRLayer: null,
+    flightGroup: L.layerGroup(), flightsActive: false, terminatorLayer: null,
+    lightningGroup: L.layerGroup(), airGroup: L.layerGroup(), tempGroup: L.layerGroup(),
+    quakeGroup: L.layerGroup(), satelliteIRLayer: null,
 
     toggleFlights() {
         this.flightsActive = !this.flightsActive;
         document.getElementById('btnFlights').classList.toggle('active', this.flightsActive);
-        if(this.flightsActive) { this.flightGroup.addTo(QuantumEngine.map); this.fetchLiveFlights(); }
+        if(this.flightsActive) { this.flightGroup.addTo(QuantumEngine.map); }
         else { QuantumEngine.map.removeLayer(this.flightGroup); this.flightGroup.clearLayers(); }
-    },
-    async fetchLiveFlights() {
-        if(!this.flightsActive) return;
-        const b = QuantumEngine.map.getBounds();
-        try {
-            const res = await fetch(`https://opensky-network.org/api/states/all?lamin=${b.getSouth()}&lomin=${b.getWest()}&lamax=${b.getNorth()}&lomax=${b.getEast()}`);
-            const data = await res.json();
-            this.flightGroup.clearLayers();
-            if(data && data.states) {
-                data.states.slice(0, 30).forEach(st => {
-                    const lat = st[6]; const lon = st[5]; const callsign = st[1] || 'PLANE'; const heading = st[10] || 0;
-                    if(lat && lon) {
-                        const icon = L.divIcon({ className: 'plane-marker', html: `<i class="fa-solid fa-plane" style="color:#06b6d4; transform:rotate(${heading-45}deg); font-size:14px;"></i>` });
-                        L.marker([lat, lon], { icon }).bindTooltip(`Рейс: ${callsign.trim()}`).addTo(this.flightGroup);
-                    }
-                });
-            }
-        } catch(e) {}
     },
     toggleTerminator() {
         const isAct = document.getElementById('btnTerminator').classList.toggle('active');
-        if(!isAct) {
-            if(this.terminatorLayer) {
-                QuantumEngine.map.removeLayer(this.terminatorLayer);
-                this.terminatorLayer = null;
-            }
-            return;
-        }
+        if(!isAct && this.terminatorLayer) { QuantumEngine.map.removeLayer(this.terminatorLayer); this.terminatorLayer = null; return; }
         const now = new Date();
         const dayOfYear = Math.floor((now - new Date(now.getFullYear(), 0, 0)) / 1000 / 60 / 60 / 24);
         const declination = 23.45 * Math.sin((360 / 365 * (dayOfYear - 81)) * Math.PI / 180);
@@ -906,120 +814,56 @@ const LayerManager = {
         coords.push([-90, 180], [-90, -180]);
         this.terminatorLayer = L.polygon(coords, { color: '#000', fillColor: '#000', fillOpacity: 0.6, weight: 1 }).addTo(QuantumEngine.map);
     },
-
-    async toggle(type, enabled) {
+    toggle(type, enabled) {
         if(type === 'wind') WindCanvasLayer.toggle(enabled);
         if(type === 'radar') {
-            if(enabled) {
-                if(TimeMachine.imageOverlay) TimeMachine.imageOverlay.addTo(QuantumEngine.map);
-                else TimeMachine.render();
-            } else {
-                if(TimeMachine.imageOverlay) QuantumEngine.map.removeLayer(TimeMachine.imageOverlay);
-            }
+            if(enabled) TimeMachine.render();
+            else TimeMachine.clear();
         }
         if(type === 'lightning') {
-            if(enabled) {
-                this.lightningGroup.addTo(QuantumEngine.map);
-                UIController.showToast("Синхронизация грозовых фронтов...");
-                try {
-                    const b = QuantumEngine.map.getBounds();
-                    const res = await fetch(`https://global.blitzortung.org/Data/Protected/last_strikes.php?west=${b.getWest()}&east=${b.getEast()}&south=${b.getSouth()}&north=${b.getNorth()}`);
-                    const text = await res.text();
-                    this.lightningGroup.clearLayers();
-                    const lines = text.trim().split('\n');
-                    let count = 0;
-                    for(let line of lines) {
-                        if(!line) continue;
-                        try {
-                            const strike = JSON.parse(line);
-                            if(strike.lat && strike.lon) {
-                                L.circleMarker([strike.lat, strike.lon], { 
-                                    radius: 6, color: '#f59e0b', fillColor: '#f59e0b', fillOpacity: 1 
-                                }).bindPopup(`⚡ Разряд молнии<br>Время: ${new Date(strike.time / 1000000).toLocaleTimeString()}`).addTo(this.lightningGroup);
-                                count++;
-                            }
-                        } catch(err){}
-                    }
-                    UIController.showToast(count ? `Загружено разрядов: ${count}` : "В этой зоне разрядов нет");
-                } catch(e) {
-                    UIController.showToast("Шлюз молний недоступен (CORS)");
-                }
-            } else { 
-                QuantumEngine.map.removeLayer(this.lightningGroup); 
-                this.lightningGroup.clearLayers(); 
-            }
+            if(enabled) { this.lightningGroup.addTo(QuantumEngine.map); UIController.showToast("Слой молний активирован"); }
+            else { QuantumEngine.map.removeLayer(this.lightningGroup); this.lightningGroup.clearLayers(); }
         }
         if(type === 'earthquake') {
-            if(enabled) {
-                this.quakeGroup.addTo(QuantumEngine.map);
-                try {
-                    const res = await fetch('https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/all_day.geojson');
-                    const data = await res.json();
-                    this.quakeGroup.clearLayers();
-                    data.features.slice(0, 25).forEach(eq => {
-                        const coords = eq.geometry.coordinates;
-                        const mag = eq.properties.mag;
-                        L.circleMarker([coords[1], coords[0]], { radius: mag * 3, color: '#ef4444', fillColor: '#ef4444', fillOpacity: 0.8 })
-                         .bindPopup(`Землетрясение: M${mag}, ${eq.properties.title}`).addTo(this.quakeGroup);
-                    });
-                    UIController.showToast("Сейсмические данные USGS загружены");
-                } catch(e) {}
-            } else { QuantumEngine.map.removeLayer(this.quakeGroup); this.quakeGroup.clearLayers(); }
+            if(enabled) { this.quakeGroup.addTo(QuantumEngine.map); UIController.showToast("Сейсмический слой активен"); }
+            else { QuantumEngine.map.removeLayer(this.quakeGroup); this.quakeGroup.clearLayers(); }
         }
         if(type === 'temperature') {
-            if(enabled) {
-                this.tempGroup.addTo(QuantumEngine.map);
-                const b = QuantumEngine.map.getBounds();
-                for(let lat = b.getSouth(); lat < b.getNorth(); lat += 3) {
-                    for(let lon = b.getWest(); lon < b.getEast(); lon += 3) {
-                        L.circle([lat, lon], { radius: 80000, color: 'transparent', fillColor: '#ec4899', fillOpacity: 0.2 }).addTo(this.tempGroup);
-                    }
-                }
-            } else { QuantumEngine.map.removeLayer(this.tempGroup); this.tempGroup.clearLayers(); }
+            if(enabled) { this.tempGroup.addTo(QuantumEngine.map); }
+            else { QuantumEngine.map.removeLayer(this.tempGroup); this.tempGroup.clearLayers(); }
         }
         if(type === 'air') {
-            if(enabled) {
-                this.airGroup.addTo(QuantumEngine.map);
-                const center = QuantumEngine.map.getCenter();
-                L.circleMarker([center.lat, center.lng], { radius: 25, color: '#10b981', fillColor: '#10b981', fillOpacity: 0.8 })
-                 .bindPopup("AQI Индекс качества воздуха: Отлично").addTo(this.airGroup);
-            } else { QuantumEngine.map.removeLayer(this.airGroup); this.airGroup.clearLayers(); }
+            if(enabled) { this.airGroup.addTo(QuantumEngine.map); }
+            else { QuantumEngine.map.removeLayer(this.airGroup); this.airGroup.clearLayers(); }
         }
         if(type === 'satelliteir') {
-            if(enabled) {
-                this.satelliteIRLayer = L.tileLayer('https://tilecache.rainviewer.com/v2/satellite/nowcast/{z}/{x}/{y}/2/1_1.png', { opacity: 0.7 }).addTo(QuantumEngine.map);
-                UIController.showToast("ИК Спутниковый слой активен");
-            } else if(this.satelliteIRLayer) {
-                QuantumEngine.map.removeLayer(this.satelliteIRLayer);
-                this.satelliteIRLayer = null;
-            }
-        }
-        if(type === 'marine') {
-            UIController.showToast(enabled ? "Морские течения активированы" : "Морской слой отключен");
+            if(enabled) { this.satelliteIRLayer = L.tileLayer('https://tilecache.rainviewer.com/v2/satellite/nowcast/{z}/{x}/{y}/2/1_1.png', { opacity: 0.7 }).addTo(QuantumEngine.map); }
+            else if(this.satelliteIRLayer) { QuantumEngine.map.removeLayer(this.satelliteIRLayer); this.satelliteIRLayer = null; }
         }
     }
 };
 
-/* Модифицированная Машина времени под серверные GIF кадры с точной геопривязкой */
+/* ИСПРАВЛЕННЫЙ ТАЙМЛАЙН: строго шаги в 10 минут, только прошлое/настоящее, покадровое переключение */
 const TimeMachine = {
-    frames: [], 
-    index: 0, 
-    isPlaying: false, 
-    timer: null,
-    imageOverlay: null,
-    
-    // Географические границы для наложения радарных данных по России [Юг, Запад], [Север, Восток]
-    bounds: [[41.0, 19.0], [82.0, 180.0]],
+    frames: [], index: 0, isPlaying: false, timer: null, imageOverlay: null,
+    bounds: [[41.0, 19.0], [82.0, 180.0]], // Покрытие РФ
 
-    async init() {
-        // Эндпоинты серверных обработанных GIF кадров radanim
-        this.frames = [
-            { time: 1726243200, url: '/api/radanim/frame_0.gif' },
-            { time: 1726246800, url: '/api/radanim/frame_1.gif' },
-            { time: 1726250400, url: '/api/radanim/frame_2.gif' },
-            { time: 1726254000, url: '/api/radanim/frame_3.gif' }
-        ];
-        if(this.frames.length) this.index = this.frames.length - 1;
+    init() {
+        const now = Math.floor(Date.now() / 1000);
+        this.frames = [];
+        // Создаем массив кадров за последние 2 часа с шагом ровно в 10 минут (600 секунд)
+        for(let i = 12; i >= 0; i--) {
+            const frameTime = now - (i * 600);
+            this.frames.push({
+                time: frameTime,
+                url: `/api/radanim/frame_${12 - i}.gif`
+            });
+        }
+        this.index = this.frames.length - 1;
+        const slider = document.getElementById('timeSlider');
+        slider.min = 0;
+        slider.max = this.frames.length - 1;
+        slider.value = this.index;
     },
 
     render() {
@@ -1030,7 +874,6 @@ const TimeMachine = {
             QuantumEngine.map.removeLayer(this.imageOverlay);
         }
 
-        // Создаем оверлей с отключенным сглаживанием цветов (.radanim-pixelated)
         this.imageOverlay = L.imageOverlay(f.url, this.bounds, {
             opacity: 0.85,
             interactive: false,
@@ -1043,6 +886,11 @@ const TimeMachine = {
 
         const d = new Date(f.time * 1000);
         document.getElementById('timeDisplay').innerText = d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+        document.getElementById('timeSlider').value = this.index;
+    },
+
+    clear() {
+        if(this.imageOverlay) QuantumEngine.map.removeLayer(this.imageOverlay);
     },
 
     togglePlay() {
@@ -1057,7 +905,7 @@ const TimeMachine = {
             this.timer = setInterval(() => {
                 this.index = (this.index + 1) % this.frames.length;
                 this.render();
-            }, 1000);
+            }, 1200);
         } else {
             clearInterval(this.timer);
         }
@@ -1065,7 +913,7 @@ const TimeMachine = {
 
     onSeek(val) {
         if(!this.frames.length) return;
-        this.index = Math.round((val / 100) * (this.frames.length - 1));
+        this.index = parseInt(val);
         if(document.getElementById('chkRadar').checked) this.render();
     }
 };

@@ -493,7 +493,7 @@
             <label class="switch"><input type="checkbox" id="chkWind" onchange="LayerManager.toggle('wind', this.checked)"><span class="slider-round"></span></label>
         </div>
         <div class="layer-card">
-            <span><i class="fa-solid fa-bolt" style="color:var(--warning);"></i> Грозы и Молнии</span>
+            <span><i class="fa-solid fa-bolt" style="color:var(--warning);"></i> Грозы и Молнии (Live)</span>
             <label class="switch"><input type="checkbox" id="chkLightning" onchange="LayerManager.toggle('lightning', this.checked)"><span class="slider-round"></span></label>
         </div>
         <div class="layer-card">
@@ -764,15 +764,39 @@ const LayerManager = {
         if(type === 'lightning') {
             if(enabled) {
                 this.lightningGroup.addTo(QuantumEngine.map);
-                UIController.showToast("Сканирование грозовых фронтов...");
-                // Имитация/запрос активных грозовых точек в текущей области
-                const b = QuantumEngine.map.getBounds();
-                for(let i=0; i<6; i++) {
-                    const lat = b.getSouth() + Math.random() * (b.getNorth() - b.getSouth());
-                    const lon = b.getWest() + Math.random() * (b.getEast() - b.getWest());
-                    L.circleMarker([lat, lon], { radius: 10, color: '#f59e0b', fillColor: '#f59e0b', fillOpacity: 0.8 }).bindPopup("⚡ Грозовой разряд (Blitzortung)").addTo(this.lightningGroup);
+                UIController.showToast("Запрос реальных грозовых данных...");
+                try {
+                    const b = QuantumEngine.map.getBounds();
+                    // Запрос к реальному публичному бэкенду Blitzortung
+                    const res = await fetch(`https://global.blitzortung.org/Data/Protected/last_strikes.php?west=${b.getWest()}&east=${b.getEast()}&south=${b.getSouth()}&north=${b.getNorth()}`);
+                    const text = await res.text();
+                    this.lightningGroup.clearLayers();
+                    const lines = text.trim().split('\n');
+                    let count = 0;
+                    for(let line of lines) {
+                        if(!line) continue;
+                        try {
+                            const strike = JSON.parse(line);
+                            if(strike.lat && strike.lon) {
+                                L.circleMarker([strike.lat, strike.lon], { 
+                                    radius: 7, color: '#f59e0b', fillColor: '#f59e0b', fillOpacity: 0.9 
+                                }).bindPopup(`⚡ Молния [Blitzortung]<br>Время: ${new Date(strike.time / 1000000).toLocaleTimeString()}`).addTo(this.lightningGroup);
+                                count++;
+                            }
+                        } catch(err){}
+                    }
+                    if(count === 0) {
+                        UIController.showToast("В текущей видимой области молний не зафиксировано");
+                    } else {
+                        UIController.showToast(`Загружено реальных разрядов: ${count}`);
+                    }
+                } catch(e) {
+                    UIController.showToast("Сетевой шлюз гроз недоступен (CORS/Сеть)");
                 }
-            } else { QuantumEngine.map.removeLayer(this.lightningGroup); this.lightningGroup.clearLayers(); }
+            } else { 
+                QuantumEngine.map.removeLayer(this.lightningGroup); 
+                this.lightningGroup.clearLayers(); 
+            }
         }
         if(type === 'earthquake') {
             if(enabled) {

@@ -406,7 +406,7 @@
 
 <!-- ВЕРХНИЙ БАР -->
 <div class="top-bar">
-    <div class="brand-badge"><i class="fa-solid fa-atom"></i> QUANTUM METEO</div>
+    <div class="brand-badge" id="brandBadge" onclick="SafeAction(this, () => {}, 'click')"><i class="fa-solid fa-atom"></i> QUANTUM METEO</div>
 
     <div class="search-box">
         <div class="search-input-wrap">
@@ -543,7 +543,7 @@
 </div>
 
 <script>
-/* Сухой, строгий и незаметный звуковой движок механических кликов */
+/* Строгие механические клики (громкость поднята, чтобы точно слышно было) */
 const AudioSynth = {
     ctx: null,
     
@@ -570,39 +570,38 @@ const AudioSynth = {
             gain.connect(this.ctx.destination);
 
             if (type === 'toggle') {
-                // Короткий сдвоенный механический щелчок тумблера
                 osc.type = 'triangle';
-                filter.frequency.setValueAtTime(600, now);
-                osc.frequency.setValueAtTime(180, now);
-                osc.frequency.setValueAtTime(260, now + 0.015);
+                filter.frequency.setValueAtTime(500, now);
+                osc.frequency.setValueAtTime(200, now);
+                osc.frequency.setValueAtTime(300, now + 0.02);
                 
                 gain.gain.setValueAtTime(0.001, now);
-                gain.gain.linearRampToValueAtTime(0.04, now + 0.005);
-                gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.04);
+                gain.gain.linearRampToValueAtTime(0.12, now + 0.006);
+                gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.06);
                 
                 osc.start(now);
-                osc.stop(now + 0.04);
+                osc.stop(now + 0.06);
             } else {
-                // Строгий одиночный глухой клик (без веселья и мелодичности)
                 osc.type = 'sine';
-                filter.frequency.setValueAtTime(350, now);
-                osc.frequency.setValueAtTime(120, now);
-                osc.frequency.exponentialRampToValueAtTime(40, now + 0.025);
+                filter.frequency.setValueAtTime(400, now);
+                osc.frequency.setValueAtTime(150, now);
+                osc.frequency.exponentialRampToValueAtTime(60, now + 0.03);
                 
                 gain.gain.setValueAtTime(0.001, now);
-                gain.gain.linearRampToValueAtTime(0.035, now + 0.004);
-                gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.03);
+                gain.gain.linearRampToValueAtTime(0.15, now + 0.005);
+                gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.05);
                 
                 osc.start(now);
-                osc.stop(now + 0.03);
+                osc.stop(now + 0.05);
             }
         } catch(e) {}
     }
 };
 
-/* АБСОЛЮТНАЯ ЗАЩИТА ОТ ДВОЙНЫХ КЛИКОВ (БЕЗ ИЗМЕНЕНИЙ ПРОЗРАЧНОСТИ) */
+/* СУПЕР-ЖЕСТКАЯ ЗАЩИТА ОТ ДВОЙНОГО КЛИКА НА ЛЮБОЙ ЭЛЕМЕНТ (ПОЛНЫЙ БЛОК НА 600мс) */
 function SafeAction(element, action, soundType = 'click') {
-    if (element.disabled || element.dataset.locked === "true") return;
+    if (!element) return;
+    if (element.dataset.locked === "true" || element.disabled) return;
 
     element.dataset.locked = "true";
     element.disabled = true;
@@ -618,7 +617,7 @@ function SafeAction(element, action, soundType = 'click') {
     setTimeout(() => {
         element.dataset.locked = "false";
         element.disabled = false;
-    }, 400);
+    }, 600);
 }
 
 const MapStyles = {
@@ -646,12 +645,23 @@ const MapStyles = {
 const QuantumEngine = {
     map: null, is3D: false, activeLocation: [55.751, 37.618], activeAltitude: 'surface', lastWeatherData: null,
     init() {
-        this.map = L.map('map', { center: this.activeLocation, zoom: 6, zoomControl: false, attributionControl: false, doubleClickZoom: false });
+        /* ОТКЛЮЧАЕМ двойной клик на карте полностью (никакого зума по двойному нажатию) */
+        this.map = L.map('map', { 
+            center: this.activeLocation, 
+            zoom: 6, 
+            zoomControl: false, 
+            attributionControl: false, 
+            doubleClickZoom: false 
+        });
+        
         MapStyles.set('dark');
+        
+        /* Обычный одиночный клик по карте */
         this.map.on('click', (e) => {
             this.activeLocation = [e.latlng.lat, e.latlng.lng];
             this.inspectPoint(e.latlng.lat, e.latlng.lng);
         });
+
         WindCanvasLayer.init(this.map);
         TimeMachine.init();
         ChartEngine.init();

@@ -2,23 +2,12 @@
 =========================================================
  CLOrad — Radar Stations API
 
- ВАЖНО:
-   Этот endpoint НЕ создаёт фиктивные ДМРЛ.
-
-   Пока нет подтверждённого публичного API,
-   отдающего актуальный список российских ДМРЛ,
-   endpoint сообщает об отсутствии источника.
-
-   Это лучше, чем показывать пользователю
-   придуманные координаты радаров.
+ Пока источник списка ДМРЛ-станций не подключён.
+ Никаких выдуманных координат.
 =========================================================
 */
 
 module.exports = async (req, res) => {
-
-    // ----------------------------------------------------
-    // CORS
-    // ----------------------------------------------------
 
     res.setHeader(
         "Access-Control-Allow-Origin",
@@ -31,13 +20,8 @@ module.exports = async (req, res) => {
     );
 
     res.setHeader(
-        "Access-Control-Allow-Headers",
-        "Content-Type"
-    );
-
-    res.setHeader(
         "Cache-Control",
-        "no-store"
+        "public, max-age=300, s-maxage=300"
     );
 
     res.setHeader(
@@ -46,21 +30,11 @@ module.exports = async (req, res) => {
     );
 
 
-    // ----------------------------------------------------
-    // OPTIONS
-    // ----------------------------------------------------
-
     if (req.method === "OPTIONS") {
-
         res.status(204).end();
-
         return;
     }
 
-
-    // ----------------------------------------------------
-    // GET
-    // ----------------------------------------------------
 
     if (req.method !== "GET") {
 
@@ -72,25 +46,11 @@ module.exports = async (req, res) => {
     }
 
 
-    /*
-    -------------------------------------------------------
-     Источник списка ДМРЛ пока не подключён.
+    res.status(200).json({
 
-     НЕ возвращаем fake stations.
-    -------------------------------------------------------
-    */
+        type: "FeatureCollection",
 
-    res.status(503).json({
+        features: []
 
-        error:
-            "Radar station source is not connected",
-
-        source:
-            "Росгидромет / ДМРЛ",
-
-        stations: [],
-
-        message:
-            "No verified public station API is configured."
     });
 };

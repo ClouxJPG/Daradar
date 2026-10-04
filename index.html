@@ -2,2825 +2,815 @@
 <html lang="ru">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport"
-      content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
-
-<title>CLOrad — Radar Russia</title>
-
-<link rel="preconnect" href="https://unpkg.com">
-<link rel="stylesheet"
-      href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>РЛС-Монитор · Радарные наблюдения России · РИГМЦ / ЦАО</title>
+<meta name="description" content="Живые радарные наблюдения России: сводка ЦАО Росгидромета (МЕТЕОРАД), сеть ДМРЛ-С. Без прогностических моделей.">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css">
 <style>
-/* =========================================================
-   CLOrad — Radar Russia
-   Mobile-first radar interface
-   ========================================================= */
-
-:root {
-    --bg: #071019;
-    --panel: rgba(11, 20, 31, .88);
-    --panel2: rgba(17, 29, 43, .94);
-    --line: rgba(255,255,255,.09);
-    --text: #f4f7fb;
-    --muted: #8e9baa;
-    --accent: #4da3ff;
-    --accent2: #72c8ff;
-    --danger: #ff4968;
-    --good: #44d49a;
-    --shadow: 0 16px 50px rgba(0,0,0,.38);
-    --radius: 18px;
-}
-
-* {
-    box-sizing: border-box;
-    -webkit-tap-highlight-color: transparent;
-}
-
-html,
-body {
-    margin: 0;
-    width: 100%;
-    height: 100%;
-    overflow: hidden;
-    background: var(--bg);
-    color: var(--text);
-    font-family:
-        Inter,
-        -apple-system,
-        BlinkMacSystemFont,
-        "SF Pro Display",
-        "SF Pro Text",
-        Arial,
-        sans-serif;
-}
-
-button,
-input,
-select {
-    font: inherit;
-}
-
-button {
-    border: 0;
-    color: inherit;
-}
-
-/* =========================================================
-   MAP
-   ========================================================= */
-
-#map {
-    position: fixed;
-    inset: 0;
-    z-index: 1;
-    background: #08111b;
-}
-
-.leaflet-control-attribution {
-    display: none !important;
-}
-
-.leaflet-control-zoom {
-    display: none;
-}
-
-.leaflet-tile {
-    transition:
-        opacity .22s ease,
-        filter .22s ease;
-}
-
-/* =========================================================
-   TOP BAR
-   ========================================================= */
-
-.topbar {
-    position: fixed;
-    z-index: 1000;
-    top: env(safe-area-inset-top, 0px);
-    left: 0;
-    right: 0;
-
-    height: 66px;
-
-    display: flex;
-    align-items: center;
-    gap: 10px;
-
-    padding: 9px 12px;
-
-    pointer-events: none;
-}
-
-.topbar > * {
-    pointer-events: auto;
-}
-
-.brand {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-
-    padding: 8px 13px;
-
-    background: rgba(8,17,27,.84);
-    backdrop-filter: blur(22px);
-    -webkit-backdrop-filter: blur(22px);
-
-    border: 1px solid var(--line);
-    border-radius: 15px;
-
-    box-shadow: var(--shadow);
-}
-
-.logo {
-    width: 34px;
-    height: 34px;
-
-    display: grid;
-    place-items: center;
-
-    border-radius: 11px;
-
-    background:
-        radial-gradient(circle at 35% 35%, #9bdeff, #2788ef 42%, #1454a2);
-
-    box-shadow:
-        0 0 25px rgba(64,158,255,.38),
-        inset 0 1px 0 rgba(255,255,255,.4);
-}
-
-.logo span {
-    font-size: 17px;
-    font-weight: 900;
-}
-
-.brand-name {
-    font-size: 16px;
-    font-weight: 800;
-    letter-spacing: -.3px;
-}
-
-.brand-status {
-    display: flex;
-    align-items: center;
-    gap: 5px;
-
-    margin-top: 1px;
-
-    color: var(--muted);
-    font-size: 10px;
-}
-
-.status-dot {
-    width: 6px;
-    height: 6px;
-    border-radius: 50%;
-    background: var(--good);
-    box-shadow: 0 0 9px var(--good);
-}
-
-.top-actions {
-    margin-left: auto;
-
-    display: flex;
-    gap: 7px;
-}
-
-.icon-btn {
-    width: 42px;
-    height: 42px;
-
-    display: grid;
-    place-items: center;
-
-    border-radius: 14px;
-
-    background: rgba(8,17,27,.84);
-    border: 1px solid var(--line);
-
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-
-    box-shadow: var(--shadow);
-
-    font-size: 18px;
-
-    transition:
-        transform .22s cubic-bezier(.2,.8,.2,1),
-        background .22s ease;
-}
-
-.icon-btn:active {
-    transform: scale(.91);
-}
-
-/* =========================================================
-   RIGHT MAP TOOLS
-   ========================================================= */
-
-.map-tools {
-    position: fixed;
-    z-index: 900;
-
-    right: 12px;
-    top: 84px;
-
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-}
-
-.map-tool {
-    width: 43px;
-    height: 43px;
-
-    display: grid;
-    place-items: center;
-
-    border-radius: 14px;
-
-    background: rgba(8,17,27,.82);
-    border: 1px solid var(--line);
-
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-
-    box-shadow: var(--shadow);
-
-    transition: transform .2s ease;
-}
-
-.map-tool:active {
-    transform: scale(.9);
-}
-
-/* =========================================================
-   SOURCE PILL
-   ========================================================= */
-
-.source-pill {
-    position: fixed;
-    z-index: 950;
-
-    left: 12px;
-    top: 82px;
-
-    padding: 8px 12px;
-
-    border-radius: 999px;
-
-    background: rgba(8,17,27,.78);
-    border: 1px solid var(--line);
-
-    backdrop-filter: blur(18px);
-    -webkit-backdrop-filter: blur(18px);
-
-    box-shadow: var(--shadow);
-
-    font-size: 11px;
-    font-weight: 700;
-
-    color: #dce8f5;
-}
-
-/* =========================================================
-   BOTTOM CONTROL PANEL
-   ========================================================= */
-
-.bottom-panel {
-    position: fixed;
-    z-index: 1000;
-
-    left: 10px;
-    right: 10px;
-    bottom: calc(10px + env(safe-area-inset-bottom, 0px));
-
-    border-radius: 23px;
-
-    background: var(--panel);
-    border: 1px solid var(--line);
-
-    backdrop-filter: blur(28px);
-    -webkit-backdrop-filter: blur(28px);
-
-    box-shadow: var(--shadow);
-
-    overflow: hidden;
-
-    transition:
-        transform .45s cubic-bezier(.22,1,.36,1),
-        opacity .3s ease;
-}
-
-.panel-head {
-    display: flex;
-    align-items: center;
-
-    padding: 12px 13px 8px;
-
-    gap: 9px;
-}
-
-.dragger {
-    position: absolute;
-
-    top: 7px;
-    left: 50%;
-
-    width: 38px;
-    height: 4px;
-
-    transform: translateX(-50%);
-
-    border-radius: 99px;
-    background: rgba(255,255,255,.17);
-}
-
-.frame-info {
-    flex: 1;
-}
-
-.frame-title {
-    font-size: 12px;
-    color: var(--muted);
-}
-
-.frame-time {
-    margin-top: 2px;
-
-    font-size: 17px;
-    font-weight: 800;
-    letter-spacing: -.4px;
-}
-
-.live-badge {
-    padding: 5px 8px;
-
-    border-radius: 8px;
-
-    background: rgba(68,212,154,.12);
-    color: #70e1b3;
-
-    font-size: 9px;
-    font-weight: 800;
-    text-transform: uppercase;
-}
-
-/* =========================================================
-   TIMELINE
-   ========================================================= */
-
-.timeline-wrap {
-    padding: 3px 13px 10px;
-}
-
-.timeline {
-    width: 100%;
-    height: 5px;
-
-    appearance: none;
-    -webkit-appearance: none;
-
-    border-radius: 999px;
-
-    background:
-        linear-gradient(
-            90deg,
-            var(--accent) 0%,
-            var(--accent) var(--progress, 0%),
-            rgba(255,255,255,.11) var(--progress, 0%),
-            rgba(255,255,255,.11) 100%
-        );
-
-    outline: none;
-}
-
-.timeline::-webkit-slider-thumb {
-    appearance: none;
-    -webkit-appearance: none;
-
-    width: 17px;
-    height: 17px;
-
-    border-radius: 50%;
-
-    background: white;
-
-    box-shadow:
-        0 0 0 4px rgba(77,163,255,.2),
-        0 2px 9px rgba(0,0,0,.35);
-}
-
-.timeline::-moz-range-thumb {
-    width: 17px;
-    height: 17px;
-
-    border: 0;
-    border-radius: 50%;
-
-    background: white;
-}
-
-/* =========================================================
-   CONTROL ROW
-   ========================================================= */
-
-.controls {
-    display: flex;
-    align-items: center;
-
-    gap: 7px;
-
-    padding: 0 13px 12px;
-}
-
-.play {
-    width: 45px;
-    height: 45px;
-
-    flex: 0 0 auto;
-
-    display: grid;
-    place-items: center;
-
-    border-radius: 14px;
-
-    background: var(--accent);
-
-    box-shadow:
-        0 7px 20px rgba(77,163,255,.24);
-
-    font-size: 18px;
-
-    transition:
-        transform .2s ease,
-        filter .2s ease;
-}
-
-.play:active {
-    transform: scale(.91);
-}
-
-.control {
-    min-width: 0;
-    flex: 1;
-
-    height: 45px;
-
-    padding: 0 12px;
-
-    border-radius: 14px;
-
-    background: rgba(255,255,255,.055);
-    border: 1px solid rgba(255,255,255,.055);
-
-    text-align: left;
-
-    transition: background .2s ease;
-}
-
-.control strong {
-    display: block;
-
-    font-size: 11px;
-}
-
-.control span {
-    display: block;
-
-    margin-top: 2px;
-
-    color: var(--muted);
-
-    font-size: 9px;
-}
-
-/* =========================================================
-   SIDE SHEET
-   ========================================================= */
-
-.sheet {
-    position: fixed;
-    z-index: 1500;
-
-    top: 0;
-    right: 0;
-    bottom: 0;
-
-    width: min(410px, 92vw);
-
-    padding:
-        calc(18px + env(safe-area-inset-top, 0px))
-        14px
-        calc(18px + env(safe-area-inset-bottom, 0px));
-
-    background: rgba(7,15,24,.96);
-
-    border-left: 1px solid var(--line);
-
-    box-shadow: -20px 0 70px rgba(0,0,0,.45);
-
-    transform: translateX(105%);
-
-    transition:
-        transform .48s cubic-bezier(.22,1,.36,1);
-}
-
-.sheet.open {
-    transform: translateX(0);
-}
-
-.sheet-title {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-
-    margin-bottom: 15px;
-
-    font-size: 20px;
-    font-weight: 850;
-}
-
-.close {
-    width: 40px;
-    height: 40px;
-
-    border-radius: 13px;
-
-    background: rgba(255,255,255,.06);
-}
-
-.section {
-    margin-bottom: 18px;
-}
-
-.section-label {
-    margin-bottom: 8px;
-
-    color: var(--muted);
-
-    font-size: 10px;
-    font-weight: 800;
-    letter-spacing: .7px;
-    text-transform: uppercase;
-}
-
-.source-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 8px;
-}
-
-.source {
-    padding: 13px;
-
-    border-radius: 15px;
-
-    background: rgba(255,255,255,.045);
-    border: 1px solid rgba(255,255,255,.06);
-
-    text-align: left;
-
-    transition:
-        transform .2s ease,
-        border-color .2s ease,
-        background .2s ease;
-}
-
-.source.active {
-    background: rgba(77,163,255,.13);
-    border-color: rgba(77,163,255,.42);
-}
-
-.source:active {
-    transform: scale(.97);
-}
-
-.source-name {
-    font-size: 12px;
-    font-weight: 800;
-}
-
-.source-desc {
-    margin-top: 4px;
-
-    color: var(--muted);
-
-    font-size: 9px;
-    line-height: 1.35;
-}
-
-.layer-list {
-    display: grid;
-    gap: 7px;
-}
-
-.layer {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-
-    padding: 11px;
-
-    border-radius: 14px;
-
-    background: rgba(255,255,255,.045);
-}
-
-.layer input {
-    width: 18px;
-    height: 18px;
-
-    accent-color: var(--accent);
-}
-
-.layer-text {
-    flex: 1;
-}
-
-.layer-title {
-    font-size: 12px;
-    font-weight: 700;
-}
-
-.layer-sub {
-    color: var(--muted);
-    font-size: 9px;
-    margin-top: 2px;
-}
-
-/* =========================================================
-   INFO CARD
-   ========================================================= */
-
-.point-card {
-    position: fixed;
-    z-index: 1400;
-
-    left: 12px;
-    right: 12px;
-
-    top: 50%;
-
-    max-width: 360px;
-
-    margin: auto;
-
-    padding: 15px;
-
-    border-radius: 19px;
-
-    background: rgba(8,17,27,.94);
-    border: 1px solid var(--line);
-
-    backdrop-filter: blur(24px);
-    -webkit-backdrop-filter: blur(24px);
-
-    box-shadow: var(--shadow);
-
-    transform:
-        translateY(-40%)
-        scale(.94);
-
-    opacity: 0;
-    pointer-events: none;
-
-    transition:
-        opacity .28s ease,
-        transform .35s cubic-bezier(.22,1,.36,1);
-}
-
-.point-card.open {
-    opacity: 1;
-    pointer-events: auto;
-
-    transform:
-        translateY(-50%)
-        scale(1);
-}
-
-.point-top {
-    display: flex;
-    align-items: flex-start;
-    gap: 10px;
-}
-
-.point-title {
-    flex: 1;
-
-    font-size: 15px;
-    font-weight: 850;
-}
-
-.point-close {
-    width: 30px;
-    height: 30px;
-
-    border-radius: 9px;
-
-    background: rgba(255,255,255,.06);
-}
-
-.point-value {
-    margin-top: 13px;
-
-    font-size: 32px;
-    font-weight: 900;
-    letter-spacing: -1px;
-}
-
-.point-unit {
-    color: var(--muted);
-    font-size: 11px;
-}
-
-.point-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 7px;
-
-    margin-top: 13px;
-}
-
-.stat {
-    padding: 9px;
-
-    border-radius: 11px;
-
-    background: rgba(255,255,255,.045);
-}
-
-.stat-label {
-    color: var(--muted);
-    font-size: 8px;
-}
-
-.stat-value {
-    margin-top: 2px;
-
-    font-size: 11px;
-    font-weight: 750;
-}
-
-/* =========================================================
-   LEGEND
-   ========================================================= */
-
-.legend {
-    position: fixed;
-    z-index: 800;
-
-    left: 12px;
-    bottom: 170px;
-
-    padding: 9px 10px;
-
-    border-radius: 14px;
-
-    background: rgba(8,17,27,.78);
-    border: 1px solid var(--line);
-
-    backdrop-filter: blur(18px);
-    -webkit-backdrop-filter: blur(18px);
-
-    box-shadow: var(--shadow);
-}
-
-.legend-title {
-    margin-bottom: 6px;
-
-    color: var(--muted);
-
-    font-size: 8px;
-    font-weight: 800;
-    text-transform: uppercase;
-}
-
-.legend-bar {
-    width: 145px;
-    height: 7px;
-
-    border-radius: 99px;
-
-    background:
-        linear-gradient(
-            90deg,
-            #5b6470,
-            #49c7ff,
-            #3b78ff,
-            #48e36f,
-            #ffe447,
-            #ff8b38,
-            #ff3d48,
-            #d51cff
-        );
-}
-
-.legend-values {
-    display: flex;
-    justify-content: space-between;
-
-    margin-top: 4px;
-
-    color: var(--muted);
-
-    font-size: 7px;
-}
-
-/* =========================================================
-   LOADING
-   ========================================================= */
-
-.loading {
-    position: fixed;
-    z-index: 3000;
-
-    inset: 0;
-
-    display: grid;
-    place-items: center;
-
-    background: #071019;
-
-    transition:
-        opacity .55s ease,
-        visibility .55s ease;
-}
-
-.loading.hidden {
-    opacity: 0;
-    visibility: hidden;
-}
-
-.loader {
-    text-align: center;
-}
-
-.loader-ring {
-    width: 48px;
-    height: 48px;
-
-    margin: auto;
-
-    border: 3px solid rgba(255,255,255,.08);
-    border-top-color: var(--accent);
-
-    border-radius: 50%;
-
-    animation: spin .8s linear infinite;
-}
-
-.loader-name {
-    margin-top: 13px;
-
-    font-weight: 850;
-    font-size: 17px;
-}
-
-.loader-sub {
-    margin-top: 4px;
-
-    color: var(--muted);
-    font-size: 10px;
-}
-
-@keyframes spin {
-    to {
-        transform: rotate(360deg);
-    }
-}
-
-/* =========================================================
-   DESKTOP
-   ========================================================= */
-
-@media (min-width: 800px) {
-
-    .bottom-panel {
-        left: 50%;
-        right: auto;
-
-        width: min(720px, calc(100vw - 40px));
-
-        transform: translateX(-50%);
-    }
-
-    .brand {
-        margin-left: 4px;
-    }
-
-    .legend {
-        bottom: 115px;
-    }
-}
-
-/* =========================================================
-   REDUCE MOTION
-   ========================================================= */
-
-@media (prefers-reduced-motion: reduce) {
-
-    *,
-    *::before,
-    *::after {
-        animation-duration: .01ms !important;
-        transition-duration: .01ms !important;
-    }
+:root{
+  --bg:#070b08; --bg2:#0c120d; --panel:#0e1610; --panel2:#111c13;
+  --line:#1d3322; --line2:#274a2e;
+  --grn:#39ff6a; --grn-dim:#1fae4a; --grn-dark:#0f5c28;
+  --txt:#cfeed6; --txt-dim:#7fa88c; --txt-faint:#4d6b58;
+  --amber:#ffc94d; --red:#ff5d5d; --blue:#57b6ff;
+  --mono:'JetBrains Mono','SFMono-Regular',Consolas,'Liberation Mono',monospace;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{height:100%;background:var(--bg);color:var(--txt);font-family:'Segoe UI',system-ui,-apple-system,Roboto,sans-serif;overflow:hidden}
+::-webkit-scrollbar{width:9px;height:9px}
+::-webkit-scrollbar-track{background:var(--bg2)}
+::-webkit-scrollbar-thumb{background:var(--line2);border-radius:4px}
+::-webkit-scrollbar-thumb:hover{background:var(--grn-dim)}
+
+/* ===== HEADER ===== */
+header{height:56px;display:flex;align-items:center;gap:14px;padding:0 16px;background:linear-gradient(180deg,#0d1510,#0a100b);border-bottom:1px solid var(--line);position:relative;z-index:1200}
+.logo{display:flex;align-items:center;gap:10px;user-select:none}
+.logo-radar{width:34px;height:34px;border-radius:50%;border:2px solid var(--grn-dark);position:relative;overflow:hidden;flex:none;background:radial-gradient(circle,#0a1f10 0%,#071208 70%)}
+.logo-radar::before{content:'';position:absolute;inset:0;background:conic-gradient(from 0deg,rgba(57,255,106,.55),transparent 18%);animation:sweep 3.2s linear infinite}
+.logo-radar::after{content:'';position:absolute;inset:6px;border:1px solid rgba(57,255,106,.25);border-radius:50%}
+@keyframes sweep{to{transform:rotate(360deg)}}
+.logo h1{font-size:15px;letter-spacing:2.5px;color:var(--grn);font-weight:700;text-transform:uppercase;white-space:nowrap}
+.logo small{display:block;font-size:9.5px;letter-spacing:1px;color:var(--txt-dim);font-weight:400;text-transform:none}
+.hdr-clocks{margin-left:auto;display:flex;gap:18px;align-items:center}
+.clock{text-align:right;line-height:1.25}
+.clock b{font-family:var(--mono);font-size:14px;color:var(--txt);font-weight:600}
+.clock span{display:block;font-size:9px;letter-spacing:1.5px;color:var(--txt-faint);text-transform:uppercase}
+.status-chip{display:flex;align-items:center;gap:7px;padding:5px 11px;border:1px solid var(--line2);border-radius:20px;font-size:11px;font-family:var(--mono);color:var(--txt-dim);background:var(--panel)}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--grn);box-shadow:0 0 8px var(--grn);animation:blink 2s infinite}
+.dot.wait{background:var(--amber);box-shadow:0 0 8px var(--amber)}
+.dot.err{background:var(--red);box-shadow:0 0 8px var(--red);animation:none}
+@keyframes blink{50%{opacity:.35}}
+
+/* ===== TABS ===== */
+nav.tabs{display:flex;gap:4px;padding:7px 16px;background:var(--bg2);border-bottom:1px solid var(--line);position:relative;z-index:1100;overflow-x:auto}
+.tab-btn{border:1px solid var(--line);background:var(--panel);color:var(--txt-dim);font-size:12px;letter-spacing:1.2px;text-transform:uppercase;padding:8px 18px;border-radius:6px;cursor:pointer;transition:.18s;white-space:nowrap;font-family:var(--mono)}
+.tab-btn:hover{color:var(--txt);border-color:var(--line2)}
+.tab-btn.active{background:var(--grn-dark);border-color:var(--grn-dim);color:#eafff0;box-shadow:0 0 14px rgba(57,255,106,.18)}
+.tab-btn kbd{opacity:.5;font-size:10px;margin-left:6px}
+
+/* ===== PANES ===== */
+main{position:absolute;top:56px;bottom:0;left:0;right:0}
+.pane{position:absolute;inset:52px 0 0 0;display:none}
+.pane.active{display:block}
+#map{position:absolute;inset:0;background:#0a0f0a}
+
+/* ===== MAP UI ===== */
+.map-panel{position:absolute;z-index:900;background:rgba(10,17,11,.92);border:1px solid var(--line2);border-radius:10px;backdrop-filter:blur(6px);box-shadow:0 4px 24px rgba(0,0,0,.5)}
+#data-badge{top:12px;left:60px;padding:10px 14px;min-width:230px}
+#data-badge .t1{font-size:10px;letter-spacing:1.5px;color:var(--txt-faint);text-transform:uppercase}
+#data-badge .t2{font-family:var(--mono);font-size:15px;color:var(--grn);margin-top:2px}
+#data-badge .t3{font-family:var(--mono);font-size:11px;color:var(--txt-dim);margin-top:3px}
+#data-badge .t3 b{color:var(--amber);font-weight:600}
+#ctrl-panel{top:12px;right:12px;padding:12px 14px;width:238px}
+#ctrl-panel h4{font-size:10px;letter-spacing:1.5px;color:var(--txt-faint);text-transform:uppercase;margin:0 0 8px}
+#ctrl-panel .row{margin-bottom:11px}
+#ctrl-panel label{font-size:11.5px;color:var(--txt-dim);display:flex;justify-content:space-between;margin-bottom:4px}
+#ctrl-panel label output{color:var(--grn);font-family:var(--mono);font-size:11px}
+input[type=range]{width:100%;accent-color:var(--grn);height:18px;cursor:pointer}
+.seg{display:flex;border:1px solid var(--line2);border-radius:6px;overflow:hidden}
+.seg button{flex:1;background:var(--panel);border:none;color:var(--txt-dim);font-size:10.5px;padding:7px 2px;cursor:pointer;letter-spacing:.4px;transition:.15s}
+.seg button.active{background:var(--grn-dark);color:#eafff0}
+.chk{display:flex;align-items:center;gap:8px;font-size:11.5px;color:var(--txt-dim);cursor:pointer;padding:3px 0;user-select:none}
+.chk input{accent-color:var(--grn);width:14px;height:14px;cursor:pointer}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;border:1px solid var(--line2);background:var(--panel2);color:var(--txt);font-size:11.5px;padding:7px 12px;border-radius:6px;cursor:pointer;transition:.15s;letter-spacing:.4px}
+.btn:hover{border-color:var(--grn-dim);color:var(--grn)}
+.btn:active{transform:scale(.97)}
+.btn.primary{background:var(--grn-dark);border-color:var(--grn-dim)}
+#coords-box{bottom:10px;left:60px;padding:5px 12px;font-family:var(--mono);font-size:11px;color:var(--txt-dim)}
+#coords-box b{color:var(--grn)}
+#legend-map{bottom:10px;right:12px;padding:9px 12px;max-width:250px}
+#legend-map h4{font-size:9.5px;letter-spacing:1.2px;color:var(--txt-faint);text-transform:uppercase;margin-bottom:6px}
+.lg-row{display:flex;align-items:center;gap:7px;font-size:10.5px;color:var(--txt-dim);padding:1.5px 0}
+.lg-sw{width:14px;height:10px;border-radius:2px;flex:none;border:1px solid rgba(255,255,255,.15)}
+.leaflet-container{font-family:inherit}
+.station-dot{width:10px;height:10px;border-radius:50%;background:var(--grn);border:2px solid #04160a;box-shadow:0 0 7px rgba(57,255,106,.8)}
+.leaflet-tooltip.stt{background:rgba(10,17,11,.95);border:1px solid var(--line2);color:var(--txt);font-size:11px;font-family:var(--mono);box-shadow:none}
+.leaflet-popup-content-wrapper{background:#0e1610;color:var(--txt);border:1px solid var(--line2);border-radius:8px}
+.leaflet-popup-tip{background:#0e1610;border:1px solid var(--line2)}
+.leaflet-popup-content b{color:var(--grn)}
+.leaflet-control-zoom a{background:var(--panel)!important;color:var(--txt)!important;border-color:var(--line2)!important}
+.leaflet-control-attribution{background:rgba(7,11,8,.8)!important;color:var(--txt-faint)!important;font-size:9.5px!important}
+.leaflet-control-attribution a{color:var(--txt-dim)!important}
+.leaflet-control-scale-line{background:rgba(7,11,8,.7)!important;color:var(--txt-dim);border-color:var(--line2)!important}
+
+#map-player{position:absolute;left:50%;transform:translateX(-50%);bottom:12px;z-index:950;display:flex;align-items:center;gap:9px;background:rgba(10,17,11,.94);border:1px solid var(--line2);border-radius:12px;padding:9px 14px;backdrop-filter:blur(8px);max-width:calc(100% - 20px);flex-wrap:wrap;justify-content:center}
+#mp-slider{width:230px}
+#mp-label{font-family:var(--mono);font-size:11px;color:var(--txt-dim);min-width:170px;text-align:center;line-height:1.35}
+#mp-label b{color:var(--grn)}
+.live-chip{font-family:var(--mono);font-size:10px;letter-spacing:1.5px;color:#04160a;background:var(--grn);border-radius:10px;padding:3px 9px;font-weight:700;box-shadow:0 0 10px rgba(57,255,106,.5)}
+.live-chip.off{background:transparent;color:var(--amber);border:1px solid var(--amber);box-shadow:none}
+@media (max-width:900px){#mp-slider{width:140px}#mp-label{min-width:120px;font-size:10px}}
+
+/* ===== GIF PANE ===== */
+#gif-wrap{position:absolute;inset:0;overflow:hidden;background:
+  radial-gradient(ellipse at 50% 40%,#0b130c 0%,#070b08 70%)}
+#gif-stage{position:absolute;inset:0;cursor:grab;touch-action:none}
+#gif-stage.dragging{cursor:grabbing}
+#gif-canvas{position:absolute;left:50%;top:50%;transform-origin:0 0;image-rendering:auto;box-shadow:0 0 60px rgba(57,255,106,.07);border-radius:4px}
+#gif-img-fallback{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);max-width:96%;max-height:82%;display:none;border-radius:4px;box-shadow:0 0 60px rgba(57,255,106,.07)}
+#gif-toolbar{position:absolute;left:50%;transform:translateX(-50%);bottom:14px;z-index:50;display:flex;align-items:center;gap:10px;background:rgba(10,17,11,.94);border:1px solid var(--line2);border-radius:12px;padding:10px 14px;backdrop-filter:blur(8px);max-width:calc(100% - 20px);flex-wrap:wrap;justify-content:center}
+.tb-btn{width:38px;height:38px;border-radius:8px;border:1px solid var(--line2);background:var(--panel2);color:var(--grn);font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:.15s;flex:none}
+.tb-btn:hover{border-color:var(--grn-dim);background:var(--grn-dark)}
+.tb-btn:active{transform:scale(.94)}
+#frame-slider{width:210px}
+#frame-label{font-family:var(--mono);font-size:11.5px;color:var(--txt-dim);min-width:150px;text-align:center}
+#frame-label b{color:var(--grn)}
+select{background:var(--panel2);color:var(--txt);border:1px solid var(--line2);border-radius:6px;font-size:11.5px;padding:7px 8px;cursor:pointer;font-family:var(--mono)}
+#gif-progress{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:60;text-align:center;width:min(420px,86%)}
+#gif-progress .bar{height:5px;background:var(--line);border-radius:3px;overflow:hidden;margin-top:12px}
+#gif-progress .bar i{display:block;height:100%;width:0%;background:linear-gradient(90deg,var(--grn-dim),var(--grn));border-radius:3px;transition:width .2s;box-shadow:0 0 10px rgba(57,255,106,.5)}
+#gif-progress p{font-family:var(--mono);font-size:12px;color:var(--txt-dim);letter-spacing:.5px}
+#gif-progress p b{color:var(--grn)}
+#gif-src-note{position:absolute;top:12px;left:14px;z-index:50;padding:8px 13px;font-size:10.5px;font-family:var(--mono);color:var(--txt-dim);max-width:min(430px,60%)}
+#gif-src-note b{color:var(--grn)}
+#gif-zoom-ctrl{position:absolute;right:14px;top:12px;z-index:50;display:flex;flex-direction:column;gap:6px}
+
+/* ===== INFO PANE ===== */
+#pane-info{overflow-y:auto;padding:26px clamp(16px,6vw,80px) 60px}
+.info-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:18px;max-width:1400px;margin:0 auto}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:20px 22px}
+.card h3{font-size:13px;letter-spacing:2px;color:var(--grn);text-transform:uppercase;margin-bottom:12px;display:flex;align-items:center;gap:8px}
+.card h3::before{content:'';width:8px;height:8px;background:var(--grn);border-radius:2px;box-shadow:0 0 8px var(--grn)}
+.card p,.card li{font-size:13px;line-height:1.65;color:var(--txt-dim)}
+.card ul{padding-left:18px}
+.card a{color:var(--blue);text-decoration:none}
+.card a:hover{text-decoration:underline}
+.card img{max-width:100%;border-radius:6px;border:1px solid var(--line);margin-top:10px;background:#fff}
+.mono{font-family:var(--mono);font-size:11.5px;background:var(--bg2);border:1px solid var(--line);border-radius:6px;padding:2px 7px;color:var(--grn)}
+table.st{width:100%;border-collapse:collapse;font-size:11.5px;margin-top:6px}
+table.st th{font-family:var(--mono);font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--txt-faint);text-align:left;padding:6px 8px;border-bottom:1px solid var(--line2)}
+table.st td{padding:5px 8px;border-bottom:1px solid var(--line);color:var(--txt-dim)}
+table.st td:first-child{color:var(--txt)}
+table.st td.mono2{font-family:var(--mono);color:var(--grn-dim);white-space:nowrap}
+table.st tr:hover td{background:rgba(57,255,106,.04)}
+.warn{border-left:3px solid var(--amber);padding:10px 14px;background:rgba(255,201,77,.06);border-radius:0 8px 8px 0;font-size:12.5px;color:#e8d9ae;margin-top:12px;line-height:1.6}
+kbd.sc{font-family:var(--mono);font-size:10.5px;border:1px solid var(--line2);border-bottom-width:2px;border-radius:4px;padding:1px 6px;background:var(--bg2);color:var(--grn)}
+
+@media (max-width:900px){
+  .hdr-clocks .clock:last-child{display:none}
+  #ctrl-panel{width:200px;top:auto;bottom:56px;right:8px}
+  #legend-map{display:none}
+  #data-badge{left:56px;top:8px;min-width:0;padding:8px 10px}
+  #coords-box{left:56px}
+  #frame-slider{width:130px}
+  #frame-label{min-width:110px;font-size:10.5px}
+  .logo h1{font-size:12px;letter-spacing:1.5px}
+}
+@media (max-width:640px){
+  #ctrl-panel{display:none}
+  .status-chip span.lbl{display:none}
 }
 </style>
 </head>
-
 <body>
 
-<!-- =======================================================
-     LOADING
-     ======================================================= -->
-
-<div class="loading" id="loading">
-    <div class="loader">
-        <div class="loader-ring"></div>
-        <div class="loader-name">CLOrad</div>
-        <div class="loader-sub">Инициализация радарной сети</div>
+<header>
+  <div class="logo">
+    <div class="logo-radar"></div>
+    <div>
+      <h1>РЛС-Монитор<small>метеорадары России · РИГМЦ / ЦАО Росгидромета</small></h1>
     </div>
-</div>
+  </div>
+  <div class="hdr-clocks">
+    <div class="status-chip"><span class="dot" id="status-dot"></span><span class="lbl" id="status-txt">подключение…</span></div>
+    <div class="clock"><b id="clk-utc">--:--:--</b><span>UTC</span></div>
+    <div class="clock"><b id="clk-msk">--:--:--</b><span>МСК</span></div>
+  </div>
+</header>
 
-<!-- =======================================================
-     MAP
-     ======================================================= -->
+<main>
+  <nav class="tabs">
+    <button class="tab-btn active" data-tab="map">Карта · Live<kbd>1</kbd></button>
+    <button class="tab-btn" data-tab="gif">Анимация ЦАО · 3 часа<kbd>2</kbd></button>
+    <button class="tab-btn" data-tab="info">Сеть · Легенды · Источники<kbd>3</kbd></button>
+  </nav>
 
-<div id="map"></div>
+  <!-- ============ MAP PANE ============ -->
+  <section class="pane active" id="pane-map">
+    <div id="map"></div>
 
-<!-- =======================================================
-     TOP BAR
-     ======================================================= -->
-
-<div class="topbar">
-
-    <div class="brand">
-
-        <div class="logo">
-            <span>CL</span>
-        </div>
-
-        <div>
-            <div class="brand-name">CLOrad</div>
-
-            <div class="brand-status">
-                <span class="status-dot"></span>
-                <span id="networkStatus">сеть онлайн</span>
-            </div>
-        </div>
-
+    <div class="map-panel" id="data-badge">
+      <div class="t1">Радарная сводка · наблюдения</div>
+      <div class="t2" id="badge-time">—</div>
+      <div class="t3">след. обновление: <b id="badge-next">—</b></div>
     </div>
 
-    <div class="top-actions">
-
-        <button class="icon-btn"
-                id="searchBtn"
-                aria-label="Поиск">
-            ⌕
-        </button>
-
-        <button class="icon-btn"
-                id="layersBtn"
-                aria-label="Слои">
-            ◫
-        </button>
-
+    <div class="map-panel" id="ctrl-panel">
+      <h4>Слой осадков</h4>
+      <div class="row">
+        <div class="seg" id="mode-seg">
+          <button data-mode="precip" class="active">Только осадки</button>
+          <button data-mode="full">Полный фон</button>
+        </div>
+      </div>
+      <div class="row">
+        <label>Прозрачность слоя <output id="op-out">85%</output></label>
+        <input type="range" id="op-range" min="20" max="100" value="85">
+      </div>
+      <div class="row">
+        <h4 style="margin-bottom:6px">Сеть ДМРЛ-С</h4>
+        <label class="chk"><input type="checkbox" id="chk-stations" checked> Радары (36 пунктов)</label>
+        <label class="chk"><input type="checkbox" id="chk-rings"> Зоны покрытия 250 км</label>
+      </div>
+      <div class="row" style="display:flex;gap:6px">
+        <button class="btn primary" id="btn-refresh" style="flex:1">↻ Обновить</button>
+        <button class="btn" id="btn-fit">ЕТР</button>
+      </div>
     </div>
 
-</div>
+    <div class="map-panel" id="coords-box">курсор: <b id="coords-val">—</b></div>
 
-<!-- =======================================================
-     SOURCE
-     ======================================================= -->
-
-<div class="source-pill" id="sourcePill">
-    РГМЦ · Композит
-</div>
-
-<!-- =======================================================
-     MAP TOOLS
-     ======================================================= -->
-
-<div class="map-tools">
-
-    <button class="map-tool"
-            id="locateBtn"
-            title="Моё местоположение">
-        ◎
-    </button>
-
-    <button class="map-tool"
-            id="zoomIn">
-        +
-    </button>
-
-    <button class="map-tool"
-            id="zoomOut">
-        −
-    </button>
-
-    <button class="map-tool"
-            id="fullscreenBtn">
-        ⛶
-    </button>
-
-</div>
-
-<!-- =======================================================
-     LEGEND
-     ======================================================= -->
-
-<div class="legend">
-
-    <div class="legend-title">
-        Reflectivity · dBZ
+    <div id="map-player">
+      <button class="tb-btn" id="mp-prev" title="Кадр назад [←]">⏮</button>
+      <button class="tb-btn" id="mp-play" title="Старт/пауза [пробел]">▶</button>
+      <button class="tb-btn" id="mp-next" title="Кадр вперёд [→]">⏭</button>
+      <input type="range" id="mp-slider" min="0" max="14" value="14">
+      <div id="mp-label">—</div>
+      <select id="mp-speed" title="Скорость">
+        <option value="1600">0.5×</option>
+        <option value="800" selected>1×</option>
+        <option value="400">2×</option>
+        <option value="200">4×</option>
+      </select>
+      <span id="mp-live" class="live-chip">LIVE</span>
     </div>
 
-    <div class="legend-bar"></div>
-
-    <div class="legend-values">
-        <span>0</span>
-        <span>20</span>
-        <span>40</span>
-        <span>60+</span>
+    <div class="map-panel" id="legend-map">
+      <h4>Шкала явлений (ЦАО)</h4>
+      <div class="lg-row"><span class="lg-sw" style="background:#acaba7"></span>облачность без осадков</div>
+      <div class="lg-row"><span class="lg-sw" style="background:#1473f2"></span>слабые осадки</div>
+      <div class="lg-row"><span class="lg-sw" style="background:#0e1484"></span>осадки</div>
+      <div class="lg-row"><span class="lg-sw" style="background:#f8f31d"></span>ливневые осадки</div>
+      <div class="lg-row"><span class="lg-sw" style="background:#c5e830"></span>сильные ливневые осадки</div>
+      <div class="lg-row"><span class="lg-sw" style="background:#eea44a"></span>мощные кучево-дождевые (Cb)</div>
+      <div class="lg-row"><span class="lg-sw" style="background:#e96421"></span>гроза (разряды 50–75%)</div>
+      <div class="lg-row"><span class="lg-sw" style="background:#e9321f"></span>гроза (разряды 75–90% и >90%)</div>
+      <div class="lg-row"><span class="lg-sw" style="background:#8ef783"></span>грозо-градовые, мелкий град</div>
+      <div class="lg-row"><span class="lg-sw" style="background:#1cb60c"></span>грозо-градовые, крупный град</div>
+      <div class="lg-row"><span class="lg-sw" style="background:#f692dc"></span>шквал &gt;15 м/с</div>
+      <div class="lg-row"><span class="lg-sw" style="background:#ca44c0"></span>шквал &gt;20 м/с</div>
     </div>
+  </section>
 
-</div>
+  <!-- ============ GIF PANE ============ -->
+  <section class="pane" id="pane-gif">
+    <div id="gif-wrap">
+      <div id="gif-stage">
+        <canvas id="gif-canvas" width="1200" height="1200"></canvas>
+        <img id="gif-img-fallback" alt="Радарная сводка ЦАО">
+      </div>
 
-<!-- =======================================================
-     POINT CARD
-     ======================================================= -->
+      <div class="map-panel" id="gif-src-note">
+        <b>МЕТЕОРАД · ЦАО</b> — сводная карта явлений погоды по данным сети ДМРЛ-С, последние 3 часа, шаг 10 мин. В кадре: легенда явлений, зоны покрытия РЛС, разряды молний (WWLLN / Vaisala / GLD360).
+      </div>
 
-<div class="point-card" id="pointCard">
+      <div id="gif-zoom-ctrl">
+        <button class="tb-btn" id="zoom-in" title="Приблизить">+</button>
+        <button class="tb-btn" id="zoom-out" title="Отдалить">−</button>
+        <button class="tb-btn" id="zoom-reset" title="Сбросить масштаб" style="font-size:11px">1:1</button>
+      </div>
 
-    <div class="point-top">
+      <div id="gif-progress">
+        <p id="gif-progress-txt">Загрузка радарной сводки ЦАО… <b></b></p>
+        <div class="bar"><i id="gif-progress-bar"></i></div>
+      </div>
 
-        <div class="point-title" id="pointTitle">
-            Радарная точка
-        </div>
-
-        <button class="point-close" id="pointClose">
-            ×
-        </button>
-
+      <div id="gif-toolbar" style="display:none">
+        <button class="tb-btn" id="fr-prev" title="Предыдущий кадр [←]">⏮</button>
+        <button class="tb-btn" id="fr-play" title="Старт/пауза [пробел]">▶</button>
+        <button class="tb-btn" id="fr-next" title="Следующий кадр [→]">⏭</button>
+        <input type="range" id="frame-slider" min="0" max="0" value="0">
+        <div id="frame-label">кадр <b>–/–</b><br>—</div>
+        <select id="speed-sel" title="Скорость">
+          <option value="1400">0.5×</option>
+          <option value="700" selected>1×</option>
+          <option value="350">2×</option>
+          <option value="175">4×</option>
+        </select>
+        <button class="btn" id="gif-reload">↻ Свежие данные</button>
+      </div>
     </div>
+  </section>
 
-    <div class="point-value">
-        <span id="pointValue">—</span>
-        <span class="point-unit">dBZ</span>
-    </div>
+  <!-- ============ INFO PANE ============ -->
+  <section class="pane" id="pane-info">
+    <div class="info-grid">
 
-    <div class="point-grid">
+      <div class="card">
+        <h3>Источники данных</h3>
+        <ul>
+          <li><b>Радарные тайлы (карта Live)</b> — WMS-сервис Гидрометцентра России (<span class="mono">meteoinfo.ru/res/nowcast</span>): кадры радарных наблюдений по сети ДМРЛ-С с архивом ~2,5 часа (15 кадров, шаг 10 минут), покрытие — европейская часть РФ и Урал (примерно 42–68°N, 19–63°E).</li>
+          <li style="margin-top:8px"><b>Сводка явлений ЦАО «МЕТЕОРАД»</b> (<span class="mono">meteoinfo.ru/hmc-output/rmap/phenomena.gif</span>) — анимация за 3 часа: типы явлений, зоны покрытия РЛС, молниевая активность. Готовится Центральной аэрологической обсерваторией (ЦАО) Росгидромета.</li>
+          <li style="margin-top:8px"><b>Сетка времени</b> — <span class="mono">nowcast.php</span> (capabilities): официальные метки времени кадров, опрос каждые 60 сек.</li>
+        </ul>
+        <div class="warn">На сайте используются только <b>наблюдения</b> метеорологических радаров. Прогностические модели и сторонние агрегаторы не применяются.</div>
+      </div>
 
-        <div class="stat">
-            <div class="stat-label">Источник</div>
-            <div class="stat-value" id="pointSource">—</div>
-        </div>
+      <div class="card">
+        <h3>Про BUFR и BALTRAD</h3>
+        <p>Сырые радарные объёмы (BUFR / ODIM-H5) в России не публикуются в открытом оперативном доступе: распределением занимается РИГМЦ Росгидромета по регламентам обмена. Европейская сеть обмена BALTRAD (куда ЦАО входит как партнёр) также передаёт данные только между национальными метслужбами по лицензионному соглашению — публичного потока BUFR там нет.</p>
+        <p style="margin-top:10px">Поэтому этот сайт строится на <b style="color:var(--grn)">официальных публичных продуктах</b> тех же самых центров: тайловый сервис и композит ЦАО, которые сами получены из объёмных данных ДМРЛ-С. Это максимально «сырые» наблюдательные данные, доступные без договора с Росгидрометом.</p>
+      </div>
 
-        <div class="stat">
-            <div class="stat-label">Время</div>
-            <div class="stat-value" id="pointTime">—</div>
-        </div>
+      <div class="card">
+        <h3>Легенда явлений ЦАО</h3>
+        <p>Официальная шкала типов радиолокационных явлений (также встроена в каждый кадр сводки):</p>
+        <img src="https://meteoinfo.ru/images/fact/radar-legenda.gif" alt="Легенда радарных явлений ЦАО">
+        <p style="margin-top:10px">Молниевая активность в кадре сводки: <b style="color:#ffe14d">+</b> WWLLN, <b style="color:#57b6ff">+</b> Vaisala (L/H), <b style="color:#ff9d4d">✦</b> Алвес, <b style="color:#ff7ae0">+</b> GLD360.</p>
+      </div>
 
-        <div class="stat">
-            <div class="stat-label">Широта</div>
-            <div class="stat-value" id="pointLat">—</div>
-        </div>
+      <div class="card">
+        <h3>Сеть радаров ДМРЛ-С</h3>
+        <p>Метеорологические радары дециметрового диапазона (10 см), радиус обзора до 250 км, цикл 10 минут. Точки на карте — пункты дислокации (по городам сети Росгидромета):</p>
+        <table class="st" id="station-table">
+          <thead><tr><th>Пункт</th><th>Координаты</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
 
-        <div class="stat">
-            <div class="stat-label">Долгота</div>
-            <div class="stat-value" id="pointLon">—</div>
-        </div>
+      <div class="card">
+        <h3>Функции</h3>
+        <ul>
+          <li>Live-карта с анимацией: таймлайн на 15 кадров (архив ~2,5 часа, шаг 10 мин), плеер со скоростью 0.5–4×, режимы LIVE / АРХИВ</li>
+          <li>4 подложки (тёмная Esri, география Гидрометцентра, OSM, спутник), режимы слоя «только осадки» / «полный фон», прозрачность</li>
+          <li>Автообновление по официальному расписанию (опрос capabilities каждые 60 с, обратный отсчёт до следующего кадра)</li>
+          <li>36 радаров ДМРЛ-С с зонами покрытия 250 км, координаты курсора, масштаб</li>
+          <li>Сводка явлений ЦАО «МЕТЕОРАД» за 3 часа: покадровый проигрыватель (при доступности прокси) или нативная анимация, зум/панорама, автообновление</li>
+          <li>Горячие клавиши: <kbd class="sc">1</kbd><kbd class="sc">2</kbd><kbd class="sc">3</kbd> — вкладки, <kbd class="sc">пробел</kbd> — старт/пауза, <kbd class="sc">←</kbd><kbd class="sc">→</kbd> — кадры</li>
+        </ul>
+      </div>
 
-    </div>
-
-</div>
-
-<!-- =======================================================
-     BOTTOM PANEL
-     ======================================================= -->
-
-<div class="bottom-panel">
-
-    <div class="dragger"></div>
-
-    <div class="panel-head">
-
-        <div class="frame-info">
-
-            <div class="frame-title">
-                Радарный кадр
-            </div>
-
-            <div class="frame-time"
-                 id="frameTime">
-                Загрузка…
-            </div>
-
-        </div>
-
-        <div class="live-badge"
-             id="liveBadge">
-            LIVE
-        </div>
-
-    </div>
-
-    <div class="timeline-wrap">
-
-        <input
-            class="timeline"
-            id="timeline"
-            type="range"
-            min="0"
-            max="11"
-            value="11"
-            step="1">
-
-    </div>
-
-    <div class="controls">
-
-        <button class="play"
-                id="playBtn">
-            ▶
-        </button>
-
-        <button class="control"
-                id="sourceBtn">
-
-            <strong id="sourceName">
-                РГМЦ
-            </strong>
-
-            <span>
-                источник данных
-            </span>
-
-        </button>
-
-        <button class="control"
-                id="productBtn">
-
-            <strong id="productName">
-                Reflectivity
-            </strong>
-
-            <span>
-                продукт
-            </span>
-
-        </button>
-
-        <button class="control"
-                id="modelsBtn">
-
-            <strong>
-                Модели
-            </strong>
-
-            <span>
-                прогноз
-            </span>
-
-        </button>
+      <div class="card">
+        <h3>Ограничения</h3>
+        <ul>
+          <li>Композит ЦАО покрывает европейскую часть России и Урал; за Уралом единой открытой сводки нет — радары там показаны как пункты сети.</li>
+          <li>Метки времени кадров GIF рассчитываются по 10-минутной сетке (знак ≈): точное время проставлено в самом кадре.</li>
+          <li>Доступность данных зависит от серверов meteoinfo.ru; при их недоступности сайт покажет последний успешный кадр и статус «нет связи».</li>
+        </ul>
+        <p style="margin-top:12px;font-size:11px;color:var(--txt-faint)">Данные: ФГБУ «Гидрометцентр России», ФГБУ «Центральная аэрологическая обсерватория», РИГМЦ Росгидромета (meteoinfo.ru). Подложки: © OpenStreetMap, © Esri. Проект некоммерческий, для мониторинга погоды.</p>
+      </div>
 
     </div>
+  </section>
+</main>
 
-</div>
-
-<!-- =======================================================
-     SIDE SHEET
-     ======================================================= -->
-
-<aside class="sheet" id="sheet">
-
-    <div class="sheet-title">
-
-        <span>Слои и данные</span>
-
-        <button class="close"
-                id="sheetClose">
-            ×
-        </button>
-
-    </div>
-
-    <div class="section">
-
-        <div class="section-label">
-            Источник
-        </div>
-
-        <div class="source-grid">
-
-            <button class="source active"
-                    data-source="rgmc">
-
-                <div class="source-name">
-                    РГМЦ
-                </div>
-
-                <div class="source-desc">
-                    Российская радарная сеть
-                </div>
-
-            </button>
-
-            <button class="source"
-                    data-source="baltrad">
-
-                <div class="source-name">
-                    BALTRAD
-                </div>
-
-                <div class="source-desc">
-                    BUFR / radar network
-                </div>
-
-            </button>
-
-            <button class="source"
-                    data-source="composite">
-
-                <div class="source-name">
-                    Composite
-                </div>
-
-                <div class="source-desc">
-                    объединённая отражаемость
-                </div>
-
-            </button>
-
-            <button class="source"
-                    data-source="models">
-
-                <div class="source-name">
-                    Models
-                </div>
-
-                <div class="source-desc">
-                    численные прогнозы
-                </div>
-
-            </button>
-
-        </div>
-
-    </div>
-
-    <div class="section">
-
-        <div class="section-label">
-            Радарные продукты
-        </div>
-
-        <div class="layer-list">
-
-            <label class="layer">
-                <input type="checkbox"
-                       checked
-                       data-layer="reflectivity">
-
-                <div class="layer-text">
-
-                    <div class="layer-title">
-                        Reflectivity
-                    </div>
-
-                    <div class="layer-sub">
-                        Z / dBZ
-                    </div>
-
-                </div>
-            </label>
-
-            <label class="layer">
-                <input type="checkbox"
-                       data-layer="velocity">
-
-                <div class="layer-text">
-
-                    <div class="layer-title">
-                        Doppler Velocity
-                    </div>
-
-                    <div class="layer-sub">
-                        радиальная скорость
-                    </div>
-
-                </div>
-            </label>
-
-            <label class="layer">
-                <input type="checkbox"
-                       data-layer="spectrum">
-
-                <div class="layer-text">
-
-                    <div class="layer-title">
-                        Spectrum Width
-                    </div>
-
-                    <div class="layer-sub">
-                        спектральная ширина
-                    </div>
-
-                </div>
-            </label>
-
-            <label class="layer">
-                <input type="checkbox"
-                       data-layer="stations">
-
-                <div class="layer-text">
-
-                    <div class="layer-title">
-                        DMRL / Radar Stations
-                    </div>
-
-                    <div class="layer-sub">
-                        станции и зоны покрытия
-                    </div>
-
-                </div>
-            </label>
-
-            <label class="layer">
-                <input type="checkbox"
-                       data-layer="cities">
-
-                <div class="layer-text">
-
-                    <div class="layer-title">
-                        Города
-                    </div>
-
-                    <div class="layer-sub">
-                        основные населённые пункты
-                    </div>
-
-                </div>
-            </label>
-
-        </div>
-
-    </div>
-
-    <div class="section">
-
-        <div class="section-label">
-            Дополнительные продукты
-        </div>
-
-        <div class="layer-list">
-
-            <label class="layer">
-                <input type="checkbox"
-                       data-layer="lightning">
-
-                <div class="layer-text">
-
-                    <div class="layer-title">
-                        Lightning
-                    </div>
-
-                    <div class="layer-sub">
-                        молниевые разряды
-                    </div>
-
-                </div>
-            </label>
-
-            <label class="layer">
-                <input type="checkbox"
-                       data-layer="hail">
-
-                <div class="layer-text">
-
-                    <div class="layer-title">
-                        Hail Potential
-                    </div>
-
-                    <div class="layer-sub">
-                        потенциальный град
-                    </div>
-
-                </div>
-            </label>
-
-            <label class="layer">
-                <input type="checkbox"
-                       data-layer="mesocyclone">
-
-                <div class="layer-text">
-
-                    <div class="layer-title">
-                        Mesocyclone
-                    </div>
-
-                    <div class="layer-sub">
-                        автоматическое обнаружение
-                    </div>
-
-                </div>
-            </label>
-
-        </div>
-
-    </div>
-
-</aside>
-
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-
+<script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
+'use strict';
+/* ==================================================================
+   РЛС-МОНИТОР — живые радарные наблюдения России
+   Источники: WMS meteoinfo.ru (РИГМЦ), сводка ЦАО «МЕТЕОРАД»
+   ================================================================== */
 
-/* =========================================================
-   CLOrad
-   API CONFIGURATION
-   ========================================================= */
-
-/*
-   ВАЖНО:
-
-   Здесь специально нет выдуманного URL настоящего
-   BALTRAD/РГМЦ API.
-
-   Сервер должен отдавать фронтенду уже подготовленные
-   GeoJSON / raster tiles / PNG / WMS.
-
-   Пример:
-
-   /api/radar?source=rgmc&product=reflectivity
-   /api/radar?source=baltrad&product=reflectivity
-   /api/radar?source=baltrad&product=velocity
-   /api/model?model=icon
-*/
-
-const API = {
-
-    radar:
-        "/api/radar",
-
-    models:
-        "/api/model",
-
-    stations:
-        "/api/stations",
-
-    lightning:
-        "/api/lightning"
-
+const SRC = {
+  caps:  'https://meteoinfo.ru/hmc-output/nowcast3/nowcast.php',
+  gif:   'https://meteoinfo.ru/hmc-output/rmap/phenomena.gif',
+  tile: (z,x,tny,inidt)=>`https://meteoinfo.ru/res/nowcast/${z}0${x}0${tny}/ncgi.php?tnz=${z}&tnx=${x}&tny=${tny}&layers=1&inidt=${inidt}`,
+  geo:   'https://meteoinfo.ru/hmc-output/tiles_v4/{z}/{z}_{x}_{y}.png',
 };
+const WMS_BOUNDS = L.latLngBounds([42.0776,18.6794],[68.2286,62.6090]);
 
+/* ---------- станции ДМРЛ-С (пункты дислокации по городам) ---------- */
+const STATIONS = [
+ ['Калининград',54.71,20.51],['Санкт-Петербург',59.94,30.31],['Мурманск',68.97,33.08],
+ ['Архангельск',64.54,40.54],['Петрозаводск',61.78,34.35],['Сыктывкар',61.67,50.84],
+ ['Смоленск',54.78,32.05],['Москва',55.75,37.62],['Брянск',53.24,34.37],
+ ['Воронеж',51.66,39.20],['Нижний Новгород',56.33,44.00],['Казань',55.79,49.11],
+ ['Самара',53.20,50.15],['Саратов',51.53,46.03],['Волгоград',48.71,44.51],
+ ['Ростов-на-Дону',47.24,39.71],['Краснодар',45.03,38.98],['Минеральные Воды',44.21,43.14],
+ ['Махачкала',42.98,47.50],['Пермь',58.01,56.23],['Уфа',54.74,55.97],
+ ['Оренбург',51.77,55.10],['Екатеринбург',56.84,60.65],['Челябинск',55.16,61.40],
+ ['Тюмень',57.15,65.53],['Омск',54.99,73.37],['Новосибирск',55.03,82.92],
+ ['Красноярск',56.01,92.85],['Иркутск',52.29,104.28],['Чита',52.03,113.50],
+ ['Якутск',62.03,129.73],['Хабаровск',48.48,135.07],['Владивосток',43.12,131.89],
+ ['Южно-Сахалинск',46.96,142.74],['Петропавловск-Камчатский',53.02,158.65],['Магадан',59.57,150.81]
+];
 
-/* =========================================================
-   MAP
-   ========================================================= */
-
-const map = L.map("map", {
-
-    zoomControl: false,
-
-    minZoom: 3,
-    maxZoom: 13,
-
-    zoomAnimation: true,
-    fadeAnimation: false,
-    markerZoomAnimation: true,
-
-    preferCanvas: true
-
-}).setView([61.5, 90], 4);
-
-
-/* =========================================================
-   OPENSTREETMAP BASE MAP
-   ========================================================= */
-
-const base = L.tileLayer(
-    "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
-    {
-        maxZoom: 19,
-
-        attribution:
-            "&copy; OpenStreetMap contributors",
-
-        updateWhenZooming: false,
-        keepBuffer: 4
-    }
-);
-
-base.addTo(map);
-
-
-/* =========================================================
-   STATE
-   ========================================================= */
-
-const state = {
-
-    source: "rgmc",
-
-    product: "reflectivity",
-
-    frame: 11,
-
-    frames: [],
-
-    playing: false,
-
-    playTimer: null,
-
-    radarLayer: null,
-
-    stationLayer: null,
-
-    lightningLayer: null,
-
-    modelLayer: null
-
-};
-
-
-/* =========================================================
-   DOM
-   ========================================================= */
-
-const $ = selector =>
-    document.querySelector(selector);
-
-const $$ = selector =>
-    document.querySelectorAll(selector);
-
-
-/* =========================================================
-   SOURCE NAMES
-   ========================================================= */
-
-const sourceNames = {
-
-    rgmc:
-        "РГМЦ · Композит",
-
-    baltrad:
-        "BALTRAD · BUFR",
-
-    composite:
-        "Radar Composite",
-
-    models:
-        "Модели"
-
-};
-
-
-/* =========================================================
-   PRODUCTS
-   ========================================================= */
-
-const products = {
-
-    reflectivity:
-        "Reflectivity",
-
-    velocity:
-        "Doppler Velocity",
-
-    spectrum:
-        "Spectrum Width"
-
-};
-
-
-/* =========================================================
-   FRAME GENERATION
-   ========================================================= */
-
-function createFrames() {
-
-    const now = Date.now();
-
-    state.frames = [];
-
-    for (let i = 0; i < 12; i++) {
-
-        state.frames.push({
-
-            time:
-                new Date(
-                    now - (11 - i) * 10 * 60 * 1000
-                ),
-
-            index:
-                i
-
-        });
-
-    }
-
+/* ============================== УТИЛИТЫ ============================== */
+const $ = id => document.getElementById(id);
+const pad = n => String(n).padStart(2,'0');
+const fmtUTC = d => `${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())} UTC`;
+const fmtMSK = d => { const m=new Date(d.getTime()+3*3600e3); return `${pad(m.getUTCHours())}:${pad(m.getUTCMinutes())} МСК`; };
+function setStatus(mode,txt){
+  const d=$('status-dot'); d.className='dot '+(mode==='ok'?'':mode==='wait'?'wait':'err');
+  $('status-txt').textContent=txt;
 }
 
+/* часы */
+setInterval(()=>{
+  const n=new Date();
+  $('clk-utc').textContent=`${pad(n.getUTCHours())}:${pad(n.getUTCMinutes())}:${pad(n.getUTCSeconds())}`;
+  const m=new Date(n.getTime()+3*3600e3);
+  $('clk-msk').textContent=`${pad(m.getUTCHours())}:${pad(m.getUTCMinutes())}:${pad(m.getUTCSeconds())}`;
+},1000);
 
-/* =========================================================
-   TIME FORMAT
-   ========================================================= */
+/* ============================== ВКЛАДКИ ============================== */
+let mapInited=false;
+function switchTab(name){
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.toggle('active',b.dataset.tab===name));
+  document.querySelectorAll('.pane').forEach(p=>p.classList.toggle('active',p.id==='pane-'+name));
+  history.replaceState(null,'','#'+name);
+  if(name==='map'&&mapInited) setTimeout(()=>map.invalidateSize(),60);
+  if(name==='gif') gifTabOpened();
+}
+document.querySelectorAll('.tab-btn').forEach(b=>b.addEventListener('click',()=>switchTab(b.dataset.tab)));
+document.addEventListener('keydown',e=>{
+  if(e.target.tagName==='INPUT'||e.target.tagName==='SELECT')return;
+  if(e.key==='1')switchTab('map'); if(e.key==='2')switchTab('gif'); if(e.key==='3')switchTab('info');
+  if(document.querySelector('#pane-gif').classList.contains('active')){
+    if(e.code==='Space'){e.preventDefault();togglePlay();}
+    if(e.key==='ArrowLeft')stepFrame(-1);
+    if(e.key==='ArrowRight')stepFrame(1);
+  }else if(document.querySelector('#pane-map').classList.contains('active')){
+    if(e.code==='Space'){e.preventDefault();playing?mpStop():mpPlay();}
+    if(e.key==='ArrowLeft'){mpStop();setFrame(curIdx-1);}
+    if(e.key==='ArrowRight'){mpStop();setFrame(curIdx+1);}
+  }
+});
 
-function formatTime(date) {
+/* ============================== КАРТА ============================== */
+let inidt = Math.floor(Date.now()/600000)*600000; // текущая 10-мин метка, уточняется capabilities
+let radarMode='precip';
+let radarLayer=null, map=null;
 
-    return new Intl.DateTimeFormat(
-        "ru-RU",
-        {
-            day: "2-digit",
-            month: "2-digit",
-            hour: "2-digit",
-            minute: "2-digit"
+const RadarGrid = L.GridLayer.extend({
+  createTile(coords,done){
+    const canvas=document.createElement('canvas');
+    canvas.width=canvas.height=256;
+    const tny=(Math.pow(2,coords.z)-1)-coords.y;           // TMS-переворот
+    const img=new Image();
+    img.crossOrigin='anonymous';
+    let finished=false;
+    const finish=()=>{ if(!finished){finished=true; done(null,canvas);} };
+    img.onload=()=>{
+      try{
+        const ctx=canvas.getContext('2d',{willReadFrequently:true});
+        ctx.drawImage(img,0,0);
+        if(radarMode==='precip'){
+          const d=ctx.getImageData(0,0,256,256),p=d.data;
+          for(let i=0;i<p.length;i+=4){
+            const a=p[i+3]; if(a<10){p[i+3]=0;continue;}
+            const mx=Math.max(p[i],p[i+1],p[i+2]), mn=Math.min(p[i],p[i+1],p[i+2]);
+            if(mx-mn<42) p[i+3]=0;                          // серое/бежевое/белое -> прозрачно
+          }
+          ctx.putImageData(d,0,0);
         }
-    ).format(date);
-
-}
-
-
-/* =========================================================
-   UPDATE TIMELINE
-   ========================================================= */
-
-function updateTimeline() {
-
-    const timeline =
-        $("#timeline");
-
-    timeline.value =
-        state.frame;
-
-    const percent =
-        state.frame /
-        (state.frames.length - 1) *
-        100;
-
-    timeline.style
-        .setProperty(
-            "--progress",
-            percent + "%"
-        );
-
-    const frame =
-        state.frames[state.frame];
-
-    if (frame) {
-
-        $("#frameTime")
-            .textContent =
-            formatTime(frame.time);
-
-    }
-
-}
-
-
-/* =========================================================
-   API URL
-   ========================================================= */
-
-function buildRadarURL() {
-
-    const frame =
-        state.frames[state.frame];
-
-    if (!frame)
-        return null;
-
-    const params =
-        new URLSearchParams({
-
-            source:
-                state.source,
-
-            product:
-                state.product,
-
-            time:
-                frame.time.toISOString()
-
-        });
-
-    return (
-        API.radar +
-        "?" +
-        params.toString()
-    );
-
-}
-
-
-/* =========================================================
-   LOAD RADAR
-   ========================================================= */
-
-async function loadRadar() {
-
-    const url =
-        buildRadarURL();
-
-    if (!url)
-        return;
-
-    /*
-       Ожидаемый ответ API:
-
-       {
-           "type": "tile",
-           "url": "/radar/{z}/{x}/{y}.png"
-       }
-
-       либо:
-
-       {
-           "type": "geojson",
-           "data": {...}
-       }
-
-       либо:
-
-       {
-           "type": "wms",
-           "url": "...",
-           "layers": "..."
-       }
-    */
-
-    try {
-
-        const response =
-            await fetch(url, {
-                cache: "no-store"
-            });
-
-        if (!response.ok)
-            throw new Error(
-                "Radar API " +
-                response.status
-            );
-
-        const data =
-            await response.json();
-
-        renderRadar(data);
-
-        $("#networkStatus")
-            .textContent =
-            "сеть онлайн";
-
-    }
-
-    catch (error) {
-
-        console.warn(
-            "Radar API:",
-            error
-        );
-
-        $("#networkStatus")
-            .textContent =
-            "ожидание данных";
-
-    }
-
-}
-
-
-/* =========================================================
-   RENDER RADAR
-   ========================================================= */
-
-function renderRadar(data) {
-
-    if (state.radarLayer) {
-
-        map.removeLayer(
-            state.radarLayer
-        );
-
-        state.radarLayer = null;
-
-    }
-
-
-    /* -----------------------------------------------------
-       TILE
-       ----------------------------------------------------- */
-
-    if (data.type === "tile") {
-
-        state.radarLayer =
-            L.tileLayer(
-                data.url,
-                {
-
-                    opacity: 0,
-
-                    minZoom:
-                        data.minZoom ?? 3,
-
-                    maxZoom:
-                        data.maxZoom ?? 13,
-
-                    tileSize:
-                        data.tileSize ?? 256,
-
-                    updateWhenZooming: false,
-
-                    keepBuffer: 5
-
-                }
-            );
-
-        state.radarLayer
-            .addTo(map);
-
-
-        requestAnimationFrame(() => {
-
-            requestAnimationFrame(() => {
-
-                if (state.radarLayer) {
-
-                    state.radarLayer
-                        .setOpacity(.92);
-
-                }
-
-            });
-
-        });
-
-        return;
-
-    }
-
-
-    /* -----------------------------------------------------
-       GEOJSON
-       ----------------------------------------------------- */
-
-    if (data.type === "geojson") {
-
-        state.radarLayer =
-            L.geoJSON(
-                data.data,
-                {
-
-                    style:
-                        feature =>
-                            radarStyle(
-                                feature
-                            )
-
-                }
-            )
-            .addTo(map);
-
-        return;
-
-    }
-
-
-    /* -----------------------------------------------------
-       WMS
-       ----------------------------------------------------- */
-
-    if (data.type === "wms") {
-
-        state.radarLayer =
-            L.tileLayer.wms(
-                data.url,
-                {
-
-                    layers:
-                        data.layers,
-
-                    format:
-                        data.format ||
-                        "image/png",
-
-                    transparent:
-                        true,
-
-                    opacity:
-                        .92,
-
-                    version:
-                        data.version ||
-                        "1.3.0",
-
-                    attribution:
-                        data.attribution ||
-                        ""
-
-                }
-            )
-            .addTo(map);
-
-    }
-
-}
-
-
-/* =========================================================
-   RADAR STYLE
-   ========================================================= */
-
-function radarStyle(feature) {
-
-    const value =
-        Number(
-            feature?.properties?.dbz ??
-            feature?.properties?.value ??
-            0
-        );
-
-    return {
-
-        color:
-            dbzColor(value),
-
-        weight:
-            0,
-
-        fillColor:
-            dbzColor(value),
-
-        fillOpacity:
-            .85
-
+      }catch(e){/* CORS-фолбэк: оставляем как есть */}
+      finish();
     };
+    img.onerror=finish;
+    img.src=SRC.tile(coords.z,coords.x,tny,inidt);
+    setTimeout(finish,15000);
+    return canvas;
+  }
+});
 
+function buildStations(){
+  const markers=L.layerGroup(), rings=L.layerGroup();
+  STATIONS.forEach(([n,lat,lon])=>{
+    const m=L.marker([lat,lon],{icon:L.divIcon({className:'',html:'<div class="station-dot"></div>',iconSize:[10,10],iconAnchor:[5,5]})});
+    m.bindTooltip(n+' · ДМРЛ-С',{className:'stt',direction:'top',offset:[0,-6]});
+    m.bindPopup(`<b>${n}</b><br>Метеорологический радар ДМРЛ-С<br>Диапазон 10 см · радиус до 250 км<br>Цикл наблюдений: 10 мин`);
+    markers.addLayer(m);
+    rings.addLayer(L.circle([lat,lon],{radius:250000,color:'#39ff6a',weight:1,opacity:.28,fillColor:'#39ff6a',fillOpacity:.03,dashArray:'5 7',interactive:false}));
+  });
+  return {markers,rings};
 }
 
+function initMap(){
+  map=L.map('map',{center:[56.5,44],zoom:5,minZoom:4,maxZoom:11,zoomControl:true,attributionControl:true,worldCopyJump:true});
+  map.setMaxBounds([[20,-40],[85,190]]);
 
-/* =========================================================
-   DBZ COLOR
-   ========================================================= */
+  const baseHMC=L.tileLayer(SRC.geo,{minZoom:5,maxZoom:10,bounds:[[41,23],[66,60]],attribution:'География: Гидрометцентр России'});
+  const baseOSM=L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:18,attribution:'© OpenStreetMap'});
+  const baseDark=L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}',{maxZoom:16,attribution:'© Esri, HERE, Garmin'});
+  const baseDarkLbl=L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}',{maxZoom:16,attribution:''});
+  const baseSat=L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{maxZoom:18,attribution:'© Esri, Maxar, Earthstar Geographics'});
+  baseDarkLbl.setZIndex(400);
 
-function dbzColor(value) {
+  radarLayer=new RadarGrid({bounds:WMS_BOUNDS,minNativeZoom:5,maxNativeZoom:8,maxZoom:11,opacity:.85,tileSize:256,zIndex:300});
+  radarLayer.addTo(map);
 
-    if (value < 5)
-        return "#53606d";
+  const darkGroup=L.layerGroup([baseDark,baseDarkLbl]);
+  darkGroup.addTo(map);
+  const st=buildStations();
+  st.markers.addTo(map);
+  L.control.layers(
+    {'Тёмная (Esri)':darkGroup,'Гидрометцентр (география)':baseHMC,'OpenStreetMap':baseOSM,'Спутник (Esri)':baseSat},
+    {'Радарные наблюдения':radarLayer,'Радары ДМРЛ-С':st.markers,'Зоны покрытия 250 км':st.rings},
+    {position:'bottomleft',collapsed:true}
+  ).addTo(map);
+  L.control.scale({imperial:false,position:'bottomleft'}).addTo(map);
 
-    if (value < 15)
-        return "#49c7ff";
+  map.on('mousemove',e=>{
+    $('coords-val').textContent=`${e.latlng.lat.toFixed(2)}°N ${e.latlng.lng.toFixed(2)}°E`;
+  });
 
-    if (value < 25)
-        return "#3b78ff";
+  $('chk-stations').addEventListener('change',e=>{ e.target.checked?map.addLayer(st.markers):map.removeLayer(st.markers); });
+  $('chk-rings').addEventListener('change',e=>{ e.target.checked?map.addLayer(st.rings):map.removeLayer(st.rings); });
+  $('btn-fit').addEventListener('click',()=>map.fitBounds(WMS_BOUNDS.pad(0.06)));
+  $('btn-refresh').addEventListener('click',()=>pollCaps(true));
 
-    if (value < 35)
-        return "#48e36f";
+  $('op-range').addEventListener('input',e=>{
+    $('op-out').textContent=e.target.value+'%';
+    radarLayer.setOpacity(e.target.value/100);
+  });
+  document.querySelectorAll('#mode-seg button').forEach(b=>b.addEventListener('click',()=>{
+    document.querySelectorAll('#mode-seg button').forEach(x=>x.classList.toggle('active',x===b));
+    radarMode=b.dataset.mode;
+    radarLayer.redraw();
+  }));
 
-    if (value < 45)
-        return "#ffe447";
-
-    if (value < 55)
-        return "#ff8b38";
-
-    if (value < 65)
-        return "#ff3d48";
-
-    return "#d51cff";
-
+  mapInited=true;
+  map.fitBounds(WMS_BOUNDS.pad(0.06));
 }
 
+/* ---------- таймлайн: 15 кадров × 10 мин (архив ~2,5 ч) ---------- */
+const FRAME_STEP=600000, FRAME_BACK=14;
+let frames=[], curIdx=0, playing=false, playTimer=null, lastCapTime=null;
 
-/* =========================================================
-   SOURCE SWITCH
-   ========================================================= */
+function refreshTimeline(cur){
+  const prevT=frames[curIdx];
+  const wasLatest=(curIdx===frames.length-1)||!frames.length;
+  frames=[]; for(let i=FRAME_BACK;i>=0;i--) frames.push(cur-i*FRAME_STEP);
+  $('mp-slider').max=frames.length-1;
+  const idx=(!wasLatest&&frames.includes(prevT))?frames.indexOf(prevT):frames.length-1;
+  setFrame(idx,frames[idx]!==inidt);
+}
+function setFrame(i,redraw=true){
+  curIdx=Math.max(0,Math.min(frames.length-1,i));
+  inidt=frames[curIdx];
+  if(radarLayer&&redraw) radarLayer.redraw();
+  $('mp-slider').value=curIdx;
+  const d=new Date(inidt), latest=curIdx===frames.length-1;
+  $('mp-label').innerHTML=`<b>${fmtUTC(d)}</b> · ${fmtMSK(d)}<br>${latest?'текущий кадр':'назад на '+((frames.length-1-curIdx)*10)+' мин'}`;
+  $('mp-live').classList.toggle('off',!latest);
+  $('mp-live').textContent=latest?'LIVE':'АРХИВ';
+  $('badge-time').textContent=`${fmtUTC(d)} · ${fmtMSK(d)}`;
+}
+function mpPlay(){
+  if(!frames.length)return;
+  playing=true; $('mp-play').textContent='⏸';
+  const loop=()=>{ playTimer=setTimeout(()=>{ setFrame((curIdx+1)%frames.length); if(playing)loop(); },+$('mp-speed').value); };
+  loop();
+}
+function mpStop(){ playing=false; $('mp-play').textContent='▶'; clearTimeout(playTimer); }
+$('mp-play').addEventListener('click',()=>playing?mpStop():mpPlay());
+$('mp-prev').addEventListener('click',()=>{mpStop();setFrame(curIdx-1);});
+$('mp-next').addEventListener('click',()=>{mpStop();setFrame(curIdx+1);});
+$('mp-slider').addEventListener('input',e=>{mpStop();setFrame(+e.target.value);});
+$('mp-speed').addEventListener('change',()=>{if(playing){mpStop();mpPlay();}});
 
-function setSource(source) {
+async function pollCaps(manual){
+  try{
+    const r=await fetch(SRC.caps+'?_='+Date.now(),{cache:'no-store'});
+    const t=await r.text();
+    const m=t.match(/default="([^"]+)"/);
+    if(!m) throw new Error('no default time');
+    const cur=Date.parse(m[1]);
+    const firstRun=!frames.length;
+    lastCapTime=cur;
+    refreshTimeline(cur);
+    if(firstRun) mpPlay();
+    setStatus('ok','данные: РИГМЦ · live');
+    scheduleCountdown(cur);
+    if(manual) flashBtn($('btn-refresh'));
+  }catch(e){
+    setStatus('err','нет связи с источником');
+    $('badge-next').textContent='повтор…';
+  }
+}
+let countdownTimer=null;
+function scheduleCountdown(cur){
+  if(countdownTimer)clearInterval(countdownTimer);
+  const tick=()=>{
+    // следующий кадр: +10 мин к текущему + ~4 мин обработки
+    const eta=cur+10*60e3+4*60e3-Date.now();
+    $('badge-next').textContent = eta>0 ? `~${Math.ceil(eta/60000)} мин` : 'скоро…';
+  };
+  tick(); countdownTimer=setInterval(tick,15000);
+}
+function flashBtn(b){ const o=b.textContent; b.textContent='✓ Обновлено'; setTimeout(()=>b.textContent=o,1200); }
 
-    state.source =
-        source;
+/* ============================== GIF-ПРОИГРЫВАТЕЛЬ ============================== */
+const GIF_PROXY=[
+  u=>'https://api.allorigins.win/raw?url='+encodeURIComponent(u),
+  u=>'https://api.cors.lol/?url='+encodeURIComponent(u),
+  u=>'https://api.codetabs.com/v1/proxy?quest='+encodeURIComponent(u),
+];
+let gifFrames=[], gifDelays=[], gifIdx=0, gifPlaying=false, gifTimer=null;
+let gifAnchor=0; // время последнего кадра (мс)
+let gifLoaded=false, gifLoading=false;
+let view={scale:1,x:0,y:0}; // трансформация канваса
 
-    $(".source-pill")
-        .textContent =
-        sourceNames[source] ||
-        source;
+function gifTabOpened(){ if(!gifLoaded&&!gifLoading) loadGif(); }
 
-    $("#sourceName")
-        .textContent =
-        sourceNames[source] ||
-        source;
-
-    $$(".source")
-        .forEach(button => {
-
-            button.classList.toggle(
-                "active",
-                button.dataset.source === source
-            );
-
-        });
-
-    loadRadar();
-
+async function fetchWithProgress(url,timeoutMs){
+  const ctrl=new AbortController(); const to=setTimeout(()=>ctrl.abort(),timeoutMs);
+  try{
+    const r=await fetch(url,{signal:ctrl.signal});
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    const total=+r.headers.get('content-length')||13350000;
+    const reader=r.body.getReader(); const chunks=[]; let got=0;
+    for(;;){
+      const {done,value}=await reader.read();
+      if(done)break;
+      chunks.push(value); got+=value.length;
+      $('gif-progress-bar').style.width=Math.min(99,got/total*100)+'%';
+      $('gif-progress-txt').querySelector('b').textContent=(got/1048576).toFixed(1)+' МБ';
+    }
+    const buf=new Uint8Array(got); let off=0;
+    chunks.forEach(c=>{buf.set(c,off);off+=c.length;});
+    return buf.buffer;
+  }finally{clearTimeout(to);}
 }
 
-
-/* =========================================================
-   PRODUCT SWITCH
-   ========================================================= */
-
-function setProduct(product) {
-
-    state.product =
-        product;
-
-    $("#productName")
-        .textContent =
-        products[product] ||
-        product;
-
-    loadRadar();
-
+async function getGifuct(){
+  const urls=['https://esm.sh/gifuct-js@2.1.2','https://esm.run/gifuct-js@2.1.2'];
+  for(const u of urls){
+    try{ const m=await import(u); if(m.parseGIF&&m.decompressFrames) return m; }catch(e){}
+  }
+  throw new Error('no decoder lib');
 }
 
-
-/* =========================================================
-   PLAY
-   ========================================================= */
-
-function togglePlay() {
-
-    state.playing =
-        !state.playing;
-
-    if (state.playing) {
-
-        $("#playBtn")
-            .textContent =
-            "Ⅱ";
-
-        state.playTimer =
-            setInterval(() => {
-
-                state.frame++;
-
-                if (
-                    state.frame >=
-                    state.frames.length
-                ) {
-
-                    state.frame = 0;
-
-                }
-
-                updateTimeline();
-                loadRadar();
-
-            }, 850);
-
+function decodeWithGifuct(mod,buf){
+  const gif=mod.parseGIF(buf);
+  const frames=mod.decompressFrames(gif,true);
+  return bakeFrames(frames);
+}
+async function decodeWithImageDecoder(buf){
+  if(!('ImageDecoder' in window)) throw new Error('no ImageDecoder');
+  const dec=new ImageDecoder({data:buf,type:'image/gif'});
+  await dec.tracks.ready;
+  const track=dec.tracks.selectedTrack;
+  const out=[];
+  for(let i=0;i<track.frameCount;i++){
+    const {image}=await dec.decode({frameIndex:i});
+    out.push({bmp:image,delay:(image.duration||700000)/1000});
+  }
+  return out;
+}
+function bakeFrames(frames){
+  // отрисовка кадров с учётом disposal
+  const W=frames[0].dims.width,H=frames[0].dims.height;
+  const scene=document.createElement('canvas'); scene.width=W; scene.height=H;
+  const sctx=scene.getContext('2d');
+  const patch=document.createElement('canvas'); const pctx=patch.getContext('2d');
+  const out=[];
+  for(const f of frames){
+    if(f.patch){
+      patch.width=f.dims.width; patch.height=f.dims.height;
+      pctx.putImageData(new ImageData(new Uint8ClampedArray(f.patch),f.dims.width,f.dims.height),0,0);
+      sctx.drawImage(patch,f.dims.left,f.dims.top);
     }
-
-    else {
-
-        $("#playBtn")
-            .textContent =
-            "▶";
-
-        clearInterval(
-            state.playTimer
-        );
-
-    }
-
+    const bmpCanvas=document.createElement('canvas');
+    // экономия памяти: не более 1000px
+    const k=Math.min(1,1000/W);
+    bmpCanvas.width=Math.round(W*k); bmpCanvas.height=Math.round(H*k);
+    bmpCanvas.getContext('2d').drawImage(scene,0,0,bmpCanvas.width,bmpCanvas.height);
+    out.push({canvas:bmpCanvas,delay:f.delay||700});
+    if(f.disposalType===2) sctx.clearRect(f.dims.left,f.dims.top,f.dims.width,f.dims.height);
+  }
+  return out;
 }
 
-
-/* =========================================================
-   TIMELINE
-   ========================================================= */
-
-$("#timeline")
-    .addEventListener(
-        "input",
-        event => {
-
-            state.frame =
-                Number(
-                    event.target.value
-                );
-
-            updateTimeline();
-
-            loadRadar();
-
-        }
-    );
-
-
-/* =========================================================
-   PLAY BUTTON
-   ========================================================= */
-
-$("#playBtn")
-    .addEventListener(
-        "click",
-        togglePlay
-    );
-
-
-/* =========================================================
-   SOURCE BUTTON
-   ========================================================= */
-
-$("#sourceBtn")
-    .addEventListener(
-        "click",
-        () => {
-
-            $("#sheet")
-                .classList.add("open");
-
-        }
-    );
-
-
-/* =========================================================
-   PRODUCT BUTTON
-   ========================================================= */
-
-$("#productBtn")
-    .addEventListener(
-        "click",
-        () => {
-
-            $("#sheet")
-                .classList.add("open");
-
-        }
-    );
-
-
-/* =========================================================
-   MODEL BUTTON
-   ========================================================= */
-
-$("#modelsBtn")
-    .addEventListener(
-        "click",
-        () => {
-
-            $("#sheet")
-                .classList.add("open");
-
-            setSource("models");
-
-        }
-    );
-
-
-/* =========================================================
-   LAYERS
-   ========================================================= */
-
-$("#layersBtn")
-    .addEventListener(
-        "click",
-        () => {
-
-            $("#sheet")
-                .classList.add("open");
-
-        }
-    );
-
-
-$("#sheetClose")
-    .addEventListener(
-        "click",
-        () => {
-
-            $("#sheet")
-                .classList.remove("open");
-
-        }
-    );
-
-
-/* =========================================================
-   SOURCE BUTTONS
-   ========================================================= */
-
-$$(".source")
-    .forEach(button => {
-
-        button.addEventListener(
-            "click",
-            () => {
-
-                setSource(
-                    button.dataset.source
-                );
-
-            }
-        );
-
-    });
-
-
-/* =========================================================
-   LAYER SWITCHES
-   ========================================================= */
-
-$$(".layer input")
-    .forEach(input => {
-
-        input.addEventListener(
-            "change",
-            () => {
-
-                const layer =
-                    input.dataset.layer;
-
-                handleLayer(
-                    layer,
-                    input.checked
-                );
-
-            }
-        );
-
-    });
-
-
-/* =========================================================
-   EXTRA LAYERS
-   ========================================================= */
-
-async function handleLayer(
-    layer,
-    enabled
-) {
-
-    if (layer === "stations") {
-
-        if (enabled)
-            await loadStations();
-
-        else if (
-            state.stationLayer
-        ) {
-
-            map.removeLayer(
-                state.stationLayer
-            );
-
-            state.stationLayer =
-                null;
-
-        }
-
-    }
-
-
-    if (layer === "lightning") {
-
-        if (enabled)
-            await loadLightning();
-
-        else if (
-            state.lightningLayer
-        ) {
-
-            map.removeLayer(
-                state.lightningLayer
-            );
-
-            state.lightningLayer =
-                null;
-
-        }
-
-    }
-
+async function loadGif(){
+  gifLoading=true;
+  $('gif-progress').style.display='block';
+  $('gif-progress-txt').firstChild.textContent='Загрузка радарной сводки ЦАО… ';
+  $('gif-progress-bar').style.width='2%';
+  let buf=null;
+  for(const wrap of GIF_PROXY){
+    try{ buf=await fetchWithProgress(wrap(SRC.gif+'?_='+Date.now()),60000); if(buf&&buf.byteLength>500000)break; else buf=null; }catch(e){ buf=null; }
+  }
+  try{
+    if(!buf) throw new Error('all proxies failed');
+    $('gif-progress-txt').firstChild.textContent='Декодирование кадров… ';
+    let frames=null;
+    try{ const mod=await getGifuct(); frames=decodeWithGifuct(mod,buf); }
+    catch(e){ frames=await decodeWithImageDecoder(buf); }
+    gifFrames=frames.map(f=>f.canvas||f.bmp);
+    gifDelays=frames.map(f=>f.delay||700);
+    gifAnchor=Math.floor(Date.now()/600000)*600000;
+    gifIdx=gifFrames.length-1;
+    gifLoaded=true;
+    $('frame-slider').max=gifFrames.length-1;
+    $('gif-progress').style.display='none';
+    $('gif-toolbar').style.display='flex';
+    showFrame(gifIdx);
+    startPlay();
+    setStatus('ok','данные: РИГМЦ · live');
+  }catch(e){
+    // фолбэк: нативный GIF (анимируется браузером)
+    $('gif-progress').style.display='none';
+    const img=$('gif-img-fallback');
+    img.src=SRC.gif+'?_='+Date.now();
+    img.style.display='block';
+    $('gif-canvas').style.display='none';
+    $('gif-toolbar').style.display='flex';
+    $('frame-slider').disabled=true;
+    $('fr-prev').disabled=$('fr-next').disabled=$('fr-play').disabled=true;
+    $('frame-label').innerHTML='режим: нативный GIF<br>(прокси недоступны)';
+    gifLoaded=true;
+    setStatus('wait','упрощённый режим анимации');
+  }
+  gifLoading=false;
 }
 
-
-/* =========================================================
-   STATIONS
-   ========================================================= */
-
-async function loadStations() {
-
-    try {
-
-        const response =
-            await fetch(
-                API.stations,
-                {
-                    cache: "no-store"
-                }
-            );
-
-        if (!response.ok)
-            throw new Error(
-                "Stations API"
-            );
-
-        const data =
-            await response.json();
-
-        state.stationLayer =
-            L.geoJSON(
-                data,
-                {
-
-                    pointToLayer:
-                        (feature, latlng) => {
-
-                            return L.circleMarker(
-                                latlng,
-                                {
-
-                                    radius: 5,
-
-                                    color:
-                                        "#8dd4ff",
-
-                                    weight: 1,
-
-                                    fillColor:
-                                        "#2788ef",
-
-                                    fillOpacity:
-                                        .9
-
-                                }
-                            );
-
-                        },
-
-                    onEachFeature:
-                        (feature, layer) => {
-
-                            const name =
-                                feature
-                                    ?.properties
-                                    ?.name ||
-                                "Радар";
-
-                            layer.bindTooltip(
-                                name,
-                                {
-                                    direction:
-                                        "top"
-                                }
-                            );
-
-                        }
-
-                }
-            )
-            .addTo(map);
-
-    }
-
-    catch (error) {
-
-        console.warn(
-            "Stations:",
-            error
-        );
-
-    }
-
+function frameTime(i){
+  const t=new Date(gifAnchor-(gifFrames.length-1-i)*600000);
+  return '≈ '+fmtUTC(t)+' · '+fmtMSK(t);
 }
-
-
-/* =========================================================
-   LIGHTNING
-   ========================================================= */
-
-async function loadLightning() {
-
-    try {
-
-        const response =
-            await fetch(
-                API.lightning,
-                {
-                    cache: "no-store"
-                }
-            );
-
-        if (!response.ok)
-            throw new Error(
-                "Lightning API"
-            );
-
-        const data =
-            await response.json();
-
-        state.lightningLayer =
-            L.geoJSON(
-                data,
-                {
-
-                    pointToLayer:
-                        (feature, latlng) => {
-
-                            return L.circleMarker(
-                                latlng,
-                                {
-
-                                    radius: 4,
-
-                                    color:
-                                        "#fff1a8",
-
-                                    fillColor:
-                                        "#ffe447",
-
-                                    fillOpacity:
-                                        1,
-
-                                    weight:
-                                        1
-
-                                }
-                            );
-
-                        }
-
-                }
-            )
-            .addTo(map);
-
-    }
-
-    catch (error) {
-
-        console.warn(
-            "Lightning:",
-            error
-        );
-
-    }
-
+function showFrame(i){
+  if(!gifFrames.length)return;
+  gifIdx=Math.max(0,Math.min(gifFrames.length-1,i));
+  const c=$('gif-canvas');
+  const f=gifFrames[gifIdx];
+  if(c.width!==f.width){c.width=f.width;c.height=f.height;}
+  c.getContext('2d').drawImage(f,0,0);
+  $('frame-slider').value=gifIdx;
+  $('frame-label').innerHTML=`кадр <b>${gifIdx+1}/${gifFrames.length}</b><br>${frameTime(gifIdx)}`;
+  applyView();
 }
-
-
-/* =========================================================
-   MAP CLICK
-   ========================================================= */
-
-map.on(
-    "click",
-    event => {
-
-        /*
-           В будущем сюда можно добавить
-           query к radar API:
-
-           /api/radar/value?
-           lat=...
-           lon=...
-           time=...
-        */
-
-        showPoint(
-            event.latlng
-        );
-
-    }
-);
-
-
-/* =========================================================
-   POINT CARD
-   ========================================================= */
-
-function showPoint(latlng) {
-
-    $("#pointTitle")
-        .textContent =
-        "Радарная точка";
-
-    $("#pointValue")
-        .textContent =
-        "—";
-
-    $("#pointSource")
-        .textContent =
-        sourceNames[state.source];
-
-    $("#pointTime")
-        .textContent =
-        $("#frameTime")
-            .textContent;
-
-    $("#pointLat")
-        .textContent =
-        latlng.lat
-            .toFixed(3);
-
-    $("#pointLon")
-        .textContent =
-        latlng.lng
-            .toFixed(3);
-
-    $("#pointCard")
-        .classList.add("open");
-
+function stepFrame(d){ stopPlay(); showFrame(gifIdx+d); }
+function startPlay(){
+  if(!gifFrames.length)return;
+  gifPlaying=true; $('fr-play').textContent='⏸';
+  const loop=()=>{
+    gifTimer=setTimeout(()=>{
+      showFrame((gifIdx+1)%gifFrames.length);
+      if(gifPlaying)loop();
+    }, +$('speed-sel').value);
+  };
+  loop();
 }
-
-
-$("#pointClose")
-    .addEventListener(
-        "click",
-        () => {
-
-            $("#pointCard")
-                .classList.remove(
-                    "open"
-                );
-
-        }
-    );
-
-
-/* =========================================================
-   MAP CONTROLS
-   ========================================================= */
-
-$("#zoomIn")
-    .addEventListener(
-        "click",
-        () => map.zoomIn()
-    );
-
-$("#zoomOut")
-    .addEventListener(
-        "click",
-        () => map.zoomOut()
-    );
-
-
-/* =========================================================
-   LOCATE
-   ========================================================= */
-
-$("#locateBtn")
-    .addEventListener(
-        "click",
-        () => {
-
-            map.locate({
-                setView: true,
-                maxZoom: 9,
-                enableHighAccuracy: true
-            });
-
-        }
-    );
-
-
-map.on(
-    "locationfound",
-    event => {
-
-        L.circleMarker(
-            event.latlng,
-            {
-
-                radius: 8,
-
-                color:
-                    "#ffffff",
-
-                weight:
-                    2,
-
-                fillColor:
-                    "#4da3ff",
-
-                fillOpacity:
-                    .9
-
-            }
-        )
-        .addTo(map);
-
-    }
-);
-
-
-/* =========================================================
-   FULLSCREEN
-   ========================================================= */
-
-$("#fullscreenBtn")
-    .addEventListener(
-        "click",
-        async () => {
-
-            try {
-
-                if (!document.fullscreenElement) {
-
-                    await document
-                        .documentElement
-                        .requestFullscreen();
-
-                }
-
-                else {
-
-                    await document
-                        .exitFullscreen();
-
-                }
-
-            }
-
-            catch {}
-
-        }
-    );
-
-
-/* =========================================================
-   SEARCH
-   ========================================================= */
-
-$("#searchBtn")
-    .addEventListener(
-        "click",
-        () => {
-
-            const city =
-                prompt(
-                    "Введите город России"
-                );
-
-            if (!city)
-                return;
-
-            /*
-               Здесь позже можно подключить
-               собственный geocoder.
-
-               Пока — примерный поиск через
-               Nominatim.
-            */
-
-            fetch(
-                "https://nominatim.openstreetmap.org/search?" +
-                new URLSearchParams({
-
-                    q:
-                        city + ", Russia",
-
-                    format:
-                        "json",
-
-                    limit:
-                        "1"
-
-                })
-            )
-            .then(
-                response =>
-                    response.json()
-            )
-            .then(
-                results => {
-
-                    if (!results.length)
-                        return;
-
-                    const result =
-                        results[0];
-
-                    map.flyTo(
-                        [
-                            Number(result.lat),
-                            Number(result.lon)
-                        ],
-                        9,
-                        {
-                            duration:
-                                1.15,
-                            easeLinearity:
-                                .18
-                        }
-                    );
-
-                }
-            )
-            .catch(
-                console.warn
-            );
-
-        }
-    );
-
-
-/* =========================================================
-   KEYBOARD
-   ========================================================= */
-
-document.addEventListener(
-    "keydown",
-    event => {
-
-        if (
-            event.key ===
-            " "
-        ) {
-
-            event.preventDefault();
-
-            togglePlay();
-
-        }
-
-        if (
-            event.key ===
-            "ArrowLeft"
-        ) {
-
-            state.frame =
-                Math.max(
-                    0,
-                    state.frame - 1
-                );
-
-            updateTimeline();
-            loadRadar();
-
-        }
-
-        if (
-            event.key ===
-            "ArrowRight"
-        ) {
-
-            state.frame =
-                Math.min(
-                    state.frames.length - 1,
-                    state.frame + 1
-                );
-
-            updateTimeline();
-            loadRadar();
-
-        }
-
-    }
-);
-
-
-/* =========================================================
-   INITIALIZATION
-   ========================================================= */
-
-function init() {
-
-    createFrames();
-
-    updateTimeline();
-
-    /*
-       Пока endpoint не подключён,
-       карта всё равно нормально
-       запускается как интерфейс.
-    */
-
-    setTimeout(
-        () => {
-
-            $("#loading")
-                .classList.add(
-                    "hidden"
-                );
-
-        },
-        650
-    );
-
-    loadRadar();
-
+function stopPlay(){ gifPlaying=false; $('fr-play').textContent='▶'; clearTimeout(gifTimer); }
+function togglePlay(){ gifPlaying?stopPlay():startPlay(); }
+
+$('fr-play').addEventListener('click',togglePlay);
+$('fr-prev').addEventListener('click',()=>stepFrame(-1));
+$('fr-next').addEventListener('click',()=>stepFrame(1));
+$('frame-slider').addEventListener('input',e=>{stopPlay();showFrame(+e.target.value);});
+$('speed-sel').addEventListener('change',()=>{ if(gifPlaying){stopPlay();startPlay();} });
+$('gif-reload').addEventListener('click',()=>{
+  gifFrames=[];gifLoaded=false;
+  $('gif-canvas').style.display='block'; $('gif-img-fallback').style.display='none';
+  loadGif();
+});
+
+/* ---------- зум/пан для кадров ---------- */
+function applyView(){
+  const c=$('gif-canvas');
+  c.style.transform=`translate(calc(-50% + ${view.x}px), calc(-50% + ${view.y}px)) scale(${view.scale})`;
 }
+function zoomAt(f,cx,cy){
+  const s0=view.scale;
+  view.scale=Math.max(.3,Math.min(8,view.scale*f));
+  const k=view.scale/s0;
+  view.x=cx-(cx-view.x)*k; view.y=cy-(cy-view.y)*k;
+  applyView();
+}
+$('zoom-in').addEventListener('click',()=>zoomAt(1.35,0,0));
+$('zoom-out').addEventListener('click',()=>zoomAt(1/1.35,0,0));
+$('zoom-reset').addEventListener('click',()=>{view={scale:1,x:0,y:0};applyView();});
+$('gif-stage').addEventListener('wheel',e=>{
+  e.preventDefault();
+  const r=$('gif-stage').getBoundingClientRect();
+  const px=e.clientX-r.left-r.width/2, py=e.clientY-r.top-r.height/2;
+  zoomAt(e.deltaY<0?1.15:1/1.15, px, py);
+},{passive:false});
+let drag=null;
+$('gif-stage').addEventListener('pointerdown',e=>{
+  drag={x:e.clientX-view.x,y:e.clientY-view.y};
+  $('gif-stage').classList.add('dragging');
+  $('gif-stage').setPointerCapture(e.pointerId);
+});
+$('gif-stage').addEventListener('pointermove',e=>{
+  if(!drag)return;
+  view.x=e.clientX-drag.x; view.y=e.clientY-drag.y; applyView();
+});
+['pointerup','pointercancel'].forEach(ev=>$('gif-stage').addEventListener(ev,()=>{drag=null;$('gif-stage').classList.remove('dragging');}));
+$('gif-stage').addEventListener('dblclick',()=>{view={scale:1,x:0,y:0};applyView();});
 
+/* ---------- таблица станций ---------- */
+(function(){
+  const tb=document.querySelector('#station-table tbody');
+  tb.innerHTML=STATIONS.map(([n,la,lo])=>`<tr><td>${n}</td><td class="mono2">${la.toFixed(2)}°N ${lo.toFixed(2)}°E</td></tr>`).join('');
+})();
 
-init();
-
+/* ============================== СТАРТ ============================== */
+initMap();
+const startTab=(location.hash||'').replace('#','');
+if(['map','gif','info'].includes(startTab)) switchTab(startTab);
+pollCaps();
+setInterval(pollCaps,60000);
+/* автообновление сводки ЦАО раз в 10 минут */
+setInterval(()=>{
+  if(document.hidden||!gifLoaded||gifLoading)return;
+  if(gifFrames.length){ gifLoaded=false; gifFrames=[]; loadGif(); }
+  else{ const img=$('gif-img-fallback'); if(img.style.display==='block') img.src=SRC.gif+'?_='+Date.now(); }
+},600000);
+document.addEventListener('visibilitychange',()=>{ if(!document.hidden) pollCaps(); });
 </script>
-
 </body>
 </html>

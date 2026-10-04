@@ -8,8 +8,9 @@
 
  ВАЖНО:
    - данные НЕ генерируются;
-   - это наблюдения, а не прогноз;
-   - если источник недоступен — возвращается ошибка.
+   - это реальные радиолокационные наблюдения;
+   - источник отдаёт векторные точки;
+   - frontend получает нормальный GeoJSON FeatureCollection.
 =========================================================
 */
 
@@ -33,10 +34,8 @@ function fetchJSON(url) {
                     "User-Agent": "CLOrad/1.0",
                     "Accept": "application/json"
                 },
-
                 timeout: 15000
             },
-
             response => {
 
                 let body = "";
@@ -58,16 +57,12 @@ function fetchJSON(url) {
                                 `Radar source HTTP ${response.statusCode}`
                             )
                         );
-
                         return;
                     }
 
                     try {
-
                         resolve(JSON.parse(body));
-
-                    } catch (error) {
-
+                    } catch {
                         reject(
                             new Error(
                                 "Radar source returned invalid JSON"
@@ -79,7 +74,6 @@ function fetchJSON(url) {
         );
 
         request.on("timeout", () => {
-
             request.destroy(
                 new Error("Radar source timeout")
             );
@@ -104,14 +98,9 @@ function getRequestedTime(req) {
         return new Date();
     }
 
-    const date =
-        new Date(value);
+    const date = new Date(value);
 
-    if (
-        Number.isNaN(
-            date.getTime()
-        )
-    ) {
+    if (Number.isNaN(date.getTime())) {
         return new Date();
     }
 
@@ -128,8 +117,7 @@ function roundToRadarTime(date) {
         Math.floor(
             date.getTime() /
             TEN_MINUTES
-        ) *
-        TEN_MINUTES
+        ) * TEN_MINUTES
     );
 }
 
@@ -163,22 +151,12 @@ function getTitles(product) {
 
 
 // =======================================================
-// VECTOR → CLOrad GeoJSON
+// VECTOR → GEOJSON
 // =======================================================
 
 function convertToGeoJSON(raw, product) {
 
-    /*
-      Источник обычно отдаёт:
-
-      [
-        [lat, lon, value, direction],
-        ...
-      ]
-    */
-
     if (!Array.isArray(raw)) {
-
         throw new Error(
             "Unexpected radar response format"
         );
@@ -195,14 +173,9 @@ function convertToGeoJSON(raw, product) {
             continue;
         }
 
-        const lat =
-            Number(point[0]);
-
-        const lon =
-            Number(point[1]);
-
-        const value =
-            Number(point[2]);
+        const lat = Number(point[0]);
+        const lon = Number(point[1]);
+        const value = Number(point[2]);
 
         if (
             !Number.isFinite(lat) ||
@@ -226,25 +199,6 @@ function convertToGeoJSON(raw, product) {
                 ? Number(point[3])
                 : null;
 
-        const properties = {
-            value: value,
-
-            dbz:
-                product === "reflectivity"
-                    ? value
-                    : null,
-
-            velocity:
-                product === "velocity"
-                    ? value
-                    : null,
-
-            direction:
-                Number.isFinite(direction)
-                    ? direction
-                    : null
-        };
-
         features.push({
 
             type: "Feature",
@@ -258,7 +212,25 @@ function convertToGeoJSON(raw, product) {
                 ]
             },
 
-            properties
+            properties: {
+
+                value,
+
+                dbz:
+                    product === "reflectivity"
+                        ? value
+                        : null,
+
+                velocity:
+                    product === "velocity"
+                        ? value
+                        : null,
+
+                direction:
+                    Number.isFinite(direction)
+                        ? direction
+                        : null
+            }
         });
     }
 
@@ -272,9 +244,9 @@ function convertToGeoJSON(raw, product) {
 
 module.exports = async (req, res) => {
 
-    // ----------------------------------------------------
+    // ---------------------------------------------------
     // CORS
-    // ----------------------------------------------------
+    // ---------------------------------------------------
 
     res.setHeader(
         "Access-Control-Allow-Origin",
@@ -293,7 +265,7 @@ module.exports = async (req, res) => {
 
     res.setHeader(
         "Cache-Control",
-        "public, max-age=20, s-maxage=20"
+        "public, max-age=15, s-maxage=15"
     );
 
     res.setHeader(
@@ -302,21 +274,19 @@ module.exports = async (req, res) => {
     );
 
 
-    // ----------------------------------------------------
+    // ---------------------------------------------------
     // OPTIONS
-    // ----------------------------------------------------
+    // ---------------------------------------------------
 
     if (req.method === "OPTIONS") {
-
         res.status(204).end();
-
         return;
     }
 
 
-    // ----------------------------------------------------
+    // ---------------------------------------------------
     // GET ONLY
-    // ----------------------------------------------------
+    // ---------------------------------------------------
 
     if (req.method !== "GET") {
 
@@ -340,17 +310,17 @@ module.exports = async (req, res) => {
 
 
         // ------------------------------------------------
-        // Source
+        // SOURCE
         // ------------------------------------------------
 
         if (
             source !== "baltrad" &&
-            source !== "rgmc"
+            source !== "rgmc" &&
+            source !== "composite"
         ) {
 
             res.status(400).json({
-                error:
-                    "Unsupported radar source"
+                error: "Unsupported radar source"
             });
 
             return;
@@ -358,7 +328,7 @@ module.exports = async (req, res) => {
 
 
         // ------------------------------------------------
-        // Product
+        // PRODUCT
         // ------------------------------------------------
 
         if (
@@ -367,8 +337,10 @@ module.exports = async (req, res) => {
         ) {
 
             res.status(400).json({
+
                 error:
                     "Unsupported radar product",
+
                 available: [
                     "reflectivity",
                     "velocity"
@@ -394,23 +366,21 @@ module.exports = async (req, res) => {
 
 
         // ------------------------------------------------
-        // Time
+        // TIME
         // ------------------------------------------------
 
         const requested =
             getRequestedTime(req);
 
         const radarTime =
-            roundToRadarTime(
-                requested
-            );
+            roundToRadarTime(requested);
 
         const isoTime =
             radarTime.toISOString();
 
 
         // ------------------------------------------------
-        // Build source URL
+        // BUILD SOURCE URL
         // ------------------------------------------------
 
         const params =
@@ -432,7 +402,7 @@ module.exports = async (req, res) => {
 
 
         // ------------------------------------------------
-        // Request real observations
+        // REAL RADAR DATA
         // ------------------------------------------------
 
         const raw =
@@ -440,7 +410,7 @@ module.exports = async (req, res) => {
 
 
         // ------------------------------------------------
-        // Convert
+        // CONVERT
         // ------------------------------------------------
 
         const features =
@@ -451,29 +421,39 @@ module.exports = async (req, res) => {
 
 
         // ------------------------------------------------
-        // No data
+        // EMPTY
         // ------------------------------------------------
 
-        if (
-            features.length === 0
-        ) {
+        if (features.length === 0) {
 
-            res.status(204).end();
+            res.status(200).json({
+
+                type: "geojson",
+
+                data: {
+                    type: "FeatureCollection",
+                    features: []
+                },
+
+                source,
+                product,
+                observationTime: isoTime,
+                featureCount: 0
+            });
 
             return;
         }
 
 
         // ------------------------------------------------
-        // CLOrad response
+        // IMPORTANT
         //
-        // ВАЖНО:
-        // frontend ожидает:
+        // index.html expects:
         //
-        // {
-        //   type: "geojson",
-        //   features: [...]
-        // }
+        // data.data
+        //
+        // so we explicitly wrap the
+        // FeatureCollection inside data.
         // ------------------------------------------------
 
         res.status(200).json({
@@ -493,7 +473,12 @@ module.exports = async (req, res) => {
             featureCount:
                 features.length,
 
-            features
+            data: {
+
+                type: "FeatureCollection",
+
+                features
+            }
         });
 
     } catch (error) {

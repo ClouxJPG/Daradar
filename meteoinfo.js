@@ -1,50 +1,58 @@
 /* =========================================================
-   CLOrad — Meteoinfo DMRL Radar
+   CLOrad — Meteoinfo ДМРЛ
    Реальные радарные наблюдения Meteoinfo
 
-   ГЛАВНОЕ:
-   - GIF НЕ ИСПОЛЬЗУЕТСЯ
-   - источник: Meteoinfo radar tiles
-   - старый кадр остаётся видимым во время загрузки нового
-   - opacity НИКОГДА не меняется при смене кадра
-   - никаких fade / transition
-   - двойная буферизация кадров
+   ВАЖНО:
+   - index.html НЕ ИЗМЕНЯЕТСЯ
    - RainRadar НЕ ЗАТРАГИВАЕТСЯ
+   - GIF НЕ ИСПОЛЬЗУЕТСЯ
+   - используется raster tile backend Meteoinfo
+   - старый кадр остаётся видимым во время загрузки нового
+   - opacity постоянная
+   - НИКАКОГО fade
+   - НИКАКОГО opacity = 0
+   - при смене кадра выполняется swap после загрузки
+   - кнопка создаётся автоматически
    ========================================================= */
 
 (() => {
   'use strict';
 
+
   /* =========================================================
      НАСТРОЙКИ
      ========================================================= */
 
-  const META = {
-    name: 'Meteoinfo ДМРЛ',
+  const CONFIG = {
+
+    name: 'ДМРЛ · Meteoinfo',
+
     opacity: 0.88,
 
-    // Шаг радарных кадров Meteoinfo
     frameStep: 10 * 60 * 1000,
 
-    // Проверяем новый кадр раз в минуту
     refreshInterval: 60 * 1000,
 
-    // Максимальное количество одновременно
-    // загружаемых тайлов
-    keepBuffer: 2,
+    tileSize: 256,
 
-    // Россия / европейская часть + немного запасной территории
+    minZoom: 4,
+    maxZoom: 11,
+
+    minNativeZoom: 5,
+    maxNativeZoom: 8,
+
     bounds: [
       [35, 15],
       [72, 180]
     ],
 
-    minZoom: 4,
-    maxZoom: 11,
-    minNativeZoom: 5,
-    maxNativeZoom: 8,
+    zIndex: 410,
 
-    tileSize: 256
+    /*
+       Приблизительное время ожидания нового кадра.
+       Старый кадр всё это время остаётся на карте.
+    */
+    frameTimeout: 15000
   };
 
 
@@ -52,16 +60,18 @@
      СОСТОЯНИЕ
      ========================================================= */
 
-  let currentTime = null;
   let currentLayer = null;
-
-  // Предзагружаемый следующий слой
   let loadingLayer = null;
 
+  let currentTime = null;
+
+  let enabled = false;
+
   let refreshTimer = null;
+
   let initialized = false;
 
-  let enabled = true;
+  let switching = false;
 
 
   /* =========================================================
@@ -69,284 +79,715 @@
      ========================================================= */
 
   function roundRadarTime(time) {
-    return Math.floor(time / META.frameStep) * META.frameStep;
+
+    return Math.floor(
+      Number(time) / CONFIG.frameStep
+    ) * CONFIG.frameStep;
   }
 
 
-  function timestamp(time) {
-    return Math.floor(time / 1000);
+  function getUnixSeconds(time) {
+
+    return Math.floor(
+      Number(time) / 1000
+    );
   }
 
 
   /*
-     Meteoinfo использует перевёрнутую Y-сетку.
+     Meteoinfo использует перевёрнутую Y-координату
+     в данном tile backend.
   */
   function radarY(coords) {
-    return (Math.pow(2, coords.z) - 1) - coords.y;
+
+    return (
+      Math.pow(2, coords.z) -
+      1 -
+      coords.y
+    );
   }
 
 
-  /*
-     URL конкретной тайлы.
+  function formatTime(time) {
 
-     Это тот же backend Meteoinfo, который используется
-     текущим frontend:
-     
-     /res/nowcast/{z}0{x}0{y}/ncgi.php
-  */
-  function tileURL(coords, time) {
+    if (!time) {
+      return '--:--';
+    }
+
+    const d = new Date(time);
+
+    const hh = String(
+      d.getUTCHours()
+    ).padStart(2, '0');
+
+    const mm = String(
+      d.getUTCMinutes()
+    ).padStart(2, '0');
+
+    return `${hh}:${mm} UTC`;
+  }
+
+
+  /* =========================================================
+     URL METEOINFO
+     ========================================================= */
+
+  function getTileURL(coords, time) {
+
     const z = coords.z;
+
     const x = coords.x;
+
     const y = radarY(coords);
+
+    const inidt =
+      getUnixSeconds(time);
+
 
     return (
       'https://meteoinfo.ru/res/nowcast/' +
-      z + '0' + x + '0' + y +
+
+      z +
+      '0' +
+      x +
+      '0' +
+      y +
+
       '/ncgi.php' +
-      '?tnz=' + z +
-      '&tnx=' + x +
-      '&tny=' + y +
+
+      '?tnz=' +
+      encodeURIComponent(z) +
+
+      '&tnx=' +
+      encodeURIComponent(x) +
+
+      '&tny=' +
+      encodeURIComponent(y) +
+
       '&layers=1' +
-      '&inidt=' + timestamp(time)
+
+      '&inidt=' +
+      encodeURIComponent(inidt)
     );
   }
 
 
   /* =========================================================
-     РАДАРНЫЙ GRID LAYER
+     GRID LAYER
      ========================================================= */
 
-  const MeteoinfoGrid = L.GridLayer.extend({
+  const MeteoinfoGrid =
+    L.GridLayer.extend({
 
-    createTile(coords, done) {
+      createTile(coords, done) {
 
-      const canvas = document.createElement('canvas');
+        const canvas =
+          document.createElement('canvas');
 
-      canvas.width = META.tileSize;
-      canvas.height = META.tileSize;
+        canvas.width =
+          CONFIG.tileSize;
 
-      canvas.style.display = 'block';
+        canvas.height =
+          CONFIG.tileSize;
 
-      const ctx = canvas.getContext('2d');
+        canvas.style.display =
+          'block';
 
-      const img = new Image();
+        const ctx =
+          canvas.getContext('2d');
 
-      /*
-         Нам нужен именно сам радарный растр.
-         Никакого удаления "серых" пикселей здесь нет:
-         прежний фильтр мог удалять реальные слабые
-         радарные значения.
-      */
-      img.crossOrigin = 'anonymous';
 
-      let finished = false;
+        const img =
+          new Image();
 
-      function finish(err) {
-        if (finished) return;
 
-        finished = true;
+        img.crossOrigin =
+          'anonymous';
 
-        if (err) {
-          done(err, canvas);
-        } else {
-          done(null, canvas);
+
+        let finished = false;
+
+
+        function finish(error) {
+
+          if (finished) {
+            return;
+          }
+
+          finished = true;
+
+          done(
+            error || null,
+            canvas
+          );
         }
+
+
+        img.onload = () => {
+
+          try {
+
+            ctx.clearRect(
+              0,
+              0,
+              CONFIG.tileSize,
+              CONFIG.tileSize
+            );
+
+
+            ctx.drawImage(
+              img,
+              0,
+              0,
+              CONFIG.tileSize,
+              CONFIG.tileSize
+            );
+
+
+            finish(null);
+
+          } catch (error) {
+
+            finish(error);
+          }
+        };
+
+
+        img.onerror = () => {
+
+          finish(
+            new Error(
+              'Meteoinfo tile error'
+            )
+          );
+        };
+
+
+        img.src =
+          getTileURL(
+            coords,
+            this._radarTime
+          );
+
+
+        /*
+           Если сервер завис,
+           Leaflet всё равно получит tile.
+        */
+        setTimeout(() => {
+
+          if (!finished) {
+            finish(null);
+          }
+
+        }, CONFIG.frameTimeout);
+
+
+        return canvas;
       }
-
-
-      img.onload = () => {
-
-        try {
-
-          ctx.clearRect(
-            0,
-            0,
-            META.tileSize,
-            META.tileSize
-          );
-
-          ctx.drawImage(
-            img,
-            0,
-            0,
-            META.tileSize,
-            META.tileSize
-          );
-
-        } catch (e) {
-          finish(e);
-          return;
-        }
-
-        finish(null);
-      };
-
-
-      img.onerror = () => {
-        finish(new Error('Meteoinfo tile load error'));
-      };
-
-
-      img.src = tileURL(
-        coords,
-        this._radarTime
-      );
-
-
-      /*
-         Защита от зависшей тайлы.
-         Сам canvas всё равно возвращается Leaflet,
-         поэтому карта не ломается.
-      */
-      setTimeout(() => {
-        if (!finished) {
-          finish(null);
-        }
-      }, 15000);
-
-
-      return canvas;
-    }
-  });
+    });
 
 
   /* =========================================================
-     СОЗДАНИЕ СЛОЯ
+     СОЗДАНИЕ РАДАРНОГО СЛОЯ
      ========================================================= */
 
   function createLayer(time) {
 
-    const layer = new MeteoinfoGrid({
+    const layer =
+      new MeteoinfoGrid({
 
-      tileSize: META.tileSize,
+        tileSize:
+          CONFIG.tileSize,
 
-      minZoom: META.minZoom,
-      maxZoom: META.maxZoom,
+        minZoom:
+          CONFIG.minZoom,
 
-      minNativeZoom: META.minNativeZoom,
-      maxNativeZoom: META.maxNativeZoom,
+        maxZoom:
+          CONFIG.maxZoom,
 
-      bounds: L.latLngBounds(
-        META.bounds
-      ),
+        minNativeZoom:
+          CONFIG.minNativeZoom,
 
-      opacity: META.opacity,
+        maxNativeZoom:
+          CONFIG.maxNativeZoom,
 
-      zIndex: 410,
+        bounds:
+          L.latLngBounds(
+            CONFIG.bounds
+          ),
 
-      updateWhenZooming: false,
-      updateWhenIdle: true,
+        opacity:
+          CONFIG.opacity,
 
-      keepBuffer: META.keepBuffer,
+        zIndex:
+          CONFIG.zIndex,
 
-      noWrap: false,
+        updateWhenZooming:
+          false,
 
-      // ВАЖНО:
-      // никаких CSS transitions
-      className: 'clorad-meteoinfo-radar'
-    });
+        updateWhenIdle:
+          true,
 
-    layer._radarTime = time;
+        keepBuffer:
+          2,
+
+        noWrap:
+          false,
+
+        className:
+          'clorad-meteoinfo-layer'
+      });
+
+
+    layer._radarTime =
+      time;
+
+
+    /*
+       Сохраняем постоянную opacity.
+    */
+    layer.setOpacity(
+      CONFIG.opacity
+    );
+
 
     return layer;
   }
 
 
   /* =========================================================
-     СТИЛИ
+     CSS
      ========================================================= */
 
-  function injectStyle() {
+  function injectStyles() {
 
-    if (document.getElementById(
-      'clorad-meteoinfo-style'
-    )) {
+    if (
+      document.getElementById(
+        'clorad-meteoinfo-style'
+      )
+    ) {
       return;
     }
 
-    const style = document.createElement('style');
 
-    style.id = 'clorad-meteoinfo-style';
+    const style =
+      document.createElement('style');
+
+
+    style.id =
+      'clorad-meteoinfo-style';
+
 
     style.textContent = `
-      .clorad-meteoinfo-radar {
-        transition: none !important;
-        animation: none !important;
+
+      .clorad-meteoinfo-layer,
+      .clorad-meteoinfo-layer canvas {
+
+        transition:
+          none !important;
+
+        animation:
+          none !important;
       }
 
-      .clorad-meteoinfo-radar canvas {
-        transition: none !important;
-        animation: none !important;
+
+      /* =====================================================
+         КНОПКА METEOINFO
+         ===================================================== */
+
+      #clorad-meteoinfo-button {
+
+        position: absolute;
+
+        left: 12px;
+
+        bottom: 12px;
+
+        z-index: 10000;
+
+        display: flex;
+
+        align-items: center;
+
+        gap: 8px;
+
+        min-height: 40px;
+
+        padding:
+          0 13px;
+
+        border:
+          1px solid
+          rgba(255,255,255,.14);
+
+        border-radius:
+          10px;
+
+        background:
+          rgba(13,16,22,.92);
+
+        color:
+          #ffffff;
+
+        font-family:
+          -apple-system,
+          BlinkMacSystemFont,
+          "Segoe UI",
+          sans-serif;
+
+        font-size:
+          13px;
+
+        font-weight:
+          600;
+
+        cursor:
+          pointer;
+
+        user-select:
+          none;
+
+        -webkit-user-select:
+          none;
+
+        box-shadow:
+          0 4px 18px
+          rgba(0,0,0,.35);
+
+        backdrop-filter:
+          blur(10px);
+
+        -webkit-backdrop-filter:
+          blur(10px);
+
+        transition:
+          background .15s ease,
+          border-color .15s ease;
       }
+
+
+      #clorad-meteoinfo-button:hover {
+
+        background:
+          rgba(25,29,38,.96);
+      }
+
+
+      #clorad-meteoinfo-button.active {
+
+        border-color:
+          rgba(70,160,255,.75);
+
+        background:
+          rgba(25,75,125,.94);
+      }
+
+
+      #clorad-meteoinfo-dot {
+
+        width:
+          8px;
+
+        height:
+          8px;
+
+        border-radius:
+          50%;
+
+        background:
+          #777;
+
+        flex:
+          0 0 auto;
+      }
+
+
+      #clorad-meteoinfo-button.active
+      #clorad-meteoinfo-dot {
+
+        background:
+          #45a7ff;
+
+        box-shadow:
+          0 0 7px
+          rgba(69,167,255,.8);
+      }
+
+
+      #clorad-meteoinfo-time {
+
+        opacity:
+          .65;
+
+        font-size:
+          11px;
+
+        font-weight:
+          500;
+      }
+
+
+      @media (max-width: 600px) {
+
+        #clorad-meteoinfo-button {
+
+          left: 10px;
+
+          bottom: 10px;
+
+          min-height: 38px;
+
+          padding:
+            0 11px;
+
+          font-size:
+            12px;
+        }
+
+        #clorad-meteoinfo-time {
+          display: none;
+        }
+      }
+
     `;
 
-    document.head.appendChild(style);
+
+    document.head.appendChild(
+      style
+    );
   }
 
 
   /* =========================================================
-     ПОЛУЧЕНИЕ ПРЕДПОЛАГАЕМОГО ТЕКУЩЕГО КАДРА
+     СОЗДАНИЕ КНОПКИ
+     ========================================================= */
+
+  function createButton() {
+
+    if (
+      document.getElementById(
+        'clorad-meteoinfo-button'
+      )
+    ) {
+      return;
+    }
+
+
+    const mapElement =
+      map.getContainer();
+
+
+    /*
+       Map должен быть position: relative,
+       чтобы кнопка позиционировалась относительно карты.
+    */
+
+    const mapStyle =
+      window.getComputedStyle(
+        mapElement
+      );
+
+
+    if (
+      mapStyle.position === 'static'
+    ) {
+
+      mapElement.style.position =
+        'relative';
+    }
+
+
+    const button =
+      document.createElement(
+        'button'
+      );
+
+
+    button.id =
+      'clorad-meteoinfo-button';
+
+
+    button.type =
+      'button';
+
+
+    button.innerHTML = `
+
+      <span
+        id="clorad-meteoinfo-dot">
+      </span>
+
+      <span>
+        ДМРЛ · Meteoinfo
+      </span>
+
+      <span
+        id="clorad-meteoinfo-time">
+        OFF
+      </span>
+
+    `;
+
+
+    button.addEventListener(
+      'click',
+      () => {
+
+        setEnabled(
+          !enabled
+        );
+
+      }
+    );
+
+
+    mapElement.appendChild(
+      button
+    );
+
+
+    updateButton();
+  }
+
+
+  /* =========================================================
+     ОБНОВЛЕНИЕ КНОПКИ
+     ========================================================= */
+
+  function updateButton() {
+
+    const button =
+      document.getElementById(
+        'clorad-meteoinfo-button'
+      );
+
+
+    if (!button) {
+      return;
+    }
+
+
+    const dot =
+      document.getElementById(
+        'clorad-meteoinfo-dot'
+      );
+
+
+    const time =
+      document.getElementById(
+        'clorad-meteoinfo-time'
+      );
+
+
+    button.classList.toggle(
+      'active',
+      enabled
+    );
+
+
+    if (dot) {
+
+      dot.title =
+        enabled ?
+        'Слой включён' :
+        'Слой выключен';
+    }
+
+
+    if (time) {
+
+      time.textContent =
+        enabled && currentTime ?
+        formatTime(currentTime) :
+        'OFF';
+    }
+  }
+
+
+  /* =========================================================
+     ПОЛУЧЕНИЕ ВРЕМЕНИ METEOINFO
      ========================================================= */
 
   async function getCurrentTime() {
 
-    /*
-       У Meteoinfo уже есть capabilities endpoint,
-       который используется существующим frontend.
-    */
-
     const url =
       'https://meteoinfo.ru/hmc-output/nowcast3/nowcast.php' +
-      '?_=' + Date.now();
+      '?_=' +
+      Date.now();
+
 
     try {
 
-      const response = await fetch(
-        url,
-        {
-          cache: 'no-store'
-        }
-      );
+      const response =
+        await fetch(
+          url,
+          {
+            cache:
+              'no-store'
+          }
+        );
+
 
       if (!response.ok) {
+
         throw new Error(
-          'HTTP ' + response.status
+          `HTTP ${response.status}`
         );
       }
 
-      const text = await response.text();
+
+      const text =
+        await response.text();
+
 
       /*
-         Ищем:
-         default="..."
+         Пример:
+
+         default="2026-10-04T..."
       */
+
       const match =
-        text.match(/default="([^"]+)"/i);
+        text.match(
+          /default="([^"]+)"/i
+        );
+
 
       if (match) {
 
         const parsed =
-          Date.parse(match[1]);
+          Date.parse(
+            match[1]
+          );
+
 
         if (
-          Number.isFinite(parsed)
+          Number.isFinite(
+            parsed
+          )
         ) {
-          return roundRadarTime(parsed);
+
+          return roundRadarTime(
+            parsed
+          );
         }
       }
+
 
     } catch (error) {
 
       console.warn(
-        '[CLOrad Meteoinfo] capabilities:',
+        '[Meteoinfo] capabilities error:',
         error
       );
     }
 
+
     /*
-       Если capabilities недоступен,
-       используем локальное время.
+       Запасной вариант:
+       ближайшее 10-минутное время.
     */
+
     return roundRadarTime(
       Date.now()
     );
@@ -354,287 +795,425 @@
 
 
   /* =========================================================
-     ПЕРВИЧНАЯ ЗАГРУЗКА
+     ПРОВЕРКА ЗАГРУЗКИ СЛОЯ
      ========================================================= */
 
-  async function init() {
+  function waitForLayer(layer) {
 
-    if (initialized) return;
+    return new Promise(
+      resolve => {
 
-    initialized = true;
+        let resolved =
+          false;
 
-    injectStyle();
 
-    currentTime =
-      await getCurrentTime();
+        const finish = () => {
 
-    currentLayer =
-      createLayer(currentTime);
+          if (resolved) {
+            return;
+          }
 
-    /*
-       ВАЖНО:
-       opacity сразу фиксированная.
-       Мы никогда не ставим её в 0.
-    */
-    currentLayer.setOpacity(
-      META.opacity
+          resolved =
+            true;
+
+          clearInterval(
+            interval
+          );
+
+          clearTimeout(
+            timeout
+          );
+
+          resolve();
+        };
+
+
+        /*
+           Даём Leaflet время начать
+           загрузку тайлов.
+        */
+
+        const interval =
+          setInterval(() => {
+
+            if (
+              !map.hasLayer(
+                layer
+              )
+            ) {
+
+              finish();
+
+              return;
+            }
+
+
+            const container =
+              layer.getContainer &&
+              layer.getContainer();
+
+
+            if (!container) {
+              return;
+            }
+
+
+            const canvases =
+              container.querySelectorAll(
+                'canvas'
+              );
+
+
+            /*
+               Новый слой должен иметь хотя бы
+               одну реально созданную tile.
+            */
+
+            if (
+              canvases.length > 0
+            ) {
+
+              finish();
+            }
+
+          }, 100);
+
+
+        /*
+           Защита от вечного ожидания.
+        */
+
+        const timeout =
+          setTimeout(
+            finish,
+            CONFIG.frameTimeout
+          );
+      }
     );
-
-    currentLayer.addTo(map);
-
-    console.log(
-      '[CLOrad Meteoinfo] loaded:',
-      new Date(currentTime)
-    );
-
-    scheduleRefresh();
   }
 
 
   /* =========================================================
-     ПРЕДЗАГРУЗКА НОВОГО КАДРА
+     ПЕРЕКЛЮЧЕНИЕ КАДРА
      ========================================================= */
 
-  async function loadNewFrame(time) {
+  async function switchFrame(time) {
 
-    if (!map) return;
+    if (!map) {
+      return;
+    }
 
-    if (!enabled) return;
+
+    if (!enabled) {
+      return;
+    }
+
+
+    const targetTime =
+      roundRadarTime(
+        time
+      );
+
 
     if (
-      currentTime === time
+      currentTime ===
+      targetTime
     ) {
+
       return;
     }
 
 
     /*
-       Если такой кадр уже загружается,
-       повторно его не создаём.
+       Если уже загружается именно этот кадр,
+       ничего не делаем.
     */
+
     if (
       loadingLayer &&
-      loadingLayer._radarTime === time
+      loadingLayer._radarTime ===
+      targetTime
     ) {
+
       return;
     }
 
 
     /*
-       Убираем старый незавершённый buffer.
-       Текущий слой НЕ трогаем.
+       Если предыдущий preload ещё существует,
+       удаляем только его.
+
+       CURRENT LAYER НЕ ТРОГАЕМ.
     */
+
     if (loadingLayer) {
 
       try {
+
         map.removeLayer(
           loadingLayer
         );
+
       } catch (_) {}
 
-      loadingLayer = null;
+      loadingLayer =
+        null;
     }
+
+
+    switching =
+      true;
 
 
     /*
        Создаём новый слой.
-
-       Он НЕ заменяет текущий.
-       Текущий продолжает показываться.
     */
+
     const nextLayer =
-      createLayer(time);
+      createLayer(
+        targetTime
+      );
+
 
     loadingLayer =
       nextLayer;
 
 
     /*
-       Фиксируем opacity.
-       Она точно такая же, как у старого слоя.
+       Одинаковая opacity.
+       Никаких 0 → 1.
     */
+
     nextLayer.setOpacity(
-      META.opacity
+      CONFIG.opacity
     );
 
 
     /*
-       Добавляем новый слой поверх старого.
-       Оба слоя имеют одинаковую opacity.
+       Новый слой добавляется поверх старого.
     */
-    nextLayer.addTo(map);
+
+    nextLayer.addTo(
+      map
+    );
 
 
     /*
-       Leaflet начинает запрашивать тайлы.
-       Ждём завершения загрузки.
+       Старый слой продолжает отображаться.
     */
 
-    await waitForLayerReady(
+    await waitForLayer(
       nextLayer
     );
 
 
     /*
-       Если за время загрузки появился
-       ещё более новый кадр — этот кадр
-       уже не нужен.
+       Пока новый слой грузился,
+       пользователь мог запустить другой кадр.
     */
+
     if (
-      loadingLayer !== nextLayer
+      loadingLayer !==
+      nextLayer
     ) {
+
       try {
+
         map.removeLayer(
           nextLayer
         );
+
       } catch (_) {}
+
+      switching =
+        false;
 
       return;
     }
 
 
     /*
-       ТЕПЕРЬ swap.
+       SWAP
+       =====================================================
 
-       Старый кадр убирается только после
-       того, как новый подготовлен.
+       Только здесь старый слой удаляется.
     */
 
     const oldLayer =
       currentLayer;
 
+
     currentLayer =
       nextLayer;
 
+
     currentTime =
-      time;
+      targetTime;
+
 
     loadingLayer =
       null;
 
 
     /*
-       Оба слоя уже имеют одинаковую opacity.
-       Никакого fade.
+       У старого слоя opacity не меняем.
+       У нового тоже не меняем.
     */
+
 
     if (oldLayer) {
 
       try {
+
         map.removeLayer(
           oldLayer
         );
+
       } catch (_) {}
     }
 
 
+    switching =
+      false;
+
+
+    updateButton();
+
+
     console.log(
       '[CLOrad Meteoinfo] frame:',
-      new Date(time)
+      new Date(
+        targetTime
+      ).toISOString()
     );
   }
 
 
   /* =========================================================
-     ОЖИДАНИЕ ЗАГРУЗКИ ТАЙЛОВ
+     ВКЛЮЧЕНИЕ / ВЫКЛЮЧЕНИЕ
      ========================================================= */
 
-  function waitForLayerReady(layer) {
+  async function setEnabled(value) {
 
-    return new Promise(resolve => {
+    enabled =
+      Boolean(value);
 
-      let finished = false;
 
-      function done() {
+    updateButton();
 
-        if (finished) return;
 
-        finished = true;
+    if (!enabled) {
 
-        clearTimeout(timeout);
+      /*
+         Убираем только Meteoinfo.
+         RainRadar не трогаем.
+      */
 
-        resolve();
+      if (loadingLayer) {
+
+        try {
+
+          map.removeLayer(
+            loadingLayer
+          );
+
+        } catch (_) {}
+
+        loadingLayer =
+          null;
       }
 
 
-      /*
-         Если тайлы уже появились
-         после первого цикла Leaflet.
-      */
-      setTimeout(() => {
+      if (currentLayer) {
 
-        const container =
-          layer.getContainer &&
-          layer.getContainer();
+        try {
 
-        if (container) {
+          map.removeLayer(
+            currentLayer
+          );
 
-          const tiles =
-            container.querySelectorAll(
-              'canvas'
-            );
-
-          if (tiles.length > 0) {
-            done();
-          }
-        }
-
-      }, 150);
+        } catch (_) {}
+      }
 
 
-      /*
-         Дополнительная проверка.
-      */
-      const check =
-        setInterval(() => {
-
-          if (!map.hasLayer(layer)) {
-
-            clearInterval(check);
-
-            return;
-          }
+      return;
+    }
 
 
-          const container =
-            layer.getContainer &&
-            layer.getContainer();
+    /*
+       Первый запуск.
+    */
 
-          if (!container) return;
+    if (!currentLayer) {
 
+      await initLayer();
 
-          const tiles =
-            container.querySelectorAll(
-              'canvas'
-            );
-
-
-          /*
-             Нам достаточно появления
-             хотя бы одной отрисованной тайлы.
-          */
-          if (tiles.length > 0) {
-
-            clearInterval(check);
-
-            done();
-          }
-
-        }, 100);
+      return;
+    }
 
 
-      /*
-         Не зависаем навечно.
-      */
-      const timeout =
-        setTimeout(() => {
+    currentLayer.addTo(
+      map
+    );
 
-          clearInterval(check);
 
-          done();
+    updateButton();
+  }
 
-        }, 12000);
-    });
+
+  /* =========================================================
+     ИНИЦИАЛИЗАЦИЯ
+     ========================================================= */
+
+  async function initLayer() {
+
+    if (!map) {
+      return;
+    }
+
+
+    if (currentLayer) {
+      return;
+    }
+
+
+    const time =
+      await getCurrentTime();
+
+
+    currentTime =
+      time;
+
+
+    const layer =
+      createLayer(
+        time
+      );
+
+
+    currentLayer =
+      layer;
+
+
+    /*
+       Первый слой можно сразу добавить.
+       Его opacity сразу CONFIG.opacity.
+    */
+
+    layer.addTo(
+      map
+    );
+
+
+    updateButton();
+
+
+    console.log(
+      '[CLOrad Meteoinfo] initialized:',
+      new Date(
+        time
+      ).toISOString()
+    );
   }
 
 
@@ -642,106 +1221,85 @@
      АВТООБНОВЛЕНИЕ
      ========================================================= */
 
-  function scheduleRefresh() {
+  async function refresh() {
 
-    clearTimeout(
-      refreshTimer
-    );
-
-    refreshTimer =
-      setTimeout(
-        refreshFrame,
-        META.refreshInterval
-      );
-  }
+    if (!enabled) {
+      return;
+    }
 
 
-  async function refreshFrame() {
+    if (switching) {
+      return;
+    }
+
 
     try {
 
       const latest =
         await getCurrentTime();
 
+
+      /*
+         Только новый кадр.
+      */
+
       if (
         !currentTime ||
-        latest > currentTime
+        latest >
+        currentTime
       ) {
 
-        await loadNewFrame(
+        await switchFrame(
           latest
         );
       }
 
+
     } catch (error) {
 
       console.warn(
-        '[CLOrad Meteoinfo] refresh:',
+        '[Meteoinfo] refresh error:',
         error
       );
     }
+
 
     scheduleRefresh();
   }
 
 
-  /* =========================================================
-     РУЧНАЯ СМЕНА КАДРА
-     ========================================================= */
+  function scheduleRefresh() {
 
-  async function setTime(time) {
+    clearTimeout(
+      refreshTimer
+    );
 
-    const t =
-      roundRadarTime(
-        Number(time)
+
+    refreshTimer =
+      setTimeout(
+        refresh,
+        CONFIG.refreshInterval
       );
-
-    if (
-      !Number.isFinite(t)
-    ) {
-      return;
-    }
-
-    await loadNewFrame(t);
   }
 
 
   /* =========================================================
-     ПЕРЕКЛЮЧАТЕЛЬ
+     РУЧНАЯ УСТАНОВКА КАДРА
      ========================================================= */
 
-  function setEnabled(value) {
+  async function setTime(time) {
 
-    enabled = !!value;
-
-    if (!map) return;
-
-    if (!enabled) {
-
-      if (currentLayer) {
-        map.removeLayer(
-          currentLayer
-        );
-      }
-
-      if (loadingLayer) {
-        map.removeLayer(
-          loadingLayer
-        );
-      }
+    if (!Number.isFinite(
+      Number(time)
+    )) {
 
       return;
     }
 
 
-    if (currentLayer) {
-
-      currentLayer.addTo(map);
-
-    } else {
-
-      init();
-    }
+    await switchFrame(
+      Number(time)
+    );
   }
 
 
@@ -751,51 +1309,80 @@
 
   window.CLOradMeteoinfo = {
 
-    init,
+    init: async () => {
 
-    refresh: refreshFrame,
+      injectStyles();
+
+      createButton();
+
+      /*
+         Кнопка появляется сразу,
+         сам радар остаётся выключенным.
+      */
+
+      updateButton();
+
+      if (enabled) {
+        await initLayer();
+      }
+
+      scheduleRefresh();
+    },
+
+
+    enable: () =>
+      setEnabled(true),
+
+
+    disable: () =>
+      setEnabled(false),
+
+
+    toggle: () =>
+      setEnabled(!enabled),
+
+
+    refresh,
+
 
     setTime,
 
-    setEnabled,
-
-    getTime: () =>
-      currentTime,
 
     getLayer: () =>
       currentLayer,
 
-    enabled: () =>
+
+    getTime: () =>
+      currentTime,
+
+
+    isEnabled: () =>
       enabled
   };
 
 
   /* =========================================================
-     АВТОЗАПУСК
+     ЗАПУСК
      ========================================================= */
 
-  function startWhenMapReady() {
+  function start() {
+
+    injectStyles();
+
+
+    /*
+       Ждём существующую Leaflet-карту.
+       В твоём index.html она называется map.
+    */
 
     if (
-      typeof L === 'undefined'
-    ) {
-
-      setTimeout(
-        startWhenMapReady,
-        100
-      );
-
-      return;
-    }
-
-
-    if (
+      typeof L === 'undefined' ||
       typeof map === 'undefined' ||
       !map
     ) {
 
       setTimeout(
-        startWhenMapReady,
+        start,
         100
       );
 
@@ -803,10 +1390,30 @@
     }
 
 
-    init();
+    createButton();
+
+
+    /*
+       По умолчанию слой выключен.
+       Пользователь сам нажимает кнопку.
+    */
+
+    enabled =
+      false;
+
+
+    updateButton();
+
+
+    scheduleRefresh();
+
+
+    console.log(
+      '[CLOrad Meteoinfo] ready'
+    );
   }
 
 
-  startWhenMapReady();
+  start();
 
 })();

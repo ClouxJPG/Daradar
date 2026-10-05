@@ -3,7 +3,11 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>АСУ-ДМРЛ ВОИ — Метеорологический радиолокационный комплекс</title>
+  <title>АСУ-ДМРЛ ВОИ — Сеть метеорадаров</title>
+  
+  <!-- Leaflet CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+
   <style>
     :root {
       --win-bg: #d4d0c8;
@@ -32,7 +36,7 @@
       overflow: hidden;
     }
 
-    /* Верхняя панель управления и переключатели слоев */
+    /* Верхнее меню */
     .top-bar {
       display: flex;
       align-items: center;
@@ -91,7 +95,7 @@
       margin-left: auto;
     }
 
-    /* Главная область */
+    /* Главная контейнерная область */
     .main-container {
       display: flex;
       flex: 1;
@@ -99,27 +103,32 @@
       position: relative;
     }
 
-    /* Карта и радарная подложка */
+    /* Окно карты */
     .map-view {
       flex: 1;
       position: relative;
-      background: #b4c4d4;
+      background: #a5bfdd;
       border: 2px inset var(--win-border-light);
       overflow: hidden;
-      cursor: crosshair;
     }
 
-    #radarCanvas {
-      position: absolute;
-      top: 0;
-      left: 0;
+    #map {
       width: 100%;
       height: 100%;
     }
 
-    /* Правая панель управления */
+    /* Оверлей для визира и радарной сетки */
+    #radarCanvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      pointer-events: none;
+      z-index: 400;
+    }
+
+    /* Правая панель */
     .sidebar {
-      width: 225px;
+      width: 230px;
       background: var(--win-panel);
       border-left: 2px solid var(--win-border-light);
       box-shadow: -1px 0 var(--win-border-dark);
@@ -129,6 +138,16 @@
       gap: 5px;
       overflow-y: auto;
       flex-shrink: 0;
+      z-index: 500;
+    }
+
+    .radar-station-select {
+      width: 100%;
+      background: #fff;
+      border: 1px solid var(--win-border-shadow);
+      padding: 2px;
+      font-weight: bold;
+      cursor: pointer;
     }
 
     .info-box {
@@ -147,19 +166,10 @@
       gap: 4px;
     }
 
-    .radar-station-select {
-      width: 100%;
-      background: #fff;
-      border: 1px solid var(--win-border-shadow);
-      padding: 2px;
-      font-weight: bold;
-      margin-bottom: 2px;
-    }
-
     .file-list {
       border: 1px solid var(--win-border-shadow);
       background: #fff;
-      height: 140px;
+      height: 130px;
       overflow-y: scroll;
       font-family: monospace;
       font-size: 10px;
@@ -185,12 +195,12 @@
       padding-bottom: 1px;
     }
 
-    /* Динамическая легенда */
+    /* Легенда */
     .legend-box {
       border: 1px solid var(--win-border-shadow);
       background: #fff;
       flex: 1;
-      min-height: 160px;
+      min-height: 150px;
       overflow-y: auto;
       padding: 2px;
       box-shadow: inset 1px 1px var(--win-border-shadow);
@@ -220,18 +230,18 @@
       flex-shrink: 0;
     }
 
-    /* Адаптивность для смартфонов */
+    /* Мобильная адаптация */
     @media (max-width: 768px) {
       .main-container {
         flex-direction: column;
       }
       .map-view {
-        height: 58vh;
+        height: 60vh;
         flex: none;
       }
       .sidebar {
         width: 100%;
-        height: 42vh;
+        height: 40vh;
         border-left: none;
         border-top: 2px solid var(--win-border-light);
       }
@@ -240,41 +250,38 @@
 </head>
 <body>
 
-  <!-- Верхняя панель (Слои, Режимы, Скорость) -->
+  <!-- Верхняя панель -->
   <div class="top-bar">
     <div class="toolbar-grid-nums">
       <span>3</span><span>4</span><span>5</span><span>6</span><span>7</span><span>8</span>
       <span>9</span><span>10</span><span>11</span><span>12</span><span>13</span><span>14</span><span>15</span>
     </div>
 
-    <!-- Селектор слоя -->
     <select class="layer-select" id="layerSelect">
       <option value="phenomena">Метеоявления</option>
-      <option value="reflectivity">Отражаемость (Z, dBZ)</option>
-      <option value="velocity">Радиальная скорость (V, м/с)</option>
-      <option value="spectrum">Ширина спектра (W)</option>
-      <option value="height">Верхняя граница (Нверх, км)</option>
-      <option value="intensity">Интенсивность (R, мм/ч)</option>
+      <option value="reflectivity">Отражаемость (Z)</option>
+      <option value="velocity">Скорость (V)</option>
     </select>
 
     <button class="btn-win" id="btnPg">ПГ: теплый</button>
     <button class="btn-win" id="btnDanger">Опасные явления</button>
-    
+
     <div class="status-badge" id="speedStatus">V=14.79 м/с az=29 СВ</div>
   </div>
 
   <!-- Главное окно -->
   <div class="main-container">
     
-    <!-- Карта радарного сканирования -->
-    <div class="map-view" id="mapContainer">
+    <!-- Интерактивная карта Leaflet -->
+    <div class="map-view">
+      <div id="map"></div>
       <canvas id="radarCanvas"></canvas>
     </div>
 
-    <!-- Правая панель АСУ-ДМРЛ -->
+    <!-- Панель управления АСУ-ДМРЛ -->
     <div class="sidebar">
       
-      <!-- Переключатель локаторов сети -->
+      <label style="font-weight: bold;">Выбор радара ДМРЛ-С:</label>
       <select class="radar-station-select" id="stationSelect">
         <option value="nn">ДМРЛ Нижний Новгород</option>
         <option value="msk">ДМРЛ Москва (Шереметьево)</option>
@@ -283,266 +290,145 @@
         <option value="sch">ДМРЛ Сочи (Агур)</option>
       </select>
 
-      <!-- Координатная точка и параметры анализа -->
       <div class="info-box" id="pointInfo">
-        <div>Az: <span id="valAz">307.48</span></div>
-        <div>R:  <span id="valR">127.54</span></div>
-        <div style="color: #666;" id="valLabel">Значение:</div>
+        <div>Az: <span id="valAz">307.48</span>°</div>
+        <div>R:  <span id="valR">127.54</span> км</div>
+        <div style="color: #666;">Явление:</div>
         <div id="valPhenomenon" style="font-weight: bold; color: #a00000;">Гроза (R)</div>
       </div>
 
-      <!-- Кнопки управления плеером -->
       <div class="controls-row">
-        <button class="btn-win" id="btnLoop" title="Зациклить анимацию">🎦</button>
-        <button class="btn-win" id="btnPlay" title="Старт/Пауза">▶</button>
-        <button class="btn-win" id="btnGrid" title="Вкл/Выкл сетку">🌐</button>
+        <button class="btn-win" id="btnPlay" title="Старт/Пауза анимации">▶</button>
+        <button class="btn-win" id="btnResetView" title="К выбранному радару">🎯</button>
         <strong style="margin-left: auto;" id="currentDate">15.06.2022</strong>
       </div>
-      
+
       <div style="text-align: right; font-weight: bold; font-family: monospace; font-size: 12px;" id="currentTime">
         10:30:00
       </div>
 
-      <!-- Заголовок подсистемы -->
       <div class="header-tag">
-        <span id="radarTypeLabel">ДМРЛ</span>
-        <span style="color: green;">nr</span>
+        <span>ДМРЛ</span>
+        <span style="color: green;">● ONLINE</span>
       </div>
 
-      <!-- Архив файлов сканирования -->
       <div class="file-list" id="fileList"></div>
 
-      <!-- Динамическая легенда -->
       <div class="legend-box" id="legendBox"></div>
 
     </div>
   </div>
 
+  <!-- Leaflet JS -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
   <script>
-    // Палитры цветов для различных слоев ДМРЛ
-    const LEGENDS = {
-      phenomena: {
-        title: "Метеоявления",
-        items: [
-          { name: "Обл.в.ср.ярус", color: "#00c0c0" },
-          { name: "Сп.образн.", color: "#00a000" },
-          { name: "Осадки слабы", color: "#00e000" },
-          { name: "Осадки умерен", color: "#00ff00" },
-          { name: "Осадки сильн", color: "#ffff00" },
-          { name: "Кучевая обл.", color: "#ff8000" },
-          { name: "Ливень слабы", color: "#0000ff" },
-          { name: "Ливень умерен", color: "#0000a0" },
-          { name: "Ливень сильн", color: "#800080" },
-          { name: "Гроза (R)", color: "#ff0000" },
-          { name: "Гроза R)", color: "#a00000" },
-          { name: "Гроза R", color: "#ff8080" },
-          { name: "Град слабый", color: "#804000" },
-          { name: "Град умеренн", color: "#800000" },
-          { name: "Град сильный", color: "#400000" },
-          { name: "Шквал слабый", color: "#808080" },
-          { name: "Шквал умерен", color: "#404040" },
-          { name: "Шквал сильный", color: "#000000" }
-        ]
-      },
-      reflectivity: {
-        title: "Отражаемость (Z, dBZ)",
-        items: [
-          { name: "< 10 dBZ", color: "#c0c0c0" },
-          { name: "10 - 20 dBZ", color: "#0000ff" },
-          { name: "20 - 30 dBZ", color: "#0000ff" },
-          { name: "30 - 40 dBZ", color: "#00ff00" },
-          { name: "40 - 50 dBZ", color: "#ffff00" },
-          { name: "50 - 60 dBZ", color: "#ff0000" },
-          { name: "> 60 dBZ", color: "#800080" }
-        ]
-      },
-      velocity: {
-        title: "Скорость (V, м/с)",
-        items: [
-          { name: "От локатора (> 15)", color: "#ff0000" },
-          { name: "От локатора (5..15)", color: "#ff8000" },
-          { name: "Нейтрально (0)", color: "#ffff00" },
-          { name: "К локатору (-5..-15)", color: "#00ff00" },
-          { name: "К локатору (< -15)", color: "#0000ff" }
-        ]
-      }
+    // Список метеорадаров ДМРЛ-С с точными координатами
+    const RADARS = {
+      nn:  { name: "ДМРЛ Нижний Новгород", lat: 56.3269, lon: 44.0059 },
+      msk: { name: "ДМРЛ Москва (Шереметьево)", lat: 55.9726, lon: 37.4146 },
+      vld: { name: "ДМРЛ Валдай", lat: 57.9747, lon: 33.2425 },
+      kzn: { name: "ДМРЛ Казань", lat: 55.7887, lon: 49.1221 },
+      sch: { name: "ДМРЛ Сочи", lat: 43.5855, lon: 39.7231 }
     };
 
-    // Состояние приложения
-    let currentLayer = "phenomena";
-    let cursorX = 260;
-    let cursorY = 220;
-    let isPgWarm = true;
-    let showGrid = true;
-    let isPlaying = false;
-    let isLooping = false;
-    let playTimer = null;
+    let currentRadarKey = "nn";
+    let activeRadar = RADARS[currentRadarKey];
 
-    const canvas = document.getElementById('radarCanvas');
-    const ctx = canvas.getContext('2d');
-    const mapContainer = document.getElementById('mapContainer');
-
-    function resizeCanvas() {
-      canvas.width = mapContainer.clientWidth;
-      canvas.height = mapContainer.clientHeight;
-      render();
-    }
-
-    window.addEventListener('resize', resizeCanvas);
-
-    // Отрисовка карты и радарной информации
-    function render() {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-      // 1. Фновая суша и реки (Стиль карт Росгидромета)
-      ctx.fillStyle = "#d0d0d0";
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-      // Река Волга/Ока (векторная подложка)
-      ctx.strokeStyle = "#80b0e0";
-      ctx.lineWidth = 3;
-      ctx.beginPath();
-      ctx.moveTo(0, canvas.height * 0.45);
-      ctx.bezierCurveTo(canvas.width * 0.3, canvas.height * 0.48, canvas.width * 0.5, canvas.height * 0.4, canvas.width, canvas.height * 0.6);
-      ctx.stroke();
-
-      // 2. Сетка 15х15 км с номерами квадратов
-      if (showGrid) {
-        ctx.strokeStyle = "#808080";
-        ctx.lineWidth = 0.5;
-        const step = 80;
-        let colIndex = 43;
-
-        for (let x = 0; x < canvas.width; x += step) {
-          ctx.beginPath();
-          ctx.moveTo(x, 0);
-          ctx.lineTo(x, canvas.height);
-          ctx.stroke();
-
-          ctx.fillStyle = "#000";
-          ctx.font = "10px Tahoma";
-          ctx.fillText(colIndex++, x + 4, 80);
-        }
-
-        for (let y = 0; y < canvas.height; y += step) {
-          ctx.beginPath();
-          ctx.moveTo(0, y);
-          ctx.lineTo(canvas.width, y);
-          ctx.stroke();
-        }
-      }
-
-      // 3. Радарные кольца и азимутальные лучи
-      const centerX = canvas.width * 0.42;
-      const centerY = canvas.height * 0.48;
-
-      ctx.strokeStyle = "rgba(60, 60, 60, 0.5)";
-      ctx.lineWidth = 1;
-      [60, 120, 180, 240].forEach(r => {
-        ctx.beginPath();
-        ctx.arc(centerX, centerY, r, 0, 2 * Math.PI);
-        ctx.stroke();
-      });
-
-      // 4. Отрисовка гидрометеорологического эхо-облака (Метеопиксели)
-      drawRadarEcho(centerX, centerY);
-
-      // 5. Визирная рамка с вектором перемещения (как на скриншоте)
-      drawCrosshair(centerX, centerY);
-
-      // 6. Подписи городов
-      drawCities();
-    }
-
-    // Симуляция радарных данных в зависимости от слоя
-    function drawRadarEcho(cx, cy) {
-      const activeLegend = LEGENDS[currentLayer] || LEGENDS.phenomena;
-      const palette = activeLegend.items.map(i => i.color);
-
-      // Поле засветки облачности
-      for (let i = 0; i < 350; i++) {
-        const angle = (i * 0.1) + (parseInt(document.getElementById('currentTime').innerText.replace(/:/g,'')) % 100) * 0.05;
-        const dist = 30 + (i % 120) * 1.2;
-
-        const px = cx + Math.cos(angle) * dist + (Math.sin(i) * 20);
-        const py = cy + Math.sin(angle) * dist + (Math.cos(i) * 15);
-
-        const colorIndex = (i + Math.floor(dist)) % palette.length;
-        ctx.fillStyle = palette[colorIndex];
-        ctx.fillRect(px, py, 6, 6);
-      }
-    }
-
-    // Отрисовка черной рамки визира и вектора
-    function drawCrosshair(cx, cy) {
-      ctx.strokeStyle = "#000";
-      ctx.lineWidth = 1;
-
-      // Квадрат визира
-      ctx.strokeRect(cursorX - 10, cursorY - 10, 20, 20);
-      ctx.strokeRect(cursorX - 18, cursorY - 18, 36, 36);
-
-      // Вектор направления движения
-      ctx.beginPath();
-      ctx.moveTo(cursorX, cursorY);
-      ctx.lineTo(cursorX + 80, cursorY - 120);
-      ctx.stroke();
-    }
-
-    function drawCities() {
-      ctx.fillStyle = "#000";
-      ctx.font = "10px Tahoma";
-      ctx.fillText("Δ Дзержинск", canvas.width * 0.32, canvas.height * 0.5);
-      ctx.fillText("Δ Семенов", canvas.width * 0.48, canvas.height * 0.22);
-      ctx.fillText("Δ Лысково", canvas.width * 0.58, canvas.height * 0.62);
-      ctx.fillText("Δ Павлово", canvas.width * 0.22, canvas.height * 0.68);
-    }
-
-    // Обновление боковой легенды
-    function updateLegend() {
-      const legendBox = document.getElementById('legendBox');
-      const data = LEGENDS[currentLayer] || LEGENDS.phenomena;
-
-      let html = `<div class="legend-title">${data.title}</div>`;
-      data.items.forEach(item => {
-        html += `
-          <div class="legend-item">
-            <div class="color-swatch" style="background:${item.color};"></div>
-            <span>${item.name}</span>
-          </div>
-        `;
-      });
-      legendBox.innerHTML = html;
-    }
-
-    // Интерактив карты (Клик перемещает прицел и считает параметры)
-    mapContainer.addEventListener('click', function(e) {
-      const rect = canvas.getBoundingClientRect();
-      cursorX = e.clientX - rect.left;
-      cursorY = e.clientY - rect.top;
-
-      const cx = canvas.width * 0.42;
-      const cy = canvas.height * 0.48;
-
-      const dx = cursorX - cx;
-      const dy = cursorY - cy;
-
-      const distance = (Math.sqrt(dx*dx + dy*dy) * 0.85).toFixed(2);
-      let az = (Math.atan2(dx, -dy) * 180 / Math.PI).toFixed(2);
-      if (az < 0) az = (parseFloat(az) + 360).toFixed(2);
-
-      document.getElementById('valAz').innerText = az;
-      document.getElementById('valR').innerText = distance;
-
-      const activeLegend = LEGENDS[currentLayer] || LEGENDS.phenomena;
-      const randomItem = activeLegend.items[Math.floor(Math.random() * activeLegend.items.length)];
-      document.getElementById('valPhenomenon').innerText = randomItem.name;
-      document.getElementById('valPhenomenon').style.color = randomItem.color === '#ffffff' ? '#000' : randomItem.color;
-
-      render();
+    // Инициализация интерактивной карты
+    const map = L.map('map', {
+      center: [activeRadar.lat, activeRadar.lon],
+      zoom: 8,
+      zoomControl: false
     });
 
-    // Генерация файлов снимков
+    // Картографическая подложка OpenStreetMap
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 12,
+      attribution: 'ДМРЛ ВОИ'
+    }).addTo(map);
+
+    // Добавление реального открытого радарного слоя (RainViewer API)
+    let radarTileLayer = L.tileLayer('https://tilecache.rainviewer.com/v2/radar/nowcast/256/{z}/{x}/{y}/2/1_1.png', {
+      opacity: 0.65,
+      zIndex: 100
+    }).addTo(map);
+
+    // Маркер позиции текущего радара
+    let radarMarker = L.marker([activeRadar.lat, activeRadar.lon]).addTo(map)
+      .bindPopup(`<b>${activeRadar.name}</b>`).openPopup();
+
+    // Canvas для сетки и визира
+    const canvas = document.getElementById('radarCanvas');
+    const ctx = canvas.getContext('2d');
+
+    function resizeCanvas() {
+      canvas.width = map.getContainer().clientWidth;
+      canvas.height = map.getContainer().clientHeight;
+      drawRadarOverlay();
+    }
+
+    // Отрисовка колец дальности (50, 100, 150 км) от выбранной станции ДМРЛ
+    function drawRadarOverlay() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      const center = map.latLngToContainerPoint([activeRadar.lat, activeRadar.lon]);
+
+      ctx.strokeStyle = "rgba(40, 40, 40, 0.6)";
+      ctx.lineWidth = 1;
+
+      [50, 100, 150].forEach(rKm => {
+        const point = map.latLngToContainerPoint([activeRadar.lat + (rKm / 111.12), activeRadar.lon]);
+        const radius = Math.abs(center.y - point.y);
+
+        ctx.beginPath();
+        ctx.arc(center.x, center.y, radius, 0, 2 * Math.PI);
+        ctx.stroke();
+
+        ctx.fillStyle = "#000";
+        ctx.font = "10px Tahoma";
+        ctx.fillText(`${rKm} км`, center.x + 5, center.y - radius + 12);
+      });
+    }
+
+    map.on('move', drawRadarOverlay);
+    window.addEventListener('resize', resizeCanvas);
+
+    // Вычисление азимута и дальности при клике на карту
+    map.on('click', function(e) {
+      const lat = e.latlng.lat;
+      const lng = e.latlng.lng;
+
+      const dLat = (lat - activeRadar.lat) * 111.12;
+      const dLng = (lng - activeRadar.lon) * 111.12 * Math.cos(activeRadar.lat * Math.PI / 180);
+
+      const distance = Math.sqrt(dLat * dLat + dLng * dLng).toFixed(2);
+      let azimuth = (Math.atan2(dLng, dLat) * 180 / Math.PI).toFixed(2);
+      if (azimuth < 0) azimuth = (parseFloat(azimuth) + 360).toFixed(2);
+
+      document.getElementById('valAz').innerText = azimuth;
+      document.getElementById('valR').innerText = distance;
+
+      const phenomena = ["Осадки умерен", "Ливень сильный", "Гроза (R)", "Град умеренн", "Шквал слабый"];
+      document.getElementById('valPhenomenon').innerText = phenomena[Math.floor(Math.random() * phenomena.length)];
+    });
+
+    // Переключение станций ДМРЛ
+    document.getElementById('stationSelect').addEventListener('change', (e) => {
+      currentRadarKey = e.target.value;
+      activeRadar = RADARS[currentRadarKey];
+
+      map.setView([activeRadar.lat, activeRadar.lon], 8);
+      radarMarker.setLatLng([activeRadar.lat, activeRadar.lon])
+        .bindPopup(`<b>${activeRadar.name}</b>`).openPopup();
+
+      drawRadarOverlay();
+    });
+
+    document.getElementById('btnResetView').onclick = () => {
+      map.setView([activeRadar.lat, activeRadar.lon], 8);
+    };
+
+    // Генерация архива кадров (.Inr)
     const fileList = document.getElementById('fileList');
     const times = ["09:40","09:50","10:00","10:10","10:20","10:30","10:40","10:50","11:00","11:10","11:20","11:30"];
     
@@ -554,58 +440,39 @@
         document.querySelectorAll('.file-item').forEach(i => i.classList.remove('active'));
         div.classList.add('active');
         document.getElementById('currentTime').innerText = t + ":00";
-        render();
       };
       fileList.appendChild(div);
     });
 
-    // Обработчики кнопок верхнего меню и переключателей
-    document.getElementById('layerSelect').addEventListener('change', (e) => {
-      currentLayer = e.target.value;
-      updateLegend();
-      render();
-    });
+    // Отрисовка классической легенды
+    function renderLegend() {
+      const legendBox = document.getElementById('legendBox');
+      const items = [
+        { name: "Обл.в.ср.ярус", color: "#00c0c0" },
+        { name: "Осадки слабы", color: "#00e000" },
+        { name: "Осадки умерен", color: "#00ff00" },
+        { name: "Осадки сильн", color: "#ffff00" },
+        { name: "Ливень слабы", color: "#0000ff" },
+        { name: "Гроза (R)", color: "#ff0000" },
+        { name: "Град умеренн", color: "#800000" },
+        { name: "Шквал сильный", color: "#000000" }
+      ];
 
-    document.getElementById('btnPg').onclick = function() {
-      isPgWarm = !isPgWarm;
-      this.innerText = isPgWarm ? "ПГ: теплый" : "ПГ: холодный";
-    };
-
-    document.getElementById('btnGrid').onclick = function() {
-      showGrid = !showGrid;
-      this.classList.toggle('active', showGrid);
-      render();
-    };
-
-    document.getElementById('btnLoop').onclick = function() {
-      isLooping = !isLooping;
-      this.classList.toggle('active', isLooping);
-    };
-
-    document.getElementById('btnPlay').onclick = function() {
-      isPlaying = !isPlaying;
-      this.innerText = isPlaying ? "⏸" : "▶";
-      this.classList.toggle('active', isPlaying);
-
-      if (isPlaying) {
-        const items = document.querySelectorAll('.file-item');
-        let idx = 0;
-        playTimer = setInterval(() => {
-          items[idx].click();
-          idx = (idx + 1) % items.length;
-        }, 700);
-      } else {
-        clearInterval(playTimer);
-      }
-    };
-
-    document.getElementById('stationSelect').addEventListener('change', (e) => {
-      render();
-    });
+      let html = `<div class="legend-title">Метеоявления</div>`;
+      items.forEach(item => {
+        html += `
+          <div class="legend-item">
+            <div class="color-swatch" style="background:${item.color};"></div>
+            <span>${item.name}</span>
+          </div>
+        `;
+      });
+      legendBox.innerHTML = html;
+    }
 
     // Инициализация
-    updateLegend();
-    setTimeout(resizeCanvas, 100);
+    renderLegend();
+    setTimeout(resizeCanvas, 200);
   </script>
 </body>
 </html>

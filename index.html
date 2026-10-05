@@ -2,14 +2,18 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ДМРЛ — Метеоявления</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>АСУ-ДМРЛ — Вторичная Обработка Информация (ВОИ)</title>
+  
+  <!-- Leaflet CSS for Map -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  
   <style>
     * {
       box-sizing: border-box;
       margin: 0;
       padding: 0;
-      font-family: "Tahoma", "Segoe UI", Geneva, Verdana, sans-serif;
+      font-family: "Tahoma", "Segoe UI", Arial, sans-serif;
       font-size: 11px;
       user-select: none;
     }
@@ -23,46 +27,48 @@
       overflow: hidden;
     }
 
-    /* Верхнее меню */
+    /* Верхняя панель управления */
     .top-bar {
       display: flex;
       align-items: center;
       background: #ece9d8;
-      border-bottom: 1px solid #716f64;
+      border-bottom: 2px solid #716f64;
       padding: 2px 4px;
-      gap: 15px;
-      height: 26px;
+      gap: 8px;
+      height: 28px;
       flex-shrink: 0;
+      overflow-x: auto;
+      white-space: nowrap;
     }
 
     .toolbar-numbers {
       display: flex;
-      border: 1px solid #808080;
+      border: 1px inset #fff;
       background: #fff;
     }
 
     .toolbar-numbers span {
-      padding: 0 3px;
+      padding: 1px 3px;
       border-right: 1px solid #d4d0c8;
       font-size: 10px;
+      cursor: pointer;
     }
+    .toolbar-numbers span:hover { background: #000080; color: #fff; }
 
-    .menu-title {
-      font-weight: bold;
-      font-size: 12px;
-    }
+    .menu-title { font-weight: bold; font-size: 11px; }
 
     .btn-win {
       background: #ece9d8;
-      border: 1px solid #716f64;
-      box-shadow: inset 1px 1px #fff, inset -1px -1px #808080;
-      padding: 1px 6px;
+      border: 1px solid #000;
+      box-shadow: inset 1px 1px #fff, inset -1px -1px #716f64;
+      padding: 2px 6px;
       cursor: pointer;
       font-size: 11px;
+      background-clip: padding-box;
     }
-
-    .btn-win:active {
-      box-shadow: inset 1px 1px #808080, inset -1px -1px #fff;
+    .btn-win:active, .btn-win.active {
+      box-shadow: inset 1px 1px #716f64, inset -1px -1px #fff;
+      background: #e0e0e0;
     }
 
     .status-badge {
@@ -70,35 +76,42 @@
       color: #fff;
       padding: 1px 6px;
       font-weight: bold;
+      font-family: monospace;
+      font-size: 11px;
     }
 
-    /* Основная рабочая область */
+    /* Рабочая область */
     .main-container {
       display: flex;
       flex: 1;
       overflow: hidden;
-    }
-
-    /* Левая область — Карта */
-    .map-container {
-      flex: 1;
-      background: #c0c0c0;
       position: relative;
-      border: 2px inset #fff;
-      overflow: hidden;
-      display: flex;
-      justify-content: center;
-      align-items: center;
     }
 
-    .map-image {
+    /* Контейнер интерактивной карты */
+    .map-wrapper {
+      flex: 1;
+      position: relative;
+      border: 2px inset #ffffff;
+      background: #111;
+    }
+
+    #map {
       width: 100%;
       height: 100%;
-      object-fit: contain;
-      background-color: #bbb;
+      background: #a5bfdd;
     }
 
-    /* Правая панель управления */
+    /* Canvas overlay для радиальной сетки радара */
+    #radarCanvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      pointer-events: none;
+      z-index: 400;
+    }
+
+    /* Боковая панель ДМРЛ */
     .sidebar {
       width: 220px;
       background: #ece9d8;
@@ -107,9 +120,10 @@
       display: flex;
       flex-direction: column;
       padding: 4px;
-      gap: 6px;
+      gap: 5px;
       overflow-y: auto;
       flex-shrink: 0;
+      z-index: 500;
     }
 
     .info-box {
@@ -118,7 +132,8 @@
       padding: 4px;
       font-family: monospace;
       font-size: 11px;
-      line-height: 1.2;
+      line-height: 1.3;
+      box-shadow: inset 1px 1px #808080;
     }
 
     .controls-row {
@@ -127,13 +142,15 @@
       gap: 4px;
     }
 
+    /* Список временных снимков (файлов .Inr) */
     .file-list {
       border: 1px solid #808080;
       background: #fff;
-      height: 160px;
+      height: 150px;
       overflow-y: scroll;
       font-family: monospace;
       font-size: 10px;
+      box-shadow: inset 1px 1px #808080;
     }
 
     .file-item {
@@ -141,7 +158,7 @@
       cursor: pointer;
       white-space: nowrap;
     }
-
+    .file-item:hover { background: #e0e0ff; }
     .file-item.active {
       background: #000080;
       color: #fff;
@@ -151,19 +168,19 @@
       display: flex;
       justify-content: space-between;
       font-weight: bold;
-      margin-top: 2px;
       border-bottom: 1px solid #808080;
-      padding-bottom: 2px;
+      padding-bottom: 1px;
     }
 
-    /* Легенда цветов */
+    /* Легенда метеоявлений */
     .legend-box {
       border: 1px solid #808080;
       background: #fff;
       flex: 1;
-      min-height: 180px;
+      min-height: 160px;
       overflow-y: auto;
       padding: 2px;
+      box-shadow: inset 1px 1px #808080;
     }
 
     .legend-title {
@@ -172,112 +189,100 @@
       padding: 1px 3px;
       margin-bottom: 2px;
       border: 1px solid #808080;
+      text-align: center;
     }
 
     .legend-item {
       display: flex;
       align-items: center;
-      gap: 4px;
+      gap: 5px;
       font-size: 10px;
-      height: 14px;
-      line-height: 14px;
+      height: 13px;
+      cursor: pointer;
     }
+    .legend-item:hover { background: #f0f0f0; }
 
     .color-swatch {
-      width: 14px;
-      height: 12px;
+      width: 12px;
+      height: 10px;
       border: 1px solid #000;
       flex-shrink: 0;
     }
 
-    /* Адаптивность для мобильных устройств */
+    /* Мобильная адаптация */
     @media (max-width: 768px) {
       .main-container {
         flex-direction: column;
       }
-
-      .map-container {
-        height: 55vh;
+      .map-wrapper {
+        height: 60vh;
         flex: none;
       }
-
       .sidebar {
         width: 100%;
-        height: 45vh;
+        height: 40vh;
         border-left: none;
-        border-top: 2px solid #fff;
-      }
-
-      .top-bar {
-        overflow-x: auto;
+        border-top: 2px solid #ffffff;
       }
     }
   </style>
 </head>
 <body>
 
-  <!-- Верхняя панель -->
+  <!-- Верхняя панель (Header) -->
   <div class="top-bar">
     <div class="toolbar-numbers">
       <span>3</span><span>4</span><span>5</span><span>6</span><span>7</span><span>8</span>
       <span>9</span><span>10</span><span>11</span><span>12</span><span>13</span><span>14</span><span>15</span>
     </div>
     <div class="menu-title">Метеоявления</div>
-    <div>ПГ: теплый</div>
-    <button class="btn-win">Опасные явления</button>
-    <div class="status-badge">V=14.79 м/с az=29 СВ</div>
+    <div style="margin-left: 5px;">ПГ: теплый</div>
+    <button class="btn-win" id="btnDanger">Опасные явления</button>
+    <div class="status-badge" id="speedStatus">V=14.79 м/с az=29 СВ</div>
   </div>
 
-  <!-- Основная часть -->
+  <!-- Главное окно -->
   <div class="main-container">
-    <!-- Область карты -->
-    <div class="map-container">
-      <img src="https://i.postimg.co/Jz5T5X5b/radar-map.jpg" alt="Карта ДМРЛ" class="map-image" id="radarMap">
+    
+    <!-- Интерактивная карта с сеткой ДМРЛ -->
+    <div class="map-wrapper">
+      <div id="map"></div>
+      <canvas id="radarCanvas"></canvas>
     </div>
 
-    <!-- Правая панель управления -->
+    <!-- Боковая панель АСУ-ДМРЛ -->
     <div class="sidebar">
-      <!-- Блок координатной информации -->
-      <div class="info-box">
-        <div>Az 307.48</div>
-        <div>R 127.54</div>
-        <div style="color: #808080;">Значение</div>
-        <div>Н/Д</div>
+      
+      <!-- Координатная точка аналитика -->
+      <div class="info-box" id="pointInfo">
+        <div>Az: <span id="valAz">307.48</span>°</div>
+        <div>R:  <span id="valR">127.54</span> км</div>
+        <div style="color: #666;">Явление:</div>
+        <div id="valPhenomenon" style="font-weight: bold; color: #a00000;">Гроза (R)</div>
       </div>
 
-      <!-- Кнопки плеера и дата -->
+      <!-- Кнопки управления воспроизведением -->
       <div class="controls-row">
-        <button class="btn-win">🎦</button>
-        <button class="btn-win">▶</button>
-        <strong style="margin-left: auto;">15.06.2022</strong>
+        <button class="btn-win" id="btnLoop" title="Зациклить">🎦</button>
+        <button class="btn-win" id="btnPlay" title="Старт/Пауза">▶</button>
+        <button class="btn-win" id="btnResetView" title="Сбросить карту">🎯</button>
+        <strong style="margin-left: auto;" id="currentDate">15.06.2022</strong>
       </div>
-      <div style="text-align: right; font-weight: bold; font-family: monospace;">
+      
+      <div style="text-align: right; font-weight: bold; font-family: monospace; font-size: 12px;" id="currentTime">
         10:30:00
       </div>
 
-      <!-- Переключатель ДМРЛ -->
+      <!-- Заголовок подсистемы -->
       <div class="header-tag">
         <span>ДМРЛ</span>
-        <span>nr</span>
+        <span style="color: green;">● ONLINE</span>
       </div>
 
-      <!-- Список снимков/файлов -->
-      <div class="file-list">
-        <div class="file-item">20220615_094000_1.Inr</div>
-        <div class="file-item">20220615_095000_1.Inr</div>
-        <div class="file-item">20220615_100000_1.Inr</div>
-        <div class="file-item">20220615_101000_1.Inr</div>
-        <div class="file-item">20220615_102000_1.Inr</div>
-        <div class="file-item active">20220615_103000_1.Inr</div>
-        <div class="file-item">20220615_104000_1.Inr</div>
-        <div class="file-item">20220615_105000_1.Inr</div>
-        <div class="file-item">20220615_110000_1.Inr</div>
-        <div class="file-item">20220615_111000_1.Inr</div>
-        <div class="file-item">20220615_112000_1.Inr</div>
-        <div class="file-item">20220615_113000_1.Inr</div>
-      </div>
+      <!-- Архив файлов сканирования -->
+      <div class="file-list" id="fileList"></div>
 
-      <!-- Легенда -->
+      <!-- Легенда опасных метеоявлений -->
       <div class="legend-box">
         <div class="legend-title">Метеоявления</div>
         <div class="legend-item"><div class="color-swatch" style="background:#00c0c0;"></div>Обл.в.ср.ярус</div>
@@ -299,17 +304,133 @@
         <div class="legend-item"><div class="color-swatch" style="background:#404040;"></div>Шквал умерен</div>
         <div class="legend-item"><div class="color-swatch" style="background:#000000;"></div>Шквал сильный</div>
       </div>
+
     </div>
   </div>
 
+  <!-- Leaflet JS -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
   <script>
-    // Интерактив для выбора файлов в списке
-    document.querySelectorAll('.file-item').forEach(item => {
-      item.addEventListener('click', function() {
-        document.querySelectorAll('.file-item').forEach(el => el.classList.remove('active'));
-        this.classList.add('active');
-      });
+    // Координаты Нижнего Новгорода (Центр радара ДМРЛ)
+    const RADAR_LAT = 56.3269;
+    const RADAR_LON = 44.0059;
+
+    // Инициализация карты
+    const map = L.map('map', {
+      center: [RADAR_LAT, RADAR_LON],
+      zoom: 8,
+      zoomControl: false
     });
+
+    // Картографическая подложка (OpenStreetMap)
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 12,
+      attribution: 'ДМРЛ АСУ-ВОИ'
+    }).addTo(map);
+
+    // Добавление интерактивного маркера центра радара
+    const radarMarker = L.marker([RADAR_LAT, RADAR_LON]).addTo(map)
+      .bindPopup("<b>ДМРЛ Нижний Новгород</b><br>Азимут: 0° | Дальность: 0 км").openPopup();
+
+    // Генерация архива сканирований (.Inr файлов)
+    const fileListEl = document.getElementById('fileList');
+    const times = ["09:40","09:50","10:00","10:10","10:20","10:30","10:40","10:50","11:00","11:10","11:20","11:30"];
+    
+    times.forEach((t, index) => {
+      const item = document.createElement('div');
+      item.className = 'file-item' + (t === "10:30" ? ' active' : '');
+      const code = `20220615_${t.replace(':','') }00_1.Inr`;
+      item.innerText = code;
+      item.onclick = () => selectFile(item, t);
+      fileListEl.appendChild(item);
+    });
+
+    function selectFile(el, timeStr) {
+      document.querySelectorAll('.file-item').forEach(i => i.classList.remove('active'));
+      el.classList.add('active');
+      document.getElementById('currentTime').innerText = timeStr + ":00";
+    }
+
+    // Воспроизведение анимированного ряда радара (Плеер)
+    let isPlaying = false;
+    let playTimer = null;
+    const btnPlay = document.getElementById('btnPlay');
+
+    btnPlay.onclick = () => {
+      isPlaying = !isPlaying;
+      btnPlay.innerText = isPlaying ? "⏸" : "▶";
+      btnPlay.classList.toggle('active', isPlaying);
+
+      if (isPlaying) {
+        let items = document.querySelectorAll('.file-item');
+        let currentIndex = 0;
+        playTimer = setInterval(() => {
+          items[currentIndex].click();
+          currentIndex = (currentIndex + 1) % items.length;
+        }, 800);
+      } else {
+        clearInterval(playTimer);
+      }
+    };
+
+    document.getElementById('btnResetView').onclick = () => {
+      map.setView([RADAR_LAT, RADAR_LON], 8);
+    };
+
+    // Отрисовка визира радара и расчет азимута/дальности при клике
+    map.on('click', function(e) {
+      const lat = e.latlng.lat;
+      const lng = e.latlng.lng;
+
+      // Расчет расстояния (км) и азимута (градусы)
+      const dLat = (lat - RADAR_LAT) * 111.12;
+      const dLng = (lng - RADAR_LON) * 111.12 * Math.cos(RADAR_LAT * Math.PI / 180);
+      
+      const distance = Math.sqrt(dLat * dLat + dLng * dLng).toFixed(2);
+      let azimuth = (Math.atan2(dLng, dLat) * 180 / Math.PI).toFixed(2);
+      if (azimuth < 0) azimuth = (parseFloat(azimuth) + 360).toFixed(2);
+
+      document.getElementById('valAz').innerText = azimuth;
+      document.getElementById('valR').innerText = distance;
+
+      // Случайный выбор категории явления для симуляции измерения
+      const phenomena = ["Осадки умерен", "Ливень сильный", "Гроза (R)", "Град умеренн", "Шквал слабый"];
+      const randomPhenomenon = phenomena[Math.floor(Math.random() * phenomena.length)];
+      document.getElementById('valPhenomenon').innerText = randomPhenomenon;
+    });
+
+    // Отрисовка координатной сетки ДМРЛ на Overlay Canvas
+    const canvas = document.getElementById('radarCanvas');
+    const ctx = canvas.getContext('2d');
+
+    function resizeCanvas() {
+      canvas.width = map.getContainer().clientWidth;
+      canvas.height = map.getContainer().clientHeight;
+      drawRadarRings();
+    }
+
+    function drawRadarRings() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      const center = map.latLngToContainerPoint([RADAR_LAT, RADAR_LON]);
+      
+      ctx.strokeStyle = "rgba(80, 80, 80, 0.4)";
+      ctx.lineWidth = 1;
+
+      // Дальномерные кольца 50км, 100км, 150км
+      [50, 100, 150].forEach(rKm => {
+        const point = map.latLngToContainerPoint([RADAR_LAT + (rKm / 111.12), RADAR_LON]);
+        const radius = Math.abs(center.y - point.y);
+        
+        ctx.beginPath();
+        ctx.arc(center.x, center.y, radius, 0, 2 * Math.PI);
+        ctx.stroke();
+      });
+    }
+
+    map.on('move', drawRadarRings);
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas();
   </script>
 </body>
 </html>

@@ -1,108 +1,123 @@
-<!DOCTYPE html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>ДМРЛ</title>
+<!DOCTYPE html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover"><title>Радиолокационная информация</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
 <style>
-*{box-sizing:border-box}html,body{margin:0;height:100%;overflow:hidden}body{background:#f0f0f0;font:12px Tahoma,"MS Sans Serif",Arial,sans-serif;color:#000}
-#app{display:flex;height:100%}#left{flex:1;min-width:0;display:flex;flex-direction:column}
-#top{height:19px;flex:none;display:flex;align-items:flex-start;overflow:hidden;white-space:nowrap;background:#f0f0f0}
-.bt{border:1px solid #707070;border-radius:3px;background:linear-gradient(#f3f3f3 0,#ebebeb 49%,#dddddd 50%,#cfcfcf 100%);box-shadow:inset 0 0 0 1px #fff;padding:0;margin:0;font:11px Tahoma,Arial;color:#000;cursor:default}
-.bt:active,.bt.on{background:linear-gradient(#e5f4fc,#c4e5f6 49%,#98d1ef 50%,#68b3db);border-color:#2c628b}
-#nb{display:flex;margin-left:-12px;flex:none}#nb .bt{width:20px;height:18px;border-radius:3px}
-#top .t{flex:1;text-align:center;font:13px "Courier New",monospace;line-height:17px;min-width:0;overflow:hidden;letter-spacing:.3px}
-#dng{width:146px;height:15px;font:13px Tahoma,Arial;flex:none;margin-right:3px}#dyn{width:40px;height:15px;flex:none;margin-right:7px;border:1px solid #7171aa;border-radius:0;background:#dcdcf8;box-shadow:none;font:bold 8px "Times New Roman",serif}#dyn.on{background:#c8c8f0}
-#mb{flex:1;display:grid;grid-template-columns:1fr 17px 114px;grid-template-rows:1fr 17px;min-height:0}
-#map{background:#d0d0d0;grid-row:1;grid-column:1}.leaflet-image-layer{image-rendering:pixelated}
-#vsb{grid-row:1;grid-column:2;display:flex;flex-direction:column;background:#f0f0f0}#hsb{grid-row:2;grid-column:1;display:flex;background:#f0f0f0}
-.sbb{width:17px;height:17px;flex:none;border:1px solid #707070;background:#dcdcdc no-repeat center;box-shadow:inset 1px 1px #fff;padding:0}
-.tk,#files::-webkit-scrollbar-track{flex:1;background-color:#fff;background-image:linear-gradient(45deg,#dcdcdc 25%,transparent 25%,transparent 75%,#dcdcdc 75%),linear-gradient(45deg,#dcdcdc 25%,transparent 25%,transparent 75%,#dcdcdc 75%);background-size:2px 2px;background-position:0 0,1px 1px;position:relative}
-.th{position:absolute;background:#dcdcdc;border:1px solid #707070;box-shadow:inset 1px 1px #fff}#vsb .th{left:0;right:0;top:10%;height:55%}#hsb .th{top:0;bottom:0;left:20%;width:50%}
-.up{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='7' height='4'%3E%3Cpath d='M0 4L3.5 0L7 4z'/%3E%3C/svg%3E")}.dn{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='7' height='4'%3E%3Cpath d='M0 0L3.5 4L7 0z'/%3E%3C/svg%3E")}
-.lf{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='4' height='7'%3E%3Cpath d='M4 0L0 3.5L4 7z'/%3E%3C/svg%3E")}.rt{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='4' height='7'%3E%3Cpath d='M0 0L4 3.5L0 7z'/%3E%3C/svg%3E")}
-.rd{width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-bottom:11px solid #000;position:relative}.rd b{position:absolute;left:12px;top:-2px;font:12px Arial;white-space:nowrap;color:#000;text-shadow:0 0 2px #fff,0 0 2px #fff}.nolab .rd b{display:none}.rd.sel{border-bottom-color:#f00}
-#msg{position:absolute;left:4px;bottom:4px;z-index:999;font-size:10px;color:#900;background:#fffc;padding:0 3px;pointer-events:none}
-#side{position:relative;width:178px;height:767px;flex:none;background:#f0f0f0;overflow:hidden}#side>*{position:absolute}
-#hdr{left:0;top:-1px;width:178px;font:bold 13px Tahoma,Arial;white-space:nowrap;overflow:hidden;line-height:15px}
-#spd{left:0;top:15px;width:178px;height:17px;background:#55ffff;padding:0 3px;font:bold 13px Tahoma,Arial;line-height:17px;white-space:nowrap;overflow:hidden}
-#info{left:10px;top:54px;width:160px;font:13px "Times New Roman",Times,serif;line-height:16.25px}
-.ib{width:20px;height:20px;top:284px;border:1px solid #707070;border-radius:3px;background:#fff;padding:0;display:flex;align-items:center;justify-content:center;cursor:pointer}.ib svg{width:16px;height:16px}.ib.p{border-color:#2a6bb5;box-shadow:inset 0 0 0 1px #8fb8e8}
-#dt{left:10px;top:205px;font:bold 13px Tahoma,Arial;line-height:27px}#rad i{position:absolute;left:166px;width:12px;height:12px;border-radius:50%;border:1px solid #8e8f8f;background:radial-gradient(#fff,#dcdcdc);cursor:pointer}#rad i.s{background:radial-gradient(circle,#2f9de0 0 2px,#0b3a63 3px 4px,#e0e0e0 5px)}
-#ttl2{left:0;width:166px;top:258px;text-align:center;font:17px Tahoma,Arial;letter-spacing:1px}#nr{left:150px;top:260px;font:bold 11px Arial}
-#files{left:0;top:309px;width:174px;height:215px;background:#dcdcdc;border:1px solid #828790;overflow-y:scroll;padding-top:1px;font:bold 12px Tahoma,Arial;letter-spacing:-.4px}
-#files div{height:17px;line-height:17px;margin-left:1px;padding:0 3px;cursor:default;white-space:nowrap}#files div.s{background:#ffa500;color:#fff}
-#files::-webkit-scrollbar{width:17px}#files::-webkit-scrollbar-thumb{background:#dcdcdc;border:1px solid #707070;box-shadow:inset 1px 1px #fff}
-#files::-webkit-scrollbar-button:single-button{display:block;height:17px;background-color:#dcdcdc;background-repeat:no-repeat;background-position:center;border:1px solid #707070;box-shadow:inset 1px 1px #fff}
-#files::-webkit-scrollbar-button:single-button:vertical:decrement{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='7' height='4'%3E%3Cpath d='M0 4L3.5 0L7 4z'/%3E%3C/svg%3E")}#files::-webkit-scrollbar-button:single-button:vertical:increment{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='7' height='4'%3E%3Cpath d='M0 0L3.5 4L7 0z'/%3E%3C/svg%3E")}
-#leg{left:1px;top:528px;width:173px;height:239px;background:#d1e7d8;font:12px Tahoma,Arial}#leg .hd{height:13px;line-height:13px;padding-left:9px;font-size:12px}#leg div.r{height:12px;display:flex;align-items:center}#leg i{width:20px;height:13px;margin:0 4px 0 5px;border:1px solid #000;margin-bottom:-1px;flex:none}
-#chk{left:114px;top:287px;width:13px;height:13px;margin:0}
-#dlg{position:fixed;inset:0;background:#0007;display:none;align-items:center;justify-content:center;z-index:9999}#dlg>div{background:#f0f0f0;border:1px solid #555;padding:12px;width:320px;max-width:92vw}
-#dlg label{display:flex;justify-content:space-between;align-items:center;margin:7px 0}#dlg input[type=text]{width:190px}#dlg button{width:100%;margin-top:6px;height:26px}
-@media(max-width:820px){#app{flex-direction:column;overflow-y:auto}html,body{overflow:auto}#left{flex:none;height:68vh;min-height:340px}#mb{grid-template-columns:1fr 17px 0}#side{margin:0 auto}#top{height:26px}#nb .bt{height:25px}#dng,#dyn{height:22px}#top .t{display:none}}
+*{box-sizing:border-box}html,body{margin:0;height:100%;overflow:hidden;font:13px Arial,Helvetica,sans-serif;color:#000;background:#b1b1b1;-webkit-user-select:none;user-select:none}
+#map{position:absolute;inset:0;background:#b1b1b1}.leaflet-tile-pane{filter:saturate(.3) brightness(.94) contrast(.92)}.leaflet-image-layer{image-rendering:pixelated}.leaflet-container{font:12px Arial}
+.ov{position:absolute;z-index:1000}.wb{background:#f2f2f2;border:1px solid #bbb;border-radius:4px;box-shadow:0 1px 3px #0004;cursor:pointer;padding:0;font:12px Arial;color:#000}.wb.on{background:#9fc3e8;border-color:#4a76a8}
+#zc{left:8px;top:8px;width:22px;height:42px;background:#6b7da1;border-radius:4px;border:2px solid #ffffff55;display:flex;flex-direction:column;color:#fff;font:bold 20px/20px Arial;text-align:center}#zc div{flex:1;cursor:pointer}
+#rl{left:41px;top:16px;width:24px;height:22px}#vc{left:73px;top:16px;width:18px;height:22px;font-size:11px;font-weight:600}
+#lp{left:1px;top:64px;width:62px;background:rgba(224,224,224,.82);padding:2px 1px 3px;line-height:17.5px;font-size:13px}#lp .wb{height:17px;line-height:15px;padding:0 3px;border-radius:3px;margin:0 1px}
+#lp .it{cursor:pointer;display:flex;align-items:center;height:17.5px;padding-left:1px}#lp .it i{font:bold 20px/10px Arial;font-style:normal;width:11px;margin-right:2px;display:inline-block}#lp .it.off{opacity:.35}
+#leg{left:0;bottom:-8px;width:107px;background:rgba(200,200,200,.62);padding:2px 2px 0 3px;font-size:11px;display:none}#leg div{height:15px;display:flex;align-items:center;white-space:nowrap}#leg i{width:12px;height:12px;margin-right:3px;border:1px solid #333;flex:none}
+#logo{right:30px;top:6px;display:flex;gap:12px;align-items:flex-start}#logo svg{display:block}#hp{right:40px;top:62px;width:13px;height:15px;background:#ffff3a;border:1px solid #333;font:bold 10px/12px Arial;padding:0;cursor:pointer}#fs{right:5px;top:8px;width:24px;height:24px;background:#e8eef8cc}
+#ll{right:0;bottom:84px;background:rgba(122,122,122,.78);padding:2px 12px 2px 6px;font-size:15px;line-height:17px;white-space:nowrap}
+#bp{right:0;bottom:0;width:460px;max-width:100vw;border:1px solid #444;background:#e2e2e2;font-size:13px}
+#bp .tt{height:15px;line-height:14px;background:#dcdcdc;padding-left:2px;white-space:nowrap;overflow:hidden}#bp .st{height:14px;background:#808080;display:flex;align-items:center;padding-left:2px;gap:6px}
+.b{height:16px;min-width:25px;border:1px solid #4a8fa5;background:#a9dbea;font:13px/13px Arial;padding:0 4px;cursor:pointer;color:#000}.b.red{background:#f08080;border-color:#a05050}.st .b{height:14px;width:25px}
+#bp .dr{height:22px;display:flex;align-items:center;padding-left:2px;gap:3px;white-space:nowrap;font-size:13px}#bp .dr .b{height:18px;width:31px;font-weight:bold;margin:0}#dl{letter-spacing:.1px;margin-right:3px;flex:none}
+#di{height:18px;width:130px;border:1px solid #888;background:#fff;font:13px Arial;padding:0 3px;margin-left:5px}#ck{width:15px;height:15px;margin:0 0 0 auto;margin-right:4px}
+#hrs{display:flex;height:16px;border-top:1px solid #555}#hrs div{flex:1;text-align:center;border-left:1px solid #555;line-height:15px;cursor:pointer;background:#e2e2e2;font-size:13px}#hrs div:first-child{border-left:0}#hrs div.c{background:#cfe4ff}
+#bar{display:block;width:100%;height:17px;border-top:1px solid #555;cursor:pointer}
+#sx{display:none;right:37px;top:15px;width:530px;max-width:96vw;height:310px;background:#eee;border-radius:6px;box-shadow:0 2px 10px #0006;font:10px Arial}
+#sh{margin:4px 4px 0;height:30px;border-radius:5px;background:linear-gradient(#f9b84e,#eeaf47);color:#fff;font:bold 15px/30px Arial;padding-left:16px;text-shadow:0 1px 1px #0005;cursor:move;touch-action:none}
+#sc{position:absolute;right:9px;top:8px;width:20px;height:20px;border-radius:3px;background:#fbe08c;color:#e08a10;font:bold 15px/19px Arial;text-align:center;cursor:pointer;text-shadow:none}
+#sx .yl{position:absolute;left:6px;top:40px;line-height:10px;font-size:10px}#sst{position:absolute;left:49px;top:45px;font:10px "Courier New",monospace}#sx canvas{position:absolute;left:42px;top:55px;background:#b8b8b8;border-left:1px solid #666;border-bottom:1px solid #666}
+#sx .yt{position:absolute;left:22px;width:16px;text-align:right;font-size:10px;line-height:10px}#sx .xl{position:absolute;left:0;right:0;bottom:12px;text-align:center}
+#zl{position:absolute;left:484px;top:67px;width:42px;background:#fff;text-align:left;font-size:11px;padding:0 0 1px 1px}#zl b{display:block;font-size:12px;line-height:14px;text-align:center;margin-bottom:1px}#zl div{height:11px;display:flex;align-items:center;font-size:11px}#zl i{width:14px;height:10px;border:1px solid #444;margin-right:3px;flex:none}
+#dlg{position:fixed;inset:0;background:#0007;display:none;align-items:center;justify-content:center;z-index:9999}#dlg>div{background:#f0f0f0;border:1px solid #555;padding:12px;width:330px;max-width:92vw}#dlg label{display:block;margin:7px 0}#dlg input[type=text]{width:100%;margin-top:3px}#dlg button{width:100%;margin-top:6px;height:26px}
+#msg{left:70px;bottom:92px;font-size:11px;color:#a00;background:#fffd;padding:0 4px;pointer-events:none}
+@media(max-width:700px){#bp{font-size:11px}#hrs div,#hrs{font-size:10px}#dl{font-size:11px}#di{width:92px}#bp .dr .b{width:26px}#leg{transform:scale(.85);transform-origin:left bottom;bottom:92px}#logo{display:none}#sx{top:60px;right:2vw}}
 </style></head><body>
-<div id="app"><div id="left"><div id="top"></div><div id="mb"><div id="map"></div><div id="vsb"><button class="sbb up" id="su"></button><div class="tk"><div class="th"></div></div><button class="sbb dn" id="sd"></button></div><div id="hsb"><button class="sbb lf" id="sl"></button><div class="tk"><div class="th"></div></div><button class="sbb rt" id="sr"></button></div></div></div>
-<div id="side"><div id="hdr">Скор. и направл. перемещен</div><div id="spd">az=— R=— км</div><div id="info">Az —<br>R —<br>Значение<br>&nbsp;н/д</div>
-<button class="ib p" id="fit" style="left:3px;top:166px"><svg viewBox="0 0 17 17"><rect x=".5" y=".5" width="16" height="16" fill="#fff" stroke="#00c"/><rect x="2" y="2" width="3" height="13" fill="#00c"/><rect x="6" y="2" width="1" height="13" fill="#00c"/><rect x="6" y="9" width="9" height="1" fill="#00c"/><rect x="9" y="4" width="5" height="5" fill="#ff0"/><rect x="11" y="5" width="3" height="3" fill="#f00"/></svg></button>
-<svg id="play" style="left:38px;top:166px;cursor:pointer" width="22" height="22" viewBox="0 0 22 22"><polygon points="3,2 17,11 3,20" fill="#0a6a0a"/></svg>
-<div id="dt"></div><div id="rad"><i style="top:205px"></i><i class="s" style="top:219px"></i><i style="top:232px"></i><i style="top:246px"></i></div><div id="ttl2">ДМРЛ</div><div id="nr">nr</div>
-<button class="ib" id="bset" style="left:3px"><svg viewBox="0 0 17 17"><path d="M1 4h5l1 1h6v2H4L1 14z" fill="#6b6b00"/><path d="M4 7h12l-3 7H1z" fill="#c8c850"/><path d="M11 3q3 0 3 3" fill="none" stroke="#000" stroke-width="1.5"/></svg></button>
-<button class="ib" id="bdn" style="left:31px"><svg viewBox="0 0 17 17"><path d="M6 1h5v8h3l-5.5 7L3 9h3z" fill="#f00" stroke="#000"/></svg></button>
-<button class="ib" id="bup" style="left:59px"><svg viewBox="0 0 17 17"><path d="M6 16h5V8h3L8.5 1 3 8h3z" fill="#f00" stroke="#000"/></svg></button>
-<button class="ib" id="bsv" style="left:87px"><svg viewBox="0 0 17 17"><path d="M2 9l6-5 7 3-6 5z" fill="#fff" stroke="#000"/><path d="M2 9v4l7 3 6-4V8l-6 4z" fill="#e00" stroke="#000"/></svg></button>
-<input type="checkbox" id="chk" checked><div id="files"></div><div id="leg"></div></div></div>
-<div id="dlg"><div><b>Настройки</b>
-<label>Адрес сервера <input type="text" id="api" placeholder="https://your.server:8080"></label>
-<label>Прозрачность <input type="range" id="op" min="30" max="100" value="100"></label>
-<label>Круги дальности <input type="checkbox" id="ci" checked></label>
-<label>ПГ <select id="pg"><option>теплый</option><option>холодный</option></select></label>
-<label>Анимация, мс <input type="number" id="sp" value="700" min="100" step="100" style="width:70px"></label>
-<button id="ap">Применить</button><button id="cl">Закрыть</button></div></div>
+<div id="map"></div>
+<div class="ov" id="zc"><div id="zi">+</div><div id="zo">−</div></div>
+<button class="ov wb" id="rl"><svg width="18" height="14" viewBox="0 0 18 14"><rect x="1" y="5" width="16" height="6" transform="rotate(-30 9 8)" fill="#e8e8e8" stroke="#333"/><path d="M4 9v-2M7 8v-2M10 6.5v-2M13 5v-2" stroke="#333" transform="rotate(-0 9 8)"/></svg></button>
+<button class="ov wb" id="vc">VC</button>
+<div class="ov" id="lp"><button class="wb" id="lb"><svg width="10" height="10" viewBox="0 0 10 10" style="vertical-align:-1px"><path d="M1 1h4M1 1v4M1 1l7 7" stroke="#000" fill="none"/><path d="M5 5l4 1-1 3z"/></svg></button><div id="li"></div><button class="wb" id="sat">Sat</button></div>
+<div class="ov" id="leg"></div>
+<div class="ov" id="logo"><svg width="40" height="44" viewBox="0 0 40 44"><circle cx="20" cy="22" r="19" fill="#fff" stroke="#1f5fa8" stroke-width="2"/><circle cx="20" cy="22" r="14" fill="#1f78d0"/><path d="M7 24q6-8 13 0t13 0" stroke="#fff" stroke-width="3" fill="none"/></svg><svg width="30" height="42" viewBox="0 0 30 42"><rect width="30" height="42" fill="#fff" stroke="#333"/><rect x="1" y="1" width="14" height="22" fill="#e8102e"/><rect x="15" y="1" width="14" height="22" fill="#1a4fb0"/><rect x="1" y="23" width="28" height="12" fill="#f4d000"/><text x="15" y="39" font-size="6" text-anchor="middle" fill="#a00" font-weight="bold">1941</text></svg></div>
+<button class="ov" id="hp">?</button><button class="ov wb" id="fs"><svg width="14" height="14" viewBox="0 0 14 14"><path d="M2 12L12 2M6 2h6v6" stroke="#4a76a8" stroke-width="2" fill="none"/></svg></button>
+<div class="ov" id="ll">Шир: —  Дол: —</div><div class="ov" id="msg"></div>
+<div class="ov" id="bp"><div class="tt" id="tt">Метеоявления</div><div class="st"><button class="b red" data-m="S">S</button><button class="b" data-m="R">R</button><button class="b" data-m="H">H</button></div>
+<div class="dr"><span id="dl"></span><button class="b" id="n1">&lt;&lt;</button><button class="b" id="n2">&lt;</button><button class="b" id="n3">|&gt;</button><button class="b" id="n4">&gt;</button><button class="b" id="n5">&gt;&gt;</button><input id="di" type="date"><input id="ck" type="checkbox" title="Автообновление"></div>
+<div id="hrs"></div><canvas id="bar" height="17"></canvas></div>
+<div class="ov" id="sx"><div id="sh">Вертикальное сечение р/л отражаемости Z</div><div id="sc">×</div><div class="yl">Высота,<br>км</div><div id="sst"></div><canvas id="sp" width="440" height="222"></canvas><div id="yt"></div><div class="xl">Расстояние, км</div><div id="zl"></div></div>
+<div id="dlg"><div><b>Настройки</b><label>Адрес сервера<input type="text" id="api" placeholder="https://your.server:8080"></label><label>URL спутниковых тайлов (Sat), {z}/{x}/{y}<input type="text" id="sau"></label><button id="ap">Применить</button><button id="cl">Закрыть</button></div></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script>
-const $=i=>document.getElementById(i);
-const L2=[['Обл.в.ср.яр.','#9caab1'],['Сл.образн.','#a2c6ff'],['Осадки слабы','#46ff93'],['Осадки умере','#00c25a'],['Осадки сильн','#009800'],['Кучевая обл.','#ffff80'],['Ливень слабы','#3e88ff'],['Ливень умере','#0138ff'],['Ливень сильн','#000074'],['Гроза (R)','#ffaa7f'],['Гроза R)','#ff557f'],['Гроза R','#ff0000'],['Град слабый','#cc6600'],['Град умеренн','#884400'],['Град сильный','#5f0000'],['Шквал слабый','#ffaaff'],['Шквал умерен','#ff55ff'],['Шквал сильны','#c700c7'],['Смерч','#3f3f5f']];
+const $=i=>document.getElementById(i),pad=n=>String(n).padStart(2,'0');
+const L2=[['Обл. в. ср. яр.','#9caab1'],['Слоист. обл.','#a2c6ff'],['Ос. слаб.','#46ff93'],['Ос. умер.','#00c25a'],['Ос. сильн.','#009800'],['Куч. обл.','#ffff80'],['Лив. слаб.','#3e88ff'],['Лив. умер.','#0138ff'],['Лив. сильн.','#000074'],['Гроза (R)','#ffaa7f'],['Гроза R)','#ff557f'],['Гроза R','#ff0000'],['Град слаб.','#cc6600'],['Град умер.','#884400'],['Град сильн.','#5f0000'],['Гроз+Шкв слаб.','#ffaaff'],['Гроз+Шкв умер.','#ff55ff'],['Гроз+Шкв сильн.','#c700c7'],['Смерч','#3f3f5f']];
 const P=L2.map(l=>[1,3,5].map(i=>parseInt(l[1].substr(i,2),16))),TOL=48;
-$('leg').innerHTML='<div class="hd">Метеоявления</div>'+L2.map(l=>`<div class="r"><i style="background:${l[1]}"></i>${l[0]}</div>`).join('');
-const S={api:localStorage.api||'',op:1,ci:1,dang:0,dyn:0,prod:4,fr:0,play:0,tm:null,rd:null,fl:[],rings:[],wl:null};
-const T=$('top');T.innerHTML='<div id="nb"><button class="bt" data-p="3">3</button>'+[...Array(12)].map((_,i)=>`<button class="bt${i?'':' on'}" data-p="${i+4}">${i+4}</button>`).join('')+'</div><div class="t" id="ttl">Метеоявления &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ПГ: теплый</div><button class="bt" id="dng">Опасные явления</button><button class="bt" id="dyn">Динамика</button>';
-T.onclick=e=>{const b=e.target.closest('button');if(!b)return;if(b.dataset.p){S.prod=+b.dataset.p;T.querySelectorAll('#nb .bt').forEach(k=>k.classList.toggle('on',k===b));show()}else if(b.id=='dng'){S.dang^=1;b.classList.toggle('on');show()}else{S.dyn^=1;b.classList.toggle('on');show()}};
-const map=L.map('map',{zoomControl:true,worldCopyJump:true,minZoom:2}).setView([61,95],3);
-map.on('zoomend',()=>$('map').classList.toggle('nolab',map.getZoom()<5));$('map').classList.add('nolab');L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:12,attribution:'© OpenStreetMap'}).addTo(map);
-const pad=n=>String(n).padStart(2,'0'),msg=t=>{let m=$('msg');if(!m){m=document.createElement('div');m.id='msg';$('map').appendChild(m)}m.textContent=t||''};
+const ZT=[-30,-10,-5,0,5,10,15,20,25,30,35,40,45,50,55,60,65,70],ZC=['#dcdcdc','#a6a6a4','#a9d3ec','#cdff97','#56ff3d','#10a5f9','#0c4bee','#0003b9','#000079','#ffff00','#ff8c00','#ff4a2a','#ff0000','#3fd01a','#0aa104','#ec08f3','#a405f5','#710100'];
+$('leg').innerHTML=L2.map(l=>`<div><i style="background:${l[1]}"></i>${l[0]}</div>`).join('');
+$('zl').innerHTML='<b>Z,dbZ</b>'+ZT.map((t,i)=>`<div><i style="background:${ZC[i]}"></i>&gt;${t<0?'-'+(-t):t}</div>`).join('');
+const TTL={S:'Метеоявления',R:'Радиолокационная отражаемость',H:'Высота верхней границы облачности'};
+const LG={wwlln:['WWLLN','#e6e600'],planeta:['Планета','#000'],vgi:['ВГИ','#e22'],alves:['Алвес','#f80']};
+const S={api:localStorage.api||'',sat:localStorage.sat||'',m:'S',T:null,play:0,tm:null,auto:0,vc:0,rl:0,lg:{},tk:0};
+$('li').innerHTML=Object.keys(LG).map(k=>`<div class="it off" data-k="${k}"><i style="color:${LG[k][1]}">+</i>${LG[k][0]}</div>`).join('');
+const map=L.map('map',{zoomControl:false,worldCopyJump:true,minZoom:2,attributionControl:true}).setView([56,50],5);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:12,attribution:'© OpenStreetMap'}).addTo(map);
+const msg=t=>$('msg').textContent=t||'';
 const jf=async p=>{const r=await fetch(S.api+p);if(!r.ok)throw 0;return r.json()};
-const tsd=t=>new Date(Date.UTC(+t.slice(0,4),t.slice(4,6)-1,+t.slice(6,8),+t.slice(9,11),+t.slice(11,13),+t.slice(13,15)));
-// ---- радары ----
-let RD=[],mk=[];
-async function init(){if(!S.api){msg('Укажите адрес сервера в настройках (папка)');return}
-try{RD=await jf('/api/radars');mk.forEach(m=>m.remove());mk=RD.map(r=>{const m=L.marker([r.lat,r.lon],{icon:L.divIcon({className:'',html:`<div class="rd" id="rd_${r.id}"><b>${r.name}</b></div>`,iconSize:[12,11],iconAnchor:[6,6]})}).addTo(map);m.on('click',()=>pick(r));return m});msg('');if(RD.length)pick(RD[0],0)}catch(e){msg('сервер недоступен: '+S.api)}}
-async function pick(r,fit){S.rd=r;document.querySelectorAll('.rd').forEach(e=>e.classList.toggle('sel',e.id=='rd_'+r.id));
-const b=r.bounds;if(fit)map.fitBounds([[b[0],b[1]],[b[2],b[3]]]);S.rings.forEach(c=>c.remove());S.rings=[];if(S.ci)(r.rings||[25,50,125,250]).forEach(k=>S.rings.push(L.circle([r.lat,r.lon],{radius:k*1000,color:'#000',weight:1,fill:false,interactive:false}).addTo(map)));
-if(S.ov){S.ov.remove();S.ov=null}if(S.gh){S.gh.remove();S.gh=null}C={};
-try{S.fl=await jf('/api/frames/'+r.id);S.fr=Math.max(0,S.fl.length-1);lst();show()}catch(e){msg('нет кадров')}}
-function lst(){$('files').innerHTML=S.fl.map((t,i)=>`<div class="${i==S.fr?'s':''}" data-i="${i}">${t}_1.lnr</div>`).join('');const t=S.fl[S.fr];if(t){const d=tsd(t);$('dt').innerHTML=`${pad(d.getDate())}.${pad(d.getMonth()+1)}.${d.getFullYear()}<br>${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`}const s=$('files').querySelector('.s');if(s)$('files').scrollTop=s.offsetTop-70}
-// ---- кадры ----
-let C={};const key=(i)=>S.rd.id+i+'|'+S.prod;
-async function frame(i){const k=key(i);if(C[k])return C[k];const t=S.fl[i];
-const im=new Image();im.crossOrigin='anonymous';await new Promise((ok,no)=>{im.onload=ok;im.onerror=no;im.src=`${S.api}/api/img/${S.rd.id}/${t}?p=${S.prod}`});
+const wd=['вс','пн','вт','ср','чт','пт','сб'],mn=['янв','фев','мар','апр','мая','июн','июл','авг','сен','окт','ноя','дек'];
+const stp=d=>`${d.getUTCFullYear()}${pad(d.getUTCMonth()+1)}${pad(d.getUTCDate())}_${pad(d.getUTCHours())}${pad(d.getUTCMinutes())}00`;
+const dstr=d=>`${d.getUTCFullYear()}-${pad(d.getUTCMonth()+1)}-${pad(d.getUTCDate())}`;
+const latest=()=>new Date(Math.floor(Date.now()/6e5)*6e5-6e5);S.T=latest();
+// ---- нижняя панель ----
+$('hrs').innerHTML=[...Array(24)].map((_,i)=>`<div data-h="${i}">${i}</div>`).join('');
+function ui(){const d=S.T;$('dl').textContent=`${wd[d.getUTCDay()]}, ${d.getUTCDate()} ${mn[d.getUTCMonth()]} ${d.getUTCFullYear()} г., ${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())} UTC`;$('di').value=dstr(d);$('tt').textContent=TTL[S.m];
+document.querySelectorAll('.st .b').forEach(b=>b.classList.toggle('red',b.dataset.m==S.m));$('leg').style.display=S.m=='S'?'block':'none';bar()}
+function bar(){const c=$('bar'),w=c.width=$('bp').clientWidth-2,g=c.getContext('2d'),d0=Date.UTC(S.T.getUTCFullYear(),S.T.getUTCMonth(),S.T.getUTCDate()),nw=Date.now()-6e5;g.fillStyle='#d3d3d3';g.fillRect(0,0,w,17);
+for(let i=0;i<144;i++){const t=d0+i*6e5,x=Math.round(i*w/144),x2=Math.round((i+1)*w/144),ok=t<=nw;g.fillStyle=ok?'#268c26':'#d3d3d3';g.fillRect(x,0,x2-x,17);g.fillStyle=ok?'#0d5a0d':'#fff';g.fillRect(x,0,1,17)}
+const x=(S.T-d0)/864e5*w;g.fillStyle='#f0ff20';g.fillRect(Math.round(x)-1,0,3,17);document.querySelectorAll('#hrs div').forEach(e=>e.classList.toggle('c',+e.dataset.h==S.T.getUTCHours()))}
+const setT=d=>{S.T=d;ui();show();if(S.vb)sect();lightning()};
+$('n1').onclick=()=>setT(new Date(S.T-36e5));$('n2').onclick=()=>setT(new Date(S.T-6e5));$('n4').onclick=()=>setT(new Date(+S.T+6e5));$('n5').onclick=()=>setT(new Date(+S.T+36e5));
+$('n3').onclick=()=>{S.play^=1;$('n3').classList.toggle('on',!!S.play);clearInterval(S.tm);if(S.play)S.tm=setInterval(()=>{const n=new Date(+S.T+6e5);setT(n>Date.now()?new Date(+S.T-36e5):n)},800)};
+$('di').onchange=e=>{const [y,m,d]=e.target.value.split('-').map(Number);if(y)setT(new Date(Date.UTC(y,m-1,d,S.T.getUTCHours(),S.T.getUTCMinutes())))};
+$('hrs').onclick=e=>{const h=e.target.dataset.h;if(h!=null)setT(new Date(Date.UTC(S.T.getUTCFullYear(),S.T.getUTCMonth(),S.T.getUTCDate(),+h)))};
+$('bar').onclick=e=>{const r=e.target.getBoundingClientRect(),f=(e.clientX-r.left)/r.width,d0=Date.UTC(S.T.getUTCFullYear(),S.T.getUTCMonth(),S.T.getUTCDate());setT(new Date(d0+Math.floor(f*144)*6e5))};
+$('ck').onchange=e=>{S.auto=+e.target.checked;if(S.auto)setT(latest())};setInterval(()=>{if(S.auto){S.T=latest();ui();show()}},60000);
+document.querySelectorAll('.st .b').forEach(b=>b.onclick=()=>{S.m=b.dataset.m;ui();show()});
+// ---- радары и кадры ----
+let RD=[],OV={},RG=[],C={};
+async function init(){if(!S.api){msg('Укажите адрес сервера: кнопка «?»');return}try{RD=await jf('/api/radars');msg('');RG.forEach(x=>x.remove());RG=RD.map(r=>L.circleMarker([r.lat,r.lon],{radius:3,color:'#2a8a2a',weight:1,fillOpacity:0}).addTo(map).bindTooltip(r.name));show()}catch(e){msg('сервер недоступен: '+S.api)}}
+async function frame(r,ts){const k=r.id+ts;if(C[k])return C[k];const im=new Image();im.crossOrigin='anonymous';await new Promise((ok,no)=>{im.onload=ok;im.onerror=no;im.src=`${S.api}/api/img/${r.id}/${ts}?p=4&m=S`});
 const c=document.createElement('canvas');c.width=im.width;c.height=im.height;const g=c.getContext('2d');g.drawImage(im,0,0);const d=g.getImageData(0,0,c.width,c.height).data,a=new Int8Array(c.width*c.height);
-for(let p=0;p<a.length;p++){a[p]=-1;if(d[p*4+3]<128)continue;let m=1e9,q0=-1;for(let q=0;q<19;q++){const e=(d[p*4]-P[q][0])**2+(d[p*4+1]-P[q][1])**2+(d[p*4+2]-P[q][2])**2;if(e<m){m=e;q0=q}}if(m<=TOL*TOL)a[p]=q0}
-return C[k]={w:c.width,h:c.height,a}}
-function url(f){const c=document.createElement('canvas');c.width=f.w;c.height=f.h;const g=c.getContext('2d'),im=g.createImageData(f.w,f.h),d=im.data;for(let p=0;p<f.a.length;p++){const q=f.a[p];if(q<0||(S.dang&&q<9))continue;d[p*4]=P[q][0];d[p*4+1]=P[q][1];d[p*4+2]=P[q][2];d[p*4+3]=255}g.putImageData(im,0,0);return c.toDataURL()}
-async function show(){if(!S.rd||!S.fl.length)return;const r=S.rd,b=[[r.bounds[0],r.bounds[1]],[r.bounds[2],r.bounds[3]]],i=S.fr;msg('загрузка…');
-try{const f=await frame(i);if(i!=S.fr)return;S.cur=f;if(!S.ov)S.ov=L.imageOverlay(url(f),b,{opacity:S.op,zIndex:300}).addTo(map);else S.ov.setUrl(url(f)).setOpacity(S.op).setBounds(b);
-if(S.dyn&&i>0){const p=await frame(i-1);if(!S.gh)S.gh=L.imageOverlay(url(p),b,{opacity:.35,zIndex:299}).addTo(map);else S.gh.setUrl(url(p))}else if(S.gh){S.gh.remove();S.gh=null}msg('')}catch(e){msg('кадр недоступен')}}
-const go=i=>{S.fr=Math.max(0,Math.min(S.fl.length-1,i));lst();show()};
-$('files').onclick=e=>{if(e.target.dataset.i!=null)go(+e.target.dataset.i)};$('bdn').onclick=()=>go(S.fr+1);$('bup').onclick=()=>go(S.fr-1);
-$('fit').onclick=()=>{if(S.rd){pick(S.rd,1);if(S.wl){S.wl.remove();S.wl=null}$('spd').textContent='az=— R=— км'}};
-$('rad').onclick=e=>{if(e.target.tagName=='I'){[...$('rad').children].forEach(k=>k.classList.toggle('s',k===e.target));S.prod=4+[...$('rad').children].indexOf(e.target);show()}};
-$('bsv').onclick=()=>{if(!S.ov)return;const a=document.createElement('a');a.download=S.fl[S.fr]+'.png';a.href=S.ov._image.src;a.click()};
-function run(){clearInterval(S.tm);if(S.play)S.tm=setInterval(()=>go((S.fr+1)%S.fl.length),+$('sp').value)}
-$('play').onclick=()=>{S.play^=1;$('play').innerHTML=S.play?'<rect x="3" y="2" width="5" height="18" fill="#0a6a0a"/><rect x="12" y="2" width="5" height="18" fill="#0a6a0a"/>':'<polygon points="3,2 17,11 3,20" fill="#0a6a0a"/>';run()};$('sp').onchange=run;
-$('bset').onclick=()=>{$('api').value=S.api;$('dlg').style.display='flex'};$('cl').onclick=()=>$('dlg').style.display='none';
-$('ap').onclick=()=>{S.api=$('api').value.trim().replace(/\/$/,'');localStorage.api=S.api;S.op=$('op').value/100;S.ci=+$('ci').checked;$('dlg').style.display='none';C={};init()};
-$('pg').onchange=e=>$('ttl').innerHTML='Метеоявления &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ПГ: '+e.target.value;
-// ---- геодезия ----
-const rad=Math.PI/180,brg=(a,b)=>{const y=Math.sin((b.lng-a.lon)*rad)*Math.cos(b.lat*rad),x=Math.cos(a.lat*rad)*Math.sin(b.lat*rad)-Math.sin(a.lat*rad)*Math.cos(b.lat*rad)*Math.cos((b.lng-a.lon)*rad);return(Math.atan2(y,x)/rad+360)%360},
-dist=(a,b)=>{const h=Math.sin((b.lat-a.lat)*rad/2)**2+Math.cos(a.lat*rad)*Math.cos(b.lat*rad)*Math.sin((b.lng-a.lon)*rad/2)**2;return 12742*Math.asin(Math.sqrt(h))};
-map.on('mousemove',e=>{if(!S.rd)return;const r=S.rd,az=brg(r,e.latlng),R=dist(r,e.latlng),b=r.bounds;let n='н/д';const f=S.cur;if(f){const px=Math.floor((e.latlng.lng-b[1])/(b[3]-b[1])*f.w),py=Math.floor((b[2]-e.latlng.lat)/(b[2]-b[0])*f.h);if(px>=0&&py>=0&&px<f.w&&py<f.h){const c=f.a[py*f.w+px];if(c>=0)n=L2[c][0]}}$('info').innerHTML=`Az ${az.toFixed(2)}<br>R ${R.toFixed(2)}<br>Значение<br>&nbsp;${n}`});
-map.on('click',e=>{if(!S.rd)return;const r=S.rd,az=brg(r,e.latlng);if(S.wl)S.wl.remove();S.wl=L.polyline([[r.lat,r.lon],e.latlng],{color:'#000',weight:2,interactive:false}).addTo(map);$('spd').textContent=`az=${Math.round(az)} ${['С','СВ','В','ЮВ','Ю','ЮЗ','З','СЗ'][Math.round(az/45)%8]}  R=${dist(r,e.latlng).toFixed(1)} км`});
-$('su').onclick=()=>map.panBy([0,-120]);$('sd').onclick=()=>map.panBy([0,120]);$('sl').onclick=()=>map.panBy([-120,0]);$('sr').onclick=()=>map.panBy([120,0]);
-init();
+for(let p=0;p<a.length;p++){a[p]=-1;if(d[p*4+3]<128)continue;let m=1e9,q0=-1;for(let q=0;q<19;q++){const e=(d[p*4]-P[q][0])**2+(d[p*4+1]-P[q][1])**2+(d[p*4+2]-P[q][2])**2;if(e<m){m=e;q0=q}}if(m<=TOL*TOL)a[p]=q0}return C[k]={w:c.width,h:c.height,a}}
+function url(f){const c=document.createElement('canvas');c.width=f.w;c.height=f.h;const g=c.getContext('2d'),im=g.createImageData(f.w,f.h),d=im.data;for(let p=0;p<f.a.length;p++){const q=f.a[p];if(q<0)continue;d[p*4]=P[q][0];d[p*4+1]=P[q][1];d[p*4+2]=P[q][2];d[p*4+3]=255}g.putImageData(im,0,0);return c.toDataURL()}
+async function show(){if(!RD.length)return;const z=map.getZoom(),b=map.getBounds(),tk=++S.tk,ts=stp(S.T),bb=r=>[[r.bounds[0],r.bounds[1]],[r.bounds[2],r.bounds[3]]];
+const vis=z>=5?RD.filter(r=>b.intersects(bb(r))).slice(0,10):[];Object.keys(OV).forEach(id=>{if(!vis.find(r=>r.id==id)){OV[id].remove();delete OV[id]}});let bad=0;
+await Promise.all(vis.map(async r=>{try{const src=S.m=='S'?url(await frame(r,ts)):`${S.api}/api/img/${r.id}/${ts}?p=4&m=${S.m}`;if(tk!=S.tk)return;if(OV[r.id])OV[r.id].setUrl(src);else OV[r.id]=L.imageOverlay(src,bb(r),{opacity:.92,zIndex:300}).addTo(map)}catch(e){bad++;if(OV[r.id]){OV[r.id].remove();delete OV[r.id]}}}));
+if(tk==S.tk)msg(vis.length&&bad==vis.length?'нет данных за '+ts+' UTC':z<5&&RD.length?'приблизьте карту (zoom ≥ 5)':'')}
+map.on('moveend',()=>{show();lightning()});
+// ---- координаты ----
+const dms=v=>{const a=Math.abs(v),d=Math.floor(a),m=Math.floor((a-d)*60),s=Math.round(((a-d)*60-m)*60);return d+'°'+pad(m)+"'"+pad(s)+'"'};
+map.on('mousemove',e=>$('ll').textContent=`Шир: ${dms(e.latlng.lat)} Дол: ${dms(e.latlng.lng)}`);
+// ---- кнопки на карте ----
+$('zi').onclick=()=>map.zoomIn();$('zo').onclick=()=>map.zoomOut();
+$('fs').onclick=()=>document.fullscreenElement?document.exitFullscreen():document.documentElement.requestFullscreen&&document.documentElement.requestFullscreen();
+$('lb').onclick=()=>{const v=$('li').style.display=='none';$('li').style.display=v?'':'none';$('sat').style.display=v?'':'none'};
+$('hp').onclick=()=>{$('api').value=S.api;$('sau').value=S.sat;$('dlg').style.display='flex'};$('cl').onclick=()=>$('dlg').style.display='none';
+$('ap').onclick=()=>{S.api=$('api').value.trim().replace(/\/$/,'');S.sat=$('sau').value.trim();localStorage.api=S.api;localStorage.sat=S.sat;$('dlg').style.display='none';C={};init()};
+let satL=null;$('sat').onclick=()=>{if(satL){satL.remove();satL=null;$('sat').classList.remove('on');return}if(!S.sat){msg('Sat: укажите URL тайлов в «?»');return}satL=L.tileLayer(S.sat,{zIndex:100}).addTo(map);$('sat').classList.add('on')};
+// ---- молнии ----
+const LL={};async function lightning(){for(const k in LG){if(LL[k]){LL[k].remove();delete LL[k]}if(!S.lg[k]||!S.api)continue;try{const b=map.getBounds(),t1=new Date(+S.T+6e5).toISOString(),t0=new Date(+S.T).toISOString(),j=await jf(`/api/lightning?src=${k}&from=${t0}&to=${t1}&s=${b.getSouth()}&w=${b.getWest()}&n=${b.getNorth()}&e=${b.getEast()}`);
+if(!S.lg[k])continue;LL[k]=L.layerGroup(j.slice(0,3000).map(p=>L.marker(p,{interactive:false,icon:L.divIcon({className:'',html:`<b style="color:${LG[k][1]};font:bold 16px/10px Arial;position:absolute;left:-5px;top:-5px">+</b>`,iconSize:[0,0]})}))).addTo(map)}catch(e){msg('молнии '+LG[k][0]+': нет данных')}}}
+$('li').onclick=e=>{const k=e.target.closest('.it');if(!k)return;const n=k.dataset.k;S.lg[n]=!S.lg[n];k.classList.toggle('off',!S.lg[n]);lightning()};
+// ---- линейка ----
+let rp=[],rpl=null,rtt=null;$('rl').onclick=()=>{S.rl^=1;$('rl').classList.toggle('on',!!S.rl);if(!S.rl){rp=[];if(rpl)rpl.remove();if(rtt)rtt.remove();rpl=rtt=null}else{S.vc=0;$('vc').classList.remove('on')}};
+// ---- вертикальное сечение ----
+let va,vb,vl,vm=[];$('vc').onclick=()=>{S.vc^=1;$('vc').classList.toggle('on',!!S.vc);if(S.vc){S.rl=0;$('rl').classList.remove('on');vclear()}else vclear()};
+function vclear(){va=vb=S.va=S.vb=null;if(vl)vl.remove();vm.forEach(m=>m.remove());vm=[];vl=null;$('sx').style.display='none'}
+map.on('click',e=>{if(S.rl){rp.push(e.latlng);if(rpl)rpl.setLatLngs(rp);else rpl=L.polyline(rp,{color:'#222',weight:2,dashArray:'4 3'}).addTo(map);let d=0;for(let i=1;i<rp.length;i++)d+=rp[i-1].distanceTo(rp[i]);if(rtt)rtt.remove();rtt=L.tooltip({permanent:true,direction:'right'}).setLatLng(e.latlng).setContent((d/1000).toFixed(1)+' км').addTo(map);return}
+if(!S.vc)return;if(!S.va){S.va=e.latlng;vm.push(L.marker(e.latlng,{interactive:false,icon:L.divIcon({className:'',html:'<div style="color:#7a1030;font:bold 12px Arial;margin:-8px 0 0 -4px">▲A</div>',iconSize:[0,0]})}).addTo(map))}
+else if(!S.vb){S.vb=e.latlng;vl=L.polyline([S.va,S.vb],{color:'#7a1030',weight:1.5,interactive:false}).addTo(map);vm.push(L.circleMarker(S.vb,{radius:4,color:'#c33',weight:2,fillOpacity:0}).addTo(map));S.vc=0;$('vc').classList.remove('on');sect()}});
+for(let k=1;k<=15;k++){const d=document.createElement('div');d.className='yt';d.style.top=(55+222*(15-k)/15+2)+'px';d.textContent=k;$('yt').appendChild(d)}
+async function sect(){$('sx').style.display='block';const c=$('sp'),g=c.getContext('2d');g.fillStyle='#b8b8b8';g.fillRect(0,0,440,222);$('sst').textContent='Данные загружаются...';
+const mid=L.latLng((S.va.lat+S.vb.lat)/2,(S.va.lng+S.vb.lng)/2);let r=RD.slice().sort((a,b)=>mid.distanceTo([a.lat,a.lon])-mid.distanceTo([b.lat,b.lon]))[0];
+try{if(!r)throw 0;const j=await jf(`/api/section?id=${r.id}&ts=${stp(S.T)}&a=${S.va.lat},${S.va.lng}&b=${S.vb.lat},${S.vb.lng}`),n=j.z.length,cw=440/n,rh=222/15;$('sst').textContent='';
+j.z.forEach((col,i)=>col.forEach((v,k)=>{if(v==null||v<=-30)return;let q=0;while(q+1<ZT.length&&v>ZT[q+1])q++;g.fillStyle=ZC[q];g.fillRect(Math.floor(i*cw),Math.round(222-(k+1)*rh),Math.ceil(cw),Math.ceil(rh))}));
+g.strokeStyle='#888';g.setLineDash([4,3]);[5,10,15].forEach(k=>{g.beginPath();g.moveTo(0,222-k*rh+.5);g.lineTo(440,222-k*rh+.5);g.stroke()});g.setLineDash([])}catch(e){$('sst').textContent='Нет данных вертикального сечения (сервер не отдаёт объёмные данные)'}}
+$('sc').onclick=()=>$('sx').style.display='none';
+(()=>{const h=$('sh'),w=$('sx');let o=null;h.onpointerdown=e=>{h.setPointerCapture(e.pointerId);const r=w.getBoundingClientRect();o=[e.clientX-r.left,e.clientY-r.top]};h.onpointermove=e=>{if(!o)return;w.style.left=(e.clientX-o[0])+'px';w.style.top=(e.clientY-o[1])+'px';w.style.right='auto'};h.onpointerup=()=>o=null})();
+addEventListener('resize',bar);ui();init();
 </script></body></html>

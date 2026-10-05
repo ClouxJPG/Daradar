@@ -2,816 +2,1792 @@
 <html lang="ru">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>РЛС-Монитор · Радарные наблюдения России · РИГМЦ / ЦАО</title>
-<meta name="description" content="Живые радарные наблюдения России: сводка ЦАО Росгидромета (МЕТЕОРАД), сеть ДМРЛ-С. Без прогностических моделей.">
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css">
+<meta name="viewport"
+      content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+
+<title>Daradar — Метеорадар</title>
+
+<link
+  rel="stylesheet"
+  href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+/>
+
 <style>
-:root{
-  --bg:#070b08; --bg2:#0c120d; --panel:#0e1610; --panel2:#111c13;
-  --line:#1d3322; --line2:#274a2e;
-  --grn:#39ff6a; --grn-dim:#1fae4a; --grn-dark:#0f5c28;
-  --txt:#cfeed6; --txt-dim:#7fa88c; --txt-faint:#4d6b58;
-  --amber:#ffc94d; --red:#ff5d5d; --blue:#57b6ff;
-  --mono:'JetBrains Mono','SFMono-Regular',Consolas,'Liberation Mono',monospace;
+/* =========================================================
+   DARADAR — FULL INTERFACE
+   Один index.html
+   Адаптация ПК + телефон
+   ========================================================= */
+
+:root {
+    --bg: #101216;
+    --panel: rgba(20, 23, 29, .96);
+    --panel2: rgba(28, 32, 40, .96);
+    --border: rgba(255,255,255,.09);
+    --text: #f4f5f7;
+    --muted: #9da4af;
+    --accent: #4d9cff;
+    --danger: #ff4d5f;
+    --radius: 14px;
 }
-*{margin:0;padding:0;box-sizing:border-box}
-html,body{height:100%;background:var(--bg);color:var(--txt);font-family:'Segoe UI',system-ui,-apple-system,Roboto,sans-serif;overflow:hidden}
-::-webkit-scrollbar{width:9px;height:9px}
-::-webkit-scrollbar-track{background:var(--bg2)}
-::-webkit-scrollbar-thumb{background:var(--line2);border-radius:4px}
-::-webkit-scrollbar-thumb:hover{background:var(--grn-dim)}
 
-/* ===== HEADER ===== */
-header{height:56px;display:flex;align-items:center;gap:14px;padding:0 16px;background:linear-gradient(180deg,#0d1510,#0a100b);border-bottom:1px solid var(--line);position:relative;z-index:1200}
-.logo{display:flex;align-items:center;gap:10px;user-select:none}
-.logo-radar{width:34px;height:34px;border-radius:50%;border:2px solid var(--grn-dark);position:relative;overflow:hidden;flex:none;background:radial-gradient(circle,#0a1f10 0%,#071208 70%)}
-.logo-radar::before{content:'';position:absolute;inset:0;background:conic-gradient(from 0deg,rgba(57,255,106,.55),transparent 18%);animation:sweep 3.2s linear infinite}
-.logo-radar::after{content:'';position:absolute;inset:6px;border:1px solid rgba(57,255,106,.25);border-radius:50%}
-@keyframes sweep{to{transform:rotate(360deg)}}
-.logo h1{font-size:15px;letter-spacing:2.5px;color:var(--grn);font-weight:700;text-transform:uppercase;white-space:nowrap}
-.logo small{display:block;font-size:9.5px;letter-spacing:1px;color:var(--txt-dim);font-weight:400;text-transform:none}
-.hdr-clocks{margin-left:auto;display:flex;gap:18px;align-items:center}
-.clock{text-align:right;line-height:1.25}
-.clock b{font-family:var(--mono);font-size:14px;color:var(--txt);font-weight:600}
-.clock span{display:block;font-size:9px;letter-spacing:1.5px;color:var(--txt-faint);text-transform:uppercase}
-.status-chip{display:flex;align-items:center;gap:7px;padding:5px 11px;border:1px solid var(--line2);border-radius:20px;font-size:11px;font-family:var(--mono);color:var(--txt-dim);background:var(--panel)}
-.dot{width:8px;height:8px;border-radius:50%;background:var(--grn);box-shadow:0 0 8px var(--grn);animation:blink 2s infinite}
-.dot.wait{background:var(--amber);box-shadow:0 0 8px var(--amber)}
-.dot.err{background:var(--red);box-shadow:0 0 8px var(--red);animation:none}
-@keyframes blink{50%{opacity:.35}}
-
-/* ===== TABS ===== */
-nav.tabs{display:flex;gap:4px;padding:7px 16px;background:var(--bg2);border-bottom:1px solid var(--line);position:relative;z-index:1100;overflow-x:auto}
-.tab-btn{border:1px solid var(--line);background:var(--panel);color:var(--txt-dim);font-size:12px;letter-spacing:1.2px;text-transform:uppercase;padding:8px 18px;border-radius:6px;cursor:pointer;transition:.18s;white-space:nowrap;font-family:var(--mono)}
-.tab-btn:hover{color:var(--txt);border-color:var(--line2)}
-.tab-btn.active{background:var(--grn-dark);border-color:var(--grn-dim);color:#eafff0;box-shadow:0 0 14px rgba(57,255,106,.18)}
-.tab-btn kbd{opacity:.5;font-size:10px;margin-left:6px}
-
-/* ===== PANES ===== */
-main{position:absolute;top:56px;bottom:0;left:0;right:0}
-.pane{position:absolute;inset:52px 0 0 0;display:none}
-.pane.active{display:block}
-#map{position:absolute;inset:0;background:#0a0f0a}
-
-/* ===== MAP UI ===== */
-.map-panel{position:absolute;z-index:900;background:rgba(10,17,11,.92);border:1px solid var(--line2);border-radius:10px;backdrop-filter:blur(6px);box-shadow:0 4px 24px rgba(0,0,0,.5)}
-#data-badge{top:12px;left:60px;padding:10px 14px;min-width:230px}
-#data-badge .t1{font-size:10px;letter-spacing:1.5px;color:var(--txt-faint);text-transform:uppercase}
-#data-badge .t2{font-family:var(--mono);font-size:15px;color:var(--grn);margin-top:2px}
-#data-badge .t3{font-family:var(--mono);font-size:11px;color:var(--txt-dim);margin-top:3px}
-#data-badge .t3 b{color:var(--amber);font-weight:600}
-#ctrl-panel{top:12px;right:12px;padding:12px 14px;width:238px}
-#ctrl-panel h4{font-size:10px;letter-spacing:1.5px;color:var(--txt-faint);text-transform:uppercase;margin:0 0 8px}
-#ctrl-panel .row{margin-bottom:11px}
-#ctrl-panel label{font-size:11.5px;color:var(--txt-dim);display:flex;justify-content:space-between;margin-bottom:4px}
-#ctrl-panel label output{color:var(--grn);font-family:var(--mono);font-size:11px}
-input[type=range]{width:100%;accent-color:var(--grn);height:18px;cursor:pointer}
-.seg{display:flex;border:1px solid var(--line2);border-radius:6px;overflow:hidden}
-.seg button{flex:1;background:var(--panel);border:none;color:var(--txt-dim);font-size:10.5px;padding:7px 2px;cursor:pointer;letter-spacing:.4px;transition:.15s}
-.seg button.active{background:var(--grn-dark);color:#eafff0}
-.chk{display:flex;align-items:center;gap:8px;font-size:11.5px;color:var(--txt-dim);cursor:pointer;padding:3px 0;user-select:none}
-.chk input{accent-color:var(--grn);width:14px;height:14px;cursor:pointer}
-.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;border:1px solid var(--line2);background:var(--panel2);color:var(--txt);font-size:11.5px;padding:7px 12px;border-radius:6px;cursor:pointer;transition:.15s;letter-spacing:.4px}
-.btn:hover{border-color:var(--grn-dim);color:var(--grn)}
-.btn:active{transform:scale(.97)}
-.btn.primary{background:var(--grn-dark);border-color:var(--grn-dim)}
-#coords-box{bottom:10px;left:60px;padding:5px 12px;font-family:var(--mono);font-size:11px;color:var(--txt-dim)}
-#coords-box b{color:var(--grn)}
-#legend-map{bottom:10px;right:12px;padding:9px 12px;max-width:250px}
-#legend-map h4{font-size:9.5px;letter-spacing:1.2px;color:var(--txt-faint);text-transform:uppercase;margin-bottom:6px}
-.lg-row{display:flex;align-items:center;gap:7px;font-size:10.5px;color:var(--txt-dim);padding:1.5px 0}
-.lg-sw{width:14px;height:10px;border-radius:2px;flex:none;border:1px solid rgba(255,255,255,.15)}
-.leaflet-container{font-family:inherit}
-.station-dot{width:10px;height:10px;border-radius:50%;background:var(--grn);border:2px solid #04160a;box-shadow:0 0 7px rgba(57,255,106,.8)}
-.leaflet-tooltip.stt{background:rgba(10,17,11,.95);border:1px solid var(--line2);color:var(--txt);font-size:11px;font-family:var(--mono);box-shadow:none}
-.leaflet-popup-content-wrapper{background:#0e1610;color:var(--txt);border:1px solid var(--line2);border-radius:8px}
-.leaflet-popup-tip{background:#0e1610;border:1px solid var(--line2)}
-.leaflet-popup-content b{color:var(--grn)}
-.leaflet-control-zoom a{background:var(--panel)!important;color:var(--txt)!important;border-color:var(--line2)!important}
-.leaflet-control-attribution{background:rgba(7,11,8,.8)!important;color:var(--txt-faint)!important;font-size:9.5px!important}
-.leaflet-control-attribution a{color:var(--txt-dim)!important}
-.leaflet-control-scale-line{background:rgba(7,11,8,.7)!important;color:var(--txt-dim);border-color:var(--line2)!important}
-
-#map-player{position:absolute;left:50%;transform:translateX(-50%);bottom:12px;z-index:950;display:flex;align-items:center;gap:9px;background:rgba(10,17,11,.94);border:1px solid var(--line2);border-radius:12px;padding:9px 14px;backdrop-filter:blur(8px);max-width:calc(100% - 20px);flex-wrap:wrap;justify-content:center}
-#mp-slider{width:230px}
-#mp-label{font-family:var(--mono);font-size:11px;color:var(--txt-dim);min-width:170px;text-align:center;line-height:1.35}
-#mp-label b{color:var(--grn)}
-.live-chip{font-family:var(--mono);font-size:10px;letter-spacing:1.5px;color:#04160a;background:var(--grn);border-radius:10px;padding:3px 9px;font-weight:700;box-shadow:0 0 10px rgba(57,255,106,.5)}
-.live-chip.off{background:transparent;color:var(--amber);border:1px solid var(--amber);box-shadow:none}
-@media (max-width:900px){#mp-slider{width:140px}#mp-label{min-width:120px;font-size:10px}}
-
-/* ===== GIF PANE ===== */
-#gif-wrap{position:absolute;inset:0;overflow:hidden;background:
-  radial-gradient(ellipse at 50% 40%,#0b130c 0%,#070b08 70%)}
-#gif-stage{position:absolute;inset:0;cursor:grab;touch-action:none}
-#gif-stage.dragging{cursor:grabbing}
-#gif-canvas{position:absolute;left:50%;top:50%;transform-origin:0 0;image-rendering:auto;box-shadow:0 0 60px rgba(57,255,106,.07);border-radius:4px}
-#gif-img-fallback{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);max-width:96%;max-height:82%;display:none;border-radius:4px;box-shadow:0 0 60px rgba(57,255,106,.07)}
-#gif-toolbar{position:absolute;left:50%;transform:translateX(-50%);bottom:14px;z-index:50;display:flex;align-items:center;gap:10px;background:rgba(10,17,11,.94);border:1px solid var(--line2);border-radius:12px;padding:10px 14px;backdrop-filter:blur(8px);max-width:calc(100% - 20px);flex-wrap:wrap;justify-content:center}
-.tb-btn{width:38px;height:38px;border-radius:8px;border:1px solid var(--line2);background:var(--panel2);color:var(--grn);font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:.15s;flex:none}
-.tb-btn:hover{border-color:var(--grn-dim);background:var(--grn-dark)}
-.tb-btn:active{transform:scale(.94)}
-#frame-slider{width:210px}
-#frame-label{font-family:var(--mono);font-size:11.5px;color:var(--txt-dim);min-width:150px;text-align:center}
-#frame-label b{color:var(--grn)}
-select{background:var(--panel2);color:var(--txt);border:1px solid var(--line2);border-radius:6px;font-size:11.5px;padding:7px 8px;cursor:pointer;font-family:var(--mono)}
-#gif-progress{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:60;text-align:center;width:min(420px,86%)}
-#gif-progress .bar{height:5px;background:var(--line);border-radius:3px;overflow:hidden;margin-top:12px}
-#gif-progress .bar i{display:block;height:100%;width:0%;background:linear-gradient(90deg,var(--grn-dim),var(--grn));border-radius:3px;transition:width .2s;box-shadow:0 0 10px rgba(57,255,106,.5)}
-#gif-progress p{font-family:var(--mono);font-size:12px;color:var(--txt-dim);letter-spacing:.5px}
-#gif-progress p b{color:var(--grn)}
-#gif-src-note{position:absolute;top:12px;left:14px;z-index:50;padding:8px 13px;font-size:10.5px;font-family:var(--mono);color:var(--txt-dim);max-width:min(430px,60%)}
-#gif-src-note b{color:var(--grn)}
-#gif-zoom-ctrl{position:absolute;right:14px;top:12px;z-index:50;display:flex;flex-direction:column;gap:6px}
-
-/* ===== INFO PANE ===== */
-#pane-info{overflow-y:auto;padding:26px clamp(16px,6vw,80px) 60px}
-.info-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:18px;max-width:1400px;margin:0 auto}
-.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:20px 22px}
-.card h3{font-size:13px;letter-spacing:2px;color:var(--grn);text-transform:uppercase;margin-bottom:12px;display:flex;align-items:center;gap:8px}
-.card h3::before{content:'';width:8px;height:8px;background:var(--grn);border-radius:2px;box-shadow:0 0 8px var(--grn)}
-.card p,.card li{font-size:13px;line-height:1.65;color:var(--txt-dim)}
-.card ul{padding-left:18px}
-.card a{color:var(--blue);text-decoration:none}
-.card a:hover{text-decoration:underline}
-.card img{max-width:100%;border-radius:6px;border:1px solid var(--line);margin-top:10px;background:#fff}
-.mono{font-family:var(--mono);font-size:11.5px;background:var(--bg2);border:1px solid var(--line);border-radius:6px;padding:2px 7px;color:var(--grn)}
-table.st{width:100%;border-collapse:collapse;font-size:11.5px;margin-top:6px}
-table.st th{font-family:var(--mono);font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--txt-faint);text-align:left;padding:6px 8px;border-bottom:1px solid var(--line2)}
-table.st td{padding:5px 8px;border-bottom:1px solid var(--line);color:var(--txt-dim)}
-table.st td:first-child{color:var(--txt)}
-table.st td.mono2{font-family:var(--mono);color:var(--grn-dim);white-space:nowrap}
-table.st tr:hover td{background:rgba(57,255,106,.04)}
-.warn{border-left:3px solid var(--amber);padding:10px 14px;background:rgba(255,201,77,.06);border-radius:0 8px 8px 0;font-size:12.5px;color:#e8d9ae;margin-top:12px;line-height:1.6}
-kbd.sc{font-family:var(--mono);font-size:10.5px;border:1px solid var(--line2);border-bottom-width:2px;border-radius:4px;padding:1px 6px;background:var(--bg2);color:var(--grn)}
-
-@media (max-width:900px){
-  .hdr-clocks .clock:last-child{display:none}
-  #ctrl-panel{width:200px;top:auto;bottom:56px;right:8px}
-  #legend-map{display:none}
-  #data-badge{left:56px;top:8px;min-width:0;padding:8px 10px}
-  #coords-box{left:56px}
-  #frame-slider{width:130px}
-  #frame-label{min-width:110px;font-size:10.5px}
-  .logo h1{font-size:12px;letter-spacing:1.5px}
+* {
+    box-sizing: border-box;
 }
-@media (max-width:640px){
-  #ctrl-panel{display:none}
-  .status-chip span.lbl{display:none}
+
+html,
+body {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background: var(--bg);
+    color: var(--text);
+    font-family:
+        -apple-system,
+        BlinkMacSystemFont,
+        "SF Pro Display",
+        "Segoe UI",
+        sans-serif;
+}
+
+button,
+select,
+input {
+    font: inherit;
+}
+
+button {
+    color: inherit;
+}
+
+/* =========================================================
+   MAP
+   ========================================================= */
+
+#map {
+    position: fixed;
+    inset: 0;
+    z-index: 1;
+    background: #101216;
+}
+
+.leaflet-control-attribution {
+    background: rgba(10,10,12,.72) !important;
+    color: #8c929c !important;
+}
+
+.leaflet-control-attribution a {
+    color: #aeb8c7 !important;
+}
+
+/* =========================================================
+   TOP BAR
+   ========================================================= */
+
+#topbar {
+    position: fixed;
+    z-index: 1000;
+
+    top: max(12px, env(safe-area-inset-top));
+    left: 12px;
+    right: 12px;
+
+    height: 54px;
+
+    display: flex;
+    align-items: center;
+
+    padding: 0 10px;
+
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+
+    box-shadow: 0 8px 30px rgba(0,0,0,.28);
+}
+
+.logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+
+    font-size: 19px;
+    font-weight: 800;
+    letter-spacing: -.4px;
+
+    padding: 0 10px;
+}
+
+.logo-mark {
+    width: 29px;
+    height: 29px;
+
+    display: grid;
+    place-items: center;
+
+    border-radius: 9px;
+    background: linear-gradient(135deg, #4d9cff, #2867d9);
+
+    font-size: 15px;
+    font-weight: 900;
+}
+
+.top-spacer {
+    flex: 1;
+}
+
+.top-button {
+    width: 40px;
+    height: 40px;
+
+    border: 0;
+    border-radius: 10px;
+
+    background: transparent;
+
+    display: grid;
+    place-items: center;
+
+    cursor: pointer;
+}
+
+.top-button:hover {
+    background: rgba(255,255,255,.07);
+}
+
+/* =========================================================
+   LEFT PANEL
+   ========================================================= */
+
+#side-panel {
+    position: fixed;
+    z-index: 1000;
+
+    top: 78px;
+    left: 12px;
+    bottom: 118px;
+
+    width: 310px;
+
+    padding: 12px;
+
+    overflow-y: auto;
+
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+
+    box-shadow: 0 8px 30px rgba(0,0,0,.28);
+
+    scrollbar-width: thin;
+}
+
+.panel-section {
+    margin-bottom: 15px;
+}
+
+.panel-title {
+    margin: 4px 5px 8px;
+
+    color: var(--muted);
+
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .7px;
+}
+
+.panel-row {
+    display: flex;
+    gap: 7px;
+}
+
+.panel-button {
+    width: 100%;
+    min-height: 43px;
+
+    padding: 9px 11px;
+
+    border: 1px solid var(--border);
+    border-radius: 10px;
+
+    background: var(--panel2);
+
+    text-align: left;
+    cursor: pointer;
+
+    transition: background .15s, border-color .15s;
+}
+
+.panel-button:hover {
+    background: rgba(255,255,255,.07);
+}
+
+.panel-button.active {
+    border-color: rgba(77,156,255,.55);
+    background: rgba(77,156,255,.13);
+}
+
+select {
+    width: 100%;
+    height: 43px;
+
+    padding: 0 11px;
+
+    border: 1px solid var(--border);
+    border-radius: 10px;
+
+    color: var(--text);
+    background: var(--panel2);
+
+    outline: none;
+}
+
+/* =========================================================
+   RADAR LIST
+   ========================================================= */
+
+.radar-list {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.radar-item {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+
+    min-height: 40px;
+
+    padding: 7px 9px;
+
+    border-radius: 9px;
+
+    cursor: pointer;
+}
+
+.radar-item:hover {
+    background: rgba(255,255,255,.06);
+}
+
+.radar-dot {
+    width: 8px;
+    height: 8px;
+
+    border-radius: 50%;
+
+    background: #49a0ff;
+
+    box-shadow: 0 0 8px rgba(73,160,255,.7);
+}
+
+.radar-name {
+    flex: 1;
+
+    font-size: 13px;
+}
+
+.radar-state {
+    color: #7f8792;
+    font-size: 11px;
+}
+
+/* =========================================================
+   PRODUCT BUTTONS
+   ========================================================= */
+
+.products {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+}
+
+.product {
+    min-height: 42px;
+
+    border: 1px solid var(--border);
+    border-radius: 9px;
+
+    background: var(--panel2);
+
+    cursor: pointer;
+
+    font-size: 12px;
+}
+
+.product.active {
+    border-color: rgba(77,156,255,.6);
+    background: rgba(77,156,255,.14);
+}
+
+/* =========================================================
+   MAP INFORMATION
+   ========================================================= */
+
+#point-info {
+    position: fixed;
+    z-index: 999;
+
+    right: 14px;
+    top: 78px;
+
+    min-width: 185px;
+
+    padding: 12px 14px;
+
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+
+    box-shadow: 0 8px 30px rgba(0,0,0,.25);
+
+    pointer-events: none;
+}
+
+.info-title {
+    font-size: 12px;
+    color: var(--muted);
+    margin-bottom: 5px;
+}
+
+.info-value {
+    font-size: 15px;
+    font-weight: 700;
+}
+
+/* =========================================================
+   LEGEND
+   ========================================================= */
+
+#legend {
+    position: fixed;
+    z-index: 1000;
+
+    right: 14px;
+    bottom: 118px;
+
+    width: 285px;
+
+    padding: 11px 12px;
+
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+
+    box-shadow: 0 8px 30px rgba(0,0,0,.25);
+}
+
+.legend-title {
+    margin-bottom: 7px;
+
+    color: var(--muted);
+
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: .5px;
+}
+
+.legend-bar {
+    width: 100%;
+    height: 14px;
+
+    border-radius: 4px;
+
+    background:
+        linear-gradient(
+            90deg,
+            #646464 0%,
+            #2447ff 12%,
+            #00aaff 25%,
+            #00e600 38%,
+            #ffff00 50%,
+            #ffb000 63%,
+            #ff5400 76%,
+            #ff0000 88%,
+            #ff00ff 100%
+        );
+}
+
+.legend-labels {
+    display: flex;
+    justify-content: space-between;
+
+    margin-top: 5px;
+
+    color: #b4bac4;
+    font-size: 10px;
+}
+
+/* =========================================================
+   TIMELINE
+   ========================================================= */
+
+#timeline {
+    position: fixed;
+    z-index: 1000;
+
+    left: 12px;
+    right: 12px;
+    bottom: max(12px, env(safe-area-inset-bottom));
+
+    min-height: 91px;
+
+    padding: 10px 13px;
+
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+
+    box-shadow: 0 8px 30px rgba(0,0,0,.3);
+}
+
+.timeline-top {
+    display: flex;
+    align-items: center;
+
+    margin-bottom: 5px;
+}
+
+.timeline-time {
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.timeline-status {
+    margin-left: 8px;
+
+    color: var(--muted);
+    font-size: 11px;
+}
+
+.timeline-controls {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+
+    margin-left: auto;
+}
+
+.time-button {
+    width: 33px;
+    height: 30px;
+
+    border: 1px solid var(--border);
+    border-radius: 8px;
+
+    background: var(--panel2);
+
+    cursor: pointer;
+}
+
+.time-button:hover {
+    background: rgba(255,255,255,.08);
+}
+
+#time-range {
+    width: 100%;
+    margin: 0;
+
+    accent-color: var(--accent);
+}
+
+.frame-labels {
+    display: flex;
+    justify-content: space-between;
+
+    color: var(--muted);
+    font-size: 9px;
+
+    margin-top: 2px;
+}
+
+/* =========================================================
+   MOBILE MENU BUTTON
+   ========================================================= */
+
+#mobile-menu {
+    display: none;
+}
+
+/* =========================================================
+   SETTINGS DRAWER
+   ========================================================= */
+
+#settings {
+    position: fixed;
+    z-index: 1100;
+
+    top: 78px;
+    right: 12px;
+
+    width: 300px;
+
+    padding: 15px;
+
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+
+    box-shadow: 0 12px 40px rgba(0,0,0,.4);
+
+    display: none;
+}
+
+#settings.open {
+    display: block;
+}
+
+.settings-title {
+    font-size: 16px;
+    font-weight: 800;
+
+    margin-bottom: 14px;
+}
+
+.setting {
+    margin-bottom: 14px;
+}
+
+.setting-name {
+    display: block;
+
+    margin-bottom: 6px;
+
+    color: var(--muted);
+    font-size: 12px;
+}
+
+.range-line {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+}
+
+.range-line input {
+    flex: 1;
+}
+
+/* =========================================================
+   MOBILE
+   ========================================================= */
+
+@media (max-width: 700px) {
+
+    #topbar {
+        left: 8px;
+        right: 8px;
+
+        top: max(8px, env(safe-area-inset-top));
+
+        height: 50px;
+    }
+
+    .logo {
+        padding: 0 5px;
+        font-size: 17px;
+    }
+
+    .logo-mark {
+        width: 27px;
+        height: 27px;
+    }
+
+    #mobile-menu {
+        display: grid;
+    }
+
+    #side-panel {
+        top: 66px;
+        left: 8px;
+
+        bottom: 112px;
+
+        width: min(320px, calc(100vw - 16px));
+
+        transform: translateX(-110%);
+        transition: transform .2s ease;
+
+        z-index: 1200;
+    }
+
+    #side-panel.open {
+        transform: translateX(0);
+    }
+
+    #point-info {
+        top: 66px;
+        right: 8px;
+
+        min-width: 150px;
+
+        padding: 9px 11px;
+    }
+
+    #legend {
+        left: 8px;
+        right: 8px;
+
+        bottom: 108px;
+
+        width: auto;
+
+        padding: 8px 10px;
+    }
+
+    #timeline {
+        left: 8px;
+        right: 8px;
+
+        bottom: max(8px, env(safe-area-inset-bottom));
+
+        min-height: 82px;
+
+        padding: 8px 10px;
+    }
+
+    .timeline-time {
+        font-size: 11px;
+    }
+
+    .time-button {
+        width: 36px;
+        height: 34px;
+    }
+
+    #settings {
+        top: 66px;
+        left: 8px;
+        right: 8px;
+
+        width: auto;
+    }
+
+    .leaflet-control-zoom {
+        margin-top: 62px !important;
+    }
+}
+
+/* =========================================================
+   VERY SMALL PHONES
+   ========================================================= */
+
+@media (max-width: 390px) {
+
+    .logo {
+        font-size: 15px;
+    }
+
+    #point-info {
+        display: none;
+    }
+
+    .legend-labels {
+        font-size: 8px;
+    }
+
+    .products {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* =========================================================
+   DARK LEAFLET CONTROLS
+   ========================================================= */
+
+.leaflet-control-zoom a {
+    background: #1b1f26 !important;
+    color: white !important;
+    border-color: rgba(255,255,255,.08) !important;
+}
+
+.leaflet-control-zoom a:hover {
+    background: #272d36 !important;
+}
+
+/* =========================================================
+   RADAR PLACEHOLDER MESSAGE
+   ========================================================= */
+
+#radar-status {
+    position: fixed;
+    z-index: 998;
+
+    left: 50%;
+    top: 50%;
+
+    transform: translate(-50%, -50%);
+
+    padding: 13px 18px;
+
+    border: 1px solid rgba(255,255,255,.08);
+    border-radius: 12px;
+
+    background: rgba(15,17,21,.9);
+
+    color: #aab1bc;
+
+    font-size: 12px;
+
+    pointer-events: none;
+
+    backdrop-filter: blur(12px);
+}
+
+/* =========================================================
+   MOBILE OVERLAY
+   ========================================================= */
+
+#mobile-overlay {
+    position: fixed;
+    z-index: 1100;
+
+    inset: 0;
+
+    background: rgba(0,0,0,.45);
+
+    display: none;
+}
+
+#mobile-overlay.active {
+    display: block;
+}
+
+@media (min-width: 701px) {
+    #mobile-overlay {
+        display: none !important;
+    }
 }
 </style>
 </head>
+
 <body>
 
-<header>
-  <div class="logo">
-    <div class="logo-radar"></div>
-    <div>
-      <h1>РЛС-Монитор<small>метеорадары России · РИГМЦ / ЦАО Росгидромета</small></h1>
+<!-- =======================================================
+     MAP
+     ======================================================= -->
+
+<div id="map"></div>
+
+
+<!-- =======================================================
+     TOP BAR
+     ======================================================= -->
+
+<header id="topbar">
+
+    <button
+        id="mobile-menu"
+        class="top-button"
+        aria-label="Меню">
+        ☰
+    </button>
+
+    <div class="logo">
+        <div class="logo-mark">D</div>
+        <span>Daradar</span>
     </div>
-  </div>
-  <div class="hdr-clocks">
-    <div class="status-chip"><span class="dot" id="status-dot"></span><span class="lbl" id="status-txt">подключение…</span></div>
-    <div class="clock"><b id="clk-utc">--:--:--</b><span>UTC</span></div>
-    <div class="clock"><b id="clk-msk">--:--:--</b><span>МСК</span></div>
-  </div>
+
+    <div class="top-spacer"></div>
+
+    <button
+        id="settings-button"
+        class="top-button"
+        aria-label="Настройки">
+        ⚙
+    </button>
+
 </header>
 
-<main>
-  <nav class="tabs">
-    <button class="tab-btn active" data-tab="map">Карта · Live<kbd>1</kbd></button>
-    <button class="tab-btn" data-tab="gif">Анимация ЦАО · 3 часа<kbd>2</kbd></button>
-    <button class="tab-btn" data-tab="info">Сеть · Легенды · Источники<kbd>3</kbd></button>
-  </nav>
 
-  <!-- ============ MAP PANE ============ -->
-  <section class="pane active" id="pane-map">
-    <div id="map"></div>
+<!-- =======================================================
+     MOBILE OVERLAY
+     ======================================================= -->
 
-    <div class="map-panel" id="data-badge">
-      <div class="t1">Радарная сводка · наблюдения</div>
-      <div class="t2" id="badge-time">—</div>
-      <div class="t3">след. обновление: <b id="badge-next">—</b></div>
-    </div>
+<div id="mobile-overlay"></div>
 
-    <div class="map-panel" id="ctrl-panel">
-      <h4>Слой осадков</h4>
-      <div class="row">
-        <div class="seg" id="mode-seg">
-          <button data-mode="precip" class="active">Только осадки</button>
-          <button data-mode="full">Полный фон</button>
+
+<!-- =======================================================
+     SIDE PANEL
+     ======================================================= -->
+
+<aside id="side-panel">
+
+    <section class="panel-section">
+
+        <div class="panel-title">
+            Сеть радаров
         </div>
-      </div>
-      <div class="row">
-        <label>Прозрачность слоя <output id="op-out">85%</output></label>
-        <input type="range" id="op-range" min="20" max="100" value="85">
-      </div>
-      <div class="row">
-        <h4 style="margin-bottom:6px">Сеть ДМРЛ-С</h4>
-        <label class="chk"><input type="checkbox" id="chk-stations" checked> Радары (36 пунктов)</label>
-        <label class="chk"><input type="checkbox" id="chk-rings"> Зоны покрытия 250 км</label>
-      </div>
-      <div class="row" style="display:flex;gap:6px">
-        <button class="btn primary" id="btn-refresh" style="flex:1">↻ Обновить</button>
-        <button class="btn" id="btn-fit">ЕТР</button>
-      </div>
-    </div>
 
-    <div class="map-panel" id="coords-box">курсор: <b id="coords-val">—</b></div>
-
-    <div id="map-player">
-      <button class="tb-btn" id="mp-prev" title="Кадр назад [←]">⏮</button>
-      <button class="tb-btn" id="mp-play" title="Старт/пауза [пробел]">▶</button>
-      <button class="tb-btn" id="mp-next" title="Кадр вперёд [→]">⏭</button>
-      <input type="range" id="mp-slider" min="0" max="14" value="14">
-      <div id="mp-label">—</div>
-      <select id="mp-speed" title="Скорость">
-        <option value="1600">0.5×</option>
-        <option value="800" selected>1×</option>
-        <option value="400">2×</option>
-        <option value="200">4×</option>
-      </select>
-      <span id="mp-live" class="live-chip">LIVE</span>
-    </div>
-
-    <div class="map-panel" id="legend-map">
-      <h4>Шкала явлений (ЦАО)</h4>
-      <div class="lg-row"><span class="lg-sw" style="background:#acaba7"></span>облачность без осадков</div>
-      <div class="lg-row"><span class="lg-sw" style="background:#1473f2"></span>слабые осадки</div>
-      <div class="lg-row"><span class="lg-sw" style="background:#0e1484"></span>осадки</div>
-      <div class="lg-row"><span class="lg-sw" style="background:#f8f31d"></span>ливневые осадки</div>
-      <div class="lg-row"><span class="lg-sw" style="background:#c5e830"></span>сильные ливневые осадки</div>
-      <div class="lg-row"><span class="lg-sw" style="background:#eea44a"></span>мощные кучево-дождевые (Cb)</div>
-      <div class="lg-row"><span class="lg-sw" style="background:#e96421"></span>гроза (разряды 50–75%)</div>
-      <div class="lg-row"><span class="lg-sw" style="background:#e9321f"></span>гроза (разряды 75–90% и >90%)</div>
-      <div class="lg-row"><span class="lg-sw" style="background:#8ef783"></span>грозо-градовые, мелкий град</div>
-      <div class="lg-row"><span class="lg-sw" style="background:#1cb60c"></span>грозо-градовые, крупный град</div>
-      <div class="lg-row"><span class="lg-sw" style="background:#f692dc"></span>шквал &gt;15 м/с</div>
-      <div class="lg-row"><span class="lg-sw" style="background:#ca44c0"></span>шквал &gt;20 м/с</div>
-    </div>
-  </section>
-
-  <!-- ============ GIF PANE ============ -->
-  <section class="pane" id="pane-gif">
-    <div id="gif-wrap">
-      <div id="gif-stage">
-        <canvas id="gif-canvas" width="1200" height="1200"></canvas>
-        <img id="gif-img-fallback" alt="Радарная сводка ЦАО">
-      </div>
-
-      <div class="map-panel" id="gif-src-note">
-        <b>МЕТЕОРАД · ЦАО</b> — сводная карта явлений погоды по данным сети ДМРЛ-С, последние 3 часа, шаг 10 мин. В кадре: легенда явлений, зоны покрытия РЛС, разряды молний (WWLLN / Vaisala / GLD360).
-      </div>
-
-      <div id="gif-zoom-ctrl">
-        <button class="tb-btn" id="zoom-in" title="Приблизить">+</button>
-        <button class="tb-btn" id="zoom-out" title="Отдалить">−</button>
-        <button class="tb-btn" id="zoom-reset" title="Сбросить масштаб" style="font-size:11px">1:1</button>
-      </div>
-
-      <div id="gif-progress">
-        <p id="gif-progress-txt">Загрузка радарной сводки ЦАО… <b></b></p>
-        <div class="bar"><i id="gif-progress-bar"></i></div>
-      </div>
-
-      <div id="gif-toolbar" style="display:none">
-        <button class="tb-btn" id="fr-prev" title="Предыдущий кадр [←]">⏮</button>
-        <button class="tb-btn" id="fr-play" title="Старт/пауза [пробел]">▶</button>
-        <button class="tb-btn" id="fr-next" title="Следующий кадр [→]">⏭</button>
-        <input type="range" id="frame-slider" min="0" max="0" value="0">
-        <div id="frame-label">кадр <b>–/–</b><br>—</div>
-        <select id="speed-sel" title="Скорость">
-          <option value="1400">0.5×</option>
-          <option value="700" selected>1×</option>
-          <option value="350">2×</option>
-          <option value="175">4×</option>
+        <select id="radar-select">
+            <option value="network">
+                Общая сеть
+            </option>
+            <option value="moscow">
+                Москва
+            </option>
+            <option value="ufa">
+                Уфа
+            </option>
+            <option value="kazan">
+                Казань
+            </option>
+            <option value="novosibirsk">
+                Новосибирск
+            </option>
         </select>
-        <button class="btn" id="gif-reload">↻ Свежие данные</button>
-      </div>
+
+    </section>
+
+
+    <section class="panel-section">
+
+        <div class="panel-title">
+            ДМРЛ
+        </div>
+
+        <div class="radar-list">
+
+            <div class="radar-item">
+                <span class="radar-dot"></span>
+                <span class="radar-name">
+                    Общая сеть
+                </span>
+                <span class="radar-state">
+                    —
+                </span>
+            </div>
+
+            <div class="radar-item">
+                <span class="radar-dot"></span>
+                <span class="radar-name">
+                    Москва
+                </span>
+                <span class="radar-state">
+                    —
+                </span>
+            </div>
+
+            <div class="radar-item">
+                <span class="radar-dot"></span>
+                <span class="radar-name">
+                    Уфа
+                </span>
+                <span class="radar-state">
+                    —
+                </span>
+            </div>
+
+            <div class="radar-item">
+                <span class="radar-dot"></span>
+                <span class="radar-name">
+                    Казань
+                </span>
+                <span class="radar-state">
+                    —
+                </span>
+            </div>
+
+            <div class="radar-item">
+                <span class="radar-dot"></span>
+                <span class="radar-name">
+                    Новосибирск
+                </span>
+                <span class="radar-state">
+                    —
+                </span>
+            </div>
+
+        </div>
+
+    </section>
+
+
+    <section class="panel-section">
+
+        <div class="panel-title">
+            Радиолокационный продукт
+        </div>
+
+        <div class="products">
+
+            <button class="product active">
+                Отражаемость
+            </button>
+
+            <button class="product">
+                Скорость
+            </button>
+
+            <button class="product">
+                Интенсивность
+            </button>
+
+            <button class="product">
+                Высота ВГО
+            </button>
+
+        </div>
+
+    </section>
+
+
+    <section class="panel-section">
+
+        <div class="panel-title">
+            Дополнительно
+        </div>
+
+        <button class="panel-button" id="stations-button">
+            ● Станции ДМРЛ
+        </button>
+
+        <button
+            class="panel-button"
+            id="coverage-button"
+            style="margin-top:6px">
+            ◯ Зоны обзора
+        </button>
+
+    </section>
+
+</aside>
+
+
+<!-- =======================================================
+     POINT INFO
+     ======================================================= -->
+
+<div id="point-info">
+
+    <div class="info-title">
+        Координаты
     </div>
-  </section>
 
-  <!-- ============ INFO PANE ============ -->
-  <section class="pane" id="pane-info">
-    <div class="info-grid">
+    <div
+        class="info-value"
+        id="coordinates">
+        —
+    </div>
 
-      <div class="card">
-        <h3>Источники данных</h3>
-        <ul>
-          <li><b>Радарные тайлы (карта Live)</b> — WMS-сервис Гидрометцентра России (<span class="mono">meteoinfo.ru/res/nowcast</span>): кадры радарных наблюдений по сети ДМРЛ-С с архивом ~2,5 часа (15 кадров, шаг 10 минут), покрытие — европейская часть РФ и Урал (примерно 42–68°N, 19–63°E).</li>
-          <li style="margin-top:8px"><b>Сводка явлений ЦАО «МЕТЕОРАД»</b> (<span class="mono">meteoinfo.ru/hmc-output/rmap/phenomena.gif</span>) — анимация за 3 часа: типы явлений, зоны покрытия РЛС, молниевая активность. Готовится Центральной аэрологической обсерваторией (ЦАО) Росгидромета.</li>
-          <li style="margin-top:8px"><b>Сетка времени</b> — <span class="mono">nowcast.php</span> (capabilities): официальные метки времени кадров, опрос каждые 60 сек.</li>
-        </ul>
-        <div class="warn">На сайте используются только <b>наблюдения</b> метеорологических радаров. Прогностические модели и сторонние агрегаторы не применяются.</div>
-      </div>
+    <div
+        class="info-title"
+        style="margin-top:9px">
+        Отражаемость
+    </div>
 
-      <div class="card">
-        <h3>Про BUFR и BALTRAD</h3>
-        <p>Сырые радарные объёмы (BUFR / ODIM-H5) в России не публикуются в открытом оперативном доступе: распределением занимается РИГМЦ Росгидромета по регламентам обмена. Европейская сеть обмена BALTRAD (куда ЦАО входит как партнёр) также передаёт данные только между национальными метслужбами по лицензионному соглашению — публичного потока BUFR там нет.</p>
-        <p style="margin-top:10px">Поэтому этот сайт строится на <b style="color:var(--grn)">официальных публичных продуктах</b> тех же самых центров: тайловый сервис и композит ЦАО, которые сами получены из объёмных данных ДМРЛ-С. Это максимально «сырые» наблюдательные данные, доступные без договора с Росгидрометом.</p>
-      </div>
+    <div
+        class="info-value"
+        id="dbz-value">
+        —
+    </div>
 
-      <div class="card">
-        <h3>Легенда явлений ЦАО</h3>
-        <p>Официальная шкала типов радиолокационных явлений (также встроена в каждый кадр сводки):</p>
-        <img src="https://meteoinfo.ru/images/fact/radar-legenda.gif" alt="Легенда радарных явлений ЦАО">
-        <p style="margin-top:10px">Молниевая активность в кадре сводки: <b style="color:#ffe14d">+</b> WWLLN, <b style="color:#57b6ff">+</b> Vaisala (L/H), <b style="color:#ff9d4d">✦</b> Алвес, <b style="color:#ff7ae0">+</b> GLD360.</p>
-      </div>
+</div>
 
-      <div class="card">
-        <h3>Сеть радаров ДМРЛ-С</h3>
-        <p>Метеорологические радары дециметрового диапазона (10 см), радиус обзора до 250 км, цикл 10 минут. Точки на карте — пункты дислокации (по городам сети Росгидромета):</p>
-        <table class="st" id="station-table">
-          <thead><tr><th>Пункт</th><th>Координаты</th></tr></thead>
-          <tbody></tbody>
-        </table>
-      </div>
 
-      <div class="card">
-        <h3>Функции</h3>
-        <ul>
-          <li>Live-карта с анимацией: таймлайн на 15 кадров (архив ~2,5 часа, шаг 10 мин), плеер со скоростью 0.5–4×, режимы LIVE / АРХИВ</li>
-          <li>4 подложки (тёмная Esri, география Гидрометцентра, OSM, спутник), режимы слоя «только осадки» / «полный фон», прозрачность</li>
-          <li>Автообновление по официальному расписанию (опрос capabilities каждые 60 с, обратный отсчёт до следующего кадра)</li>
-          <li>36 радаров ДМРЛ-С с зонами покрытия 250 км, координаты курсора, масштаб</li>
-          <li>Сводка явлений ЦАО «МЕТЕОРАД» за 3 часа: покадровый проигрыватель (при доступности прокси) или нативная анимация, зум/панорама, автообновление</li>
-          <li>Горячие клавиши: <kbd class="sc">1</kbd><kbd class="sc">2</kbd><kbd class="sc">3</kbd> — вкладки, <kbd class="sc">пробел</kbd> — старт/пауза, <kbd class="sc">←</kbd><kbd class="sc">→</kbd> — кадры</li>
-        </ul>
-      </div>
+<!-- =======================================================
+     RADAR STATUS
+     ======================================================= -->
 
-      <div class="card">
-        <h3>Ограничения</h3>
-        <ul>
-          <li>Композит ЦАО покрывает европейскую часть России и Урал; за Уралом единой открытой сводки нет — радары там показаны как пункты сети.</li>
-          <li>Метки времени кадров GIF рассчитываются по 10-минутной сетке (знак ≈): точное время проставлено в самом кадре.</li>
-          <li>Доступность данных зависит от серверов meteoinfo.ru; при их недоступности сайт покажет последний успешный кадр и статус «нет связи».</li>
-        </ul>
-        <p style="margin-top:12px;font-size:11px;color:var(--txt-faint)">Данные: ФГБУ «Гидрометцентр России», ФГБУ «Центральная аэрологическая обсерватория», РИГМЦ Росгидромета (meteoinfo.ru). Подложки: © OpenStreetMap, © Esri. Проект некоммерческий, для мониторинга погоды.</p>
-      </div>
+<div id="radar-status">
+    Радиолокационный источник не подключён
+</div>
+
+
+<!-- =======================================================
+     LEGEND
+     ======================================================= -->
+
+<div id="legend">
+
+    <div class="legend-title">
+        Отражаемость, dBZ
+    </div>
+
+    <div class="legend-bar"></div>
+
+    <div class="legend-labels">
+        <span>-30</span>
+        <span>-10</span>
+        <span>10</span>
+        <span>30</span>
+        <span>50</span>
+        <span>70+</span>
+    </div>
+
+</div>
+
+
+<!-- =======================================================
+     TIMELINE
+     ======================================================= -->
+
+<div id="timeline">
+
+    <div class="timeline-top">
+
+        <div>
+            <span
+                class="timeline-time"
+                id="time-label">
+                Сейчас
+            </span>
+
+            <span
+                class="timeline-status"
+                id="frame-status">
+                Нет данных
+            </span>
+        </div>
+
+        <div class="timeline-controls">
+
+            <button
+                class="time-button"
+                id="previous-frame">
+                ‹
+            </button>
+
+            <button
+                class="time-button"
+                id="play-button">
+                ▶
+            </button>
+
+            <button
+                class="time-button"
+                id="next-frame">
+                ›
+            </button>
+
+        </div>
 
     </div>
-  </section>
-</main>
 
-<script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <input
+        id="time-range"
+        type="range"
+        min="0"
+        max="0"
+        value="0"
+        step="1"
+    >
+
+    <div class="frame-labels">
+
+        <span>
+            Архив
+        </span>
+
+        <span>
+            Сейчас
+        </span>
+
+    </div>
+
+</div>
+
+
+<!-- =======================================================
+     SETTINGS
+     ======================================================= -->
+
+<div id="settings">
+
+    <div class="settings-title">
+        Настройки
+    </div>
+
+    <div class="setting">
+
+        <span class="setting-name">
+            Прозрачность радара
+        </span>
+
+        <div class="range-line">
+
+            <input
+                id="opacity-range"
+                type="range"
+                min="0"
+                max="100"
+                value="70"
+            >
+
+            <span id="opacity-value">
+                70%
+            </span>
+
+        </div>
+
+    </div>
+
+
+    <div class="setting">
+
+        <button
+            class="panel-button"
+            id="dark-map-button">
+            🌙 Тёмная карта
+        </button>
+
+    </div>
+
+
+    <div class="setting">
+
+        <button
+            class="panel-button"
+            id="labels-button">
+            ● Метки ДМРЛ
+        </button>
+
+    </div>
+
+</div>
+
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
 <script>
-'use strict';
-/* ==================================================================
-   РЛС-МОНИТОР — живые радарные наблюдения России
-   Источники: WMS meteoinfo.ru (РИГМЦ), сводка ЦАО «МЕТЕОРАД»
-   ================================================================== */
+/* =========================================================
+   DARADAR — CORE
+   ========================================================= */
 
-const SRC = {
-  caps:  'https://meteoinfo.ru/hmc-output/nowcast3/nowcast.php',
-  gif:   'https://meteoinfo.ru/hmc-output/rmap/phenomena.gif',
-  tile: (z,x,tny,inidt)=>`https://meteoinfo.ru/res/nowcast/${z}0${x}0${tny}/ncgi.php?tnz=${z}&tnx=${x}&tny=${tny}&layers=1&inidt=${inidt}`,
-  geo:   'https://meteoinfo.ru/hmc-output/tiles_v4/{z}/{z}_{x}_{y}.png',
-};
-const WMS_BOUNDS = L.latLngBounds([42.0776,18.6794],[68.2286,62.6090]);
+/* ---------------------------------------------------------
+   MAP
+   --------------------------------------------------------- */
 
-/* ---------- станции ДМРЛ-С (пункты дислокации по городам) ---------- */
-const STATIONS = [
- ['Калининград',54.71,20.51],['Санкт-Петербург',59.94,30.31],['Мурманск',68.97,33.08],
- ['Архангельск',64.54,40.54],['Петрозаводск',61.78,34.35],['Сыктывкар',61.67,50.84],
- ['Смоленск',54.78,32.05],['Москва',55.75,37.62],['Брянск',53.24,34.37],
- ['Воронеж',51.66,39.20],['Нижний Новгород',56.33,44.00],['Казань',55.79,49.11],
- ['Самара',53.20,50.15],['Саратов',51.53,46.03],['Волгоград',48.71,44.51],
- ['Ростов-на-Дону',47.24,39.71],['Краснодар',45.03,38.98],['Минеральные Воды',44.21,43.14],
- ['Махачкала',42.98,47.50],['Пермь',58.01,56.23],['Уфа',54.74,55.97],
- ['Оренбург',51.77,55.10],['Екатеринбург',56.84,60.65],['Челябинск',55.16,61.40],
- ['Тюмень',57.15,65.53],['Омск',54.99,73.37],['Новосибирск',55.03,82.92],
- ['Красноярск',56.01,92.85],['Иркутск',52.29,104.28],['Чита',52.03,113.50],
- ['Якутск',62.03,129.73],['Хабаровск',48.48,135.07],['Владивосток',43.12,131.89],
- ['Южно-Сахалинск',46.96,142.74],['Петропавловск-Камчатский',53.02,158.65],['Магадан',59.57,150.81]
-];
+const map = L.map("map", {
+    zoomControl: true,
+    attributionControl: true,
+    preferCanvas: true
+}).setView([55.7558, 37.6173], 4);
 
-/* ============================== УТИЛИТЫ ============================== */
-const $ = id => document.getElementById(id);
-const pad = n => String(n).padStart(2,'0');
-const fmtUTC = d => `${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())} UTC`;
-const fmtMSK = d => { const m=new Date(d.getTime()+3*3600e3); return `${pad(m.getUTCHours())}:${pad(m.getUTCMinutes())} МСК`; };
-function setStatus(mode,txt){
-  const d=$('status-dot'); d.className='dot '+(mode==='ok'?'':mode==='wait'?'wait':'err');
-  $('status-txt').textContent=txt;
+
+const baseLayer = L.tileLayer(
+    "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+    {
+        maxZoom: 18,
+        attribution:
+            '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+    }
+).addTo(map);
+
+
+/* ---------------------------------------------------------
+   UI ELEMENTS
+   --------------------------------------------------------- */
+
+const sidePanel =
+    document.getElementById("side-panel");
+
+const mobileMenu =
+    document.getElementById("mobile-menu");
+
+const mobileOverlay =
+    document.getElementById("mobile-overlay");
+
+const settings =
+    document.getElementById("settings");
+
+const settingsButton =
+    document.getElementById("settings-button");
+
+
+/* ---------------------------------------------------------
+   MOBILE MENU
+   --------------------------------------------------------- */
+
+function openMobileMenu() {
+
+    sidePanel.classList.add("open");
+
+    mobileOverlay.classList.add("active");
 }
 
-/* часы */
-setInterval(()=>{
-  const n=new Date();
-  $('clk-utc').textContent=`${pad(n.getUTCHours())}:${pad(n.getUTCMinutes())}:${pad(n.getUTCSeconds())}`;
-  const m=new Date(n.getTime()+3*3600e3);
-  $('clk-msk').textContent=`${pad(m.getUTCHours())}:${pad(m.getUTCMinutes())}:${pad(m.getUTCSeconds())}`;
-},1000);
+function closeMobileMenu() {
 
-/* ============================== ВКЛАДКИ ============================== */
-let mapInited=false;
-function switchTab(name){
-  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.toggle('active',b.dataset.tab===name));
-  document.querySelectorAll('.pane').forEach(p=>p.classList.toggle('active',p.id==='pane-'+name));
-  history.replaceState(null,'','#'+name);
-  if(name==='map'&&mapInited) setTimeout(()=>map.invalidateSize(),60);
-  if(name==='gif') gifTabOpened();
+    sidePanel.classList.remove("open");
+
+    mobileOverlay.classList.remove("active");
 }
-document.querySelectorAll('.tab-btn').forEach(b=>b.addEventListener('click',()=>switchTab(b.dataset.tab)));
-document.addEventListener('keydown',e=>{
-  if(e.target.tagName==='INPUT'||e.target.tagName==='SELECT')return;
-  if(e.key==='1')switchTab('map'); if(e.key==='2')switchTab('gif'); if(e.key==='3')switchTab('info');
-  if(document.querySelector('#pane-gif').classList.contains('active')){
-    if(e.code==='Space'){e.preventDefault();togglePlay();}
-    if(e.key==='ArrowLeft')stepFrame(-1);
-    if(e.key==='ArrowRight')stepFrame(1);
-  }else if(document.querySelector('#pane-map').classList.contains('active')){
-    if(e.code==='Space'){e.preventDefault();playing?mpStop():mpPlay();}
-    if(e.key==='ArrowLeft'){mpStop();setFrame(curIdx-1);}
-    if(e.key==='ArrowRight'){mpStop();setFrame(curIdx+1);}
-  }
+
+mobileMenu.addEventListener(
+    "click",
+    openMobileMenu
+);
+
+mobileOverlay.addEventListener(
+    "click",
+    closeMobileMenu
+);
+
+
+/* ---------------------------------------------------------
+   SETTINGS
+   --------------------------------------------------------- */
+
+settingsButton.addEventListener(
+    "click",
+    () => {
+        settings.classList.toggle("open");
+    }
+);
+
+
+/* ---------------------------------------------------------
+   MAP COORDINATES
+   --------------------------------------------------------- */
+
+map.on("mousemove", event => {
+
+    const lat =
+        event.latlng.lat.toFixed(4);
+
+    const lon =
+        event.latlng.lng.toFixed(4);
+
+    document.getElementById(
+        "coordinates"
+    ).textContent =
+        `${lat}°, ${lon}°`;
+
 });
 
-/* ============================== КАРТА ============================== */
-let inidt = Math.floor(Date.now()/600000)*600000; // текущая 10-мин метка, уточняется capabilities
-let radarMode='precip';
-let radarLayer=null, map=null;
 
-const RadarGrid = L.GridLayer.extend({
-  createTile(coords,done){
-    const canvas=document.createElement('canvas');
-    canvas.width=canvas.height=256;
-    const tny=(Math.pow(2,coords.z)-1)-coords.y;           // TMS-переворот
-    const img=new Image();
-    img.crossOrigin='anonymous';
-    let finished=false;
-    const finish=()=>{ if(!finished){finished=true; done(null,canvas);} };
-    img.onload=()=>{
-      try{
-        const ctx=canvas.getContext('2d',{willReadFrequently:true});
-        ctx.drawImage(img,0,0);
-        if(radarMode==='precip'){
-          const d=ctx.getImageData(0,0,256,256),p=d.data;
-          for(let i=0;i<p.length;i+=4){
-            const a=p[i+3]; if(a<10){p[i+3]=0;continue;}
-            const mx=Math.max(p[i],p[i+1],p[i+2]), mn=Math.min(p[i],p[i+1],p[i+2]);
-            if(mx-mn<42) p[i+3]=0;                          // серое/бежевое/белое -> прозрачно
-          }
-          ctx.putImageData(d,0,0);
+map.on("click", event => {
+
+    const lat =
+        event.latlng.lat.toFixed(4);
+
+    const lon =
+        event.latlng.lng.toFixed(4);
+
+    document.getElementById(
+        "coordinates"
+    ).textContent =
+        `${lat}°, ${lon}°`;
+
+});
+
+
+/* ---------------------------------------------------------
+   OPACITY
+   --------------------------------------------------------- */
+
+const opacityRange =
+    document.getElementById("opacity-range");
+
+const opacityValue =
+    document.getElementById("opacity-value");
+
+opacityRange.addEventListener(
+    "input",
+    () => {
+
+        const value =
+            opacityRange.value;
+
+        opacityValue.textContent =
+            value + "%";
+
+        /*
+         * Здесь позже будет:
+         *
+         * radarLayer.setOpacity(value / 100);
+         */
+    }
+);
+
+
+/* ---------------------------------------------------------
+   PRODUCT SELECTION
+   --------------------------------------------------------- */
+
+document
+    .querySelectorAll(".product")
+    .forEach(button => {
+
+        button.addEventListener(
+            "click",
+            () => {
+
+                document
+                    .querySelectorAll(".product")
+                    .forEach(
+                        item =>
+                            item.classList.remove("active")
+                    );
+
+                button.classList.add("active");
+
+                /*
+                 * Здесь позже подключается:
+                 *
+                 * reflectivity
+                 * velocity
+                 * precipitation
+                 * echo top
+                 */
+            }
+        );
+
+    });
+
+
+/* ---------------------------------------------------------
+   RADAR SELECT
+   --------------------------------------------------------- */
+
+document
+    .getElementById("radar-select")
+    .addEventListener(
+        "change",
+        event => {
+
+            const radar =
+                event.target.value;
+
+            console.log(
+                "Выбран радар:",
+                radar
+            );
+
         }
-      }catch(e){/* CORS-фолбэк: оставляем как есть */}
-      finish();
-    };
-    img.onerror=finish;
-    img.src=SRC.tile(coords.z,coords.x,tny,inidt);
-    setTimeout(finish,15000);
-    return canvas;
-  }
-});
+    );
 
-function buildStations(){
-  const markers=L.layerGroup(), rings=L.layerGroup();
-  STATIONS.forEach(([n,lat,lon])=>{
-    const m=L.marker([lat,lon],{icon:L.divIcon({className:'',html:'<div class="station-dot"></div>',iconSize:[10,10],iconAnchor:[5,5]})});
-    m.bindTooltip(n+' · ДМРЛ-С',{className:'stt',direction:'top',offset:[0,-6]});
-    m.bindPopup(`<b>${n}</b><br>Метеорологический радар ДМРЛ-С<br>Диапазон 10 см · радиус до 250 км<br>Цикл наблюдений: 10 мин`);
-    markers.addLayer(m);
-    rings.addLayer(L.circle([lat,lon],{radius:250000,color:'#39ff6a',weight:1,opacity:.28,fillColor:'#39ff6a',fillOpacity:.03,dashArray:'5 7',interactive:false}));
-  });
-  return {markers,rings};
+
+/* ---------------------------------------------------------
+   TIMELINE
+   --------------------------------------------------------- */
+
+const timeRange =
+    document.getElementById("time-range");
+
+const timeLabel =
+    document.getElementById("time-label");
+
+const frameStatus =
+    document.getElementById("frame-status");
+
+const previousFrame =
+    document.getElementById("previous-frame");
+
+const nextFrame =
+    document.getElementById("next-frame");
+
+const playButton =
+    document.getElementById("play-button");
+
+
+let playing = false;
+
+let playTimer = null;
+
+
+/* Пока кадров нет */
+
+function updateTimeline() {
+
+    const value =
+        Number(timeRange.value);
+
+    const max =
+        Number(timeRange.max);
+
+    if (max === 0) {
+
+        timeLabel.textContent =
+            "Сейчас";
+
+        frameStatus.textContent =
+            "Нет данных";
+
+        return;
+    }
+
+    timeLabel.textContent =
+        `Кадр ${value + 1}`;
+
+    frameStatus.textContent =
+        `${value + 1} / ${max + 1}`;
 }
 
-function initMap(){
-  map=L.map('map',{center:[56.5,44],zoom:5,minZoom:4,maxZoom:11,zoomControl:true,attributionControl:true,worldCopyJump:true});
-  map.setMaxBounds([[20,-40],[85,190]]);
 
-  const baseHMC=L.tileLayer(SRC.geo,{minZoom:5,maxZoom:10,bounds:[[41,23],[66,60]],attribution:'География: Гидрометцентр России'});
-  const baseOSM=L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:18,attribution:'© OpenStreetMap'});
-  const baseDark=L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}',{maxZoom:16,attribution:'© Esri, HERE, Garmin'});
-  const baseDarkLbl=L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}',{maxZoom:16,attribution:''});
-  const baseSat=L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{maxZoom:18,attribution:'© Esri, Maxar, Earthstar Geographics'});
-  baseDarkLbl.setZIndex(400);
+timeRange.addEventListener(
+    "input",
+    updateTimeline
+);
 
-  radarLayer=new RadarGrid({bounds:WMS_BOUNDS,minNativeZoom:5,maxNativeZoom:8,maxZoom:11,opacity:.85,tileSize:256,zIndex:300});
-  radarLayer.addTo(map);
 
-  const darkGroup=L.layerGroup([baseDark,baseDarkLbl]);
-  darkGroup.addTo(map);
-  const st=buildStations();
-  st.markers.addTo(map);
-  L.control.layers(
-    {'Тёмная (Esri)':darkGroup,'Гидрометцентр (география)':baseHMC,'OpenStreetMap':baseOSM,'Спутник (Esri)':baseSat},
-    {'Радарные наблюдения':radarLayer,'Радары ДМРЛ-С':st.markers,'Зоны покрытия 250 км':st.rings},
-    {position:'bottomleft',collapsed:true}
-  ).addTo(map);
-  L.control.scale({imperial:false,position:'bottomleft'}).addTo(map);
+/* ---------------------------------------------------------
+   PREVIOUS FRAME
+   --------------------------------------------------------- */
 
-  map.on('mousemove',e=>{
-    $('coords-val').textContent=`${e.latlng.lat.toFixed(2)}°N ${e.latlng.lng.toFixed(2)}°E`;
-  });
+previousFrame.addEventListener(
+    "click",
+    () => {
 
-  $('chk-stations').addEventListener('change',e=>{ e.target.checked?map.addLayer(st.markers):map.removeLayer(st.markers); });
-  $('chk-rings').addEventListener('change',e=>{ e.target.checked?map.addLayer(st.rings):map.removeLayer(st.rings); });
-  $('btn-fit').addEventListener('click',()=>map.fitBounds(WMS_BOUNDS.pad(0.06)));
-  $('btn-refresh').addEventListener('click',()=>pollCaps(true));
+        let value =
+            Number(timeRange.value);
 
-  $('op-range').addEventListener('input',e=>{
-    $('op-out').textContent=e.target.value+'%';
-    radarLayer.setOpacity(e.target.value/100);
-  });
-  document.querySelectorAll('#mode-seg button').forEach(b=>b.addEventListener('click',()=>{
-    document.querySelectorAll('#mode-seg button').forEach(x=>x.classList.toggle('active',x===b));
-    radarMode=b.dataset.mode;
-    radarLayer.redraw();
-  }));
+        if (value > 0) {
+            value--;
+        }
 
-  mapInited=true;
-  map.fitBounds(WMS_BOUNDS.pad(0.06));
-}
+        timeRange.value =
+            value;
 
-/* ---------- таймлайн: 15 кадров × 10 мин (архив ~2,5 ч) ---------- */
-const FRAME_STEP=600000, FRAME_BACK=14;
-let frames=[], curIdx=0, playing=false, playTimer=null, lastCapTime=null;
+        updateTimeline();
 
-function refreshTimeline(cur){
-  const prevT=frames[curIdx];
-  const wasLatest=(curIdx===frames.length-1)||!frames.length;
-  frames=[]; for(let i=FRAME_BACK;i>=0;i--) frames.push(cur-i*FRAME_STEP);
-  $('mp-slider').max=frames.length-1;
-  const idx=(!wasLatest&&frames.includes(prevT))?frames.indexOf(prevT):frames.length-1;
-  setFrame(idx,frames[idx]!==inidt);
-}
-function setFrame(i,redraw=true){
-  curIdx=Math.max(0,Math.min(frames.length-1,i));
-  inidt=frames[curIdx];
-  if(radarLayer&&redraw) radarLayer.redraw();
-  $('mp-slider').value=curIdx;
-  const d=new Date(inidt), latest=curIdx===frames.length-1;
-  $('mp-label').innerHTML=`<b>${fmtUTC(d)}</b> · ${fmtMSK(d)}<br>${latest?'текущий кадр':'назад на '+((frames.length-1-curIdx)*10)+' мин'}`;
-  $('mp-live').classList.toggle('off',!latest);
-  $('mp-live').textContent=latest?'LIVE':'АРХИВ';
-  $('badge-time').textContent=`${fmtUTC(d)} · ${fmtMSK(d)}`;
-}
-function mpPlay(){
-  if(!frames.length)return;
-  playing=true; $('mp-play').textContent='⏸';
-  const loop=()=>{ playTimer=setTimeout(()=>{ setFrame((curIdx+1)%frames.length); if(playing)loop(); },+$('mp-speed').value); };
-  loop();
-}
-function mpStop(){ playing=false; $('mp-play').textContent='▶'; clearTimeout(playTimer); }
-$('mp-play').addEventListener('click',()=>playing?mpStop():mpPlay());
-$('mp-prev').addEventListener('click',()=>{mpStop();setFrame(curIdx-1);});
-$('mp-next').addEventListener('click',()=>{mpStop();setFrame(curIdx+1);});
-$('mp-slider').addEventListener('input',e=>{mpStop();setFrame(+e.target.value);});
-$('mp-speed').addEventListener('change',()=>{if(playing){mpStop();mpPlay();}});
+    }
+);
 
-async function pollCaps(manual){
-  try{
-    const r=await fetch(SRC.caps+'?_='+Date.now(),{cache:'no-store'});
-    const t=await r.text();
-    const m=t.match(/default="([^"]+)"/);
-    if(!m) throw new Error('no default time');
-    const cur=Date.parse(m[1]);
-    const firstRun=!frames.length;
-    lastCapTime=cur;
-    refreshTimeline(cur);
-    if(firstRun) mpPlay();
-    setStatus('ok','данные: РИГМЦ · live');
-    scheduleCountdown(cur);
-    if(manual) flashBtn($('btn-refresh'));
-  }catch(e){
-    setStatus('err','нет связи с источником');
-    $('badge-next').textContent='повтор…';
-  }
-}
-let countdownTimer=null;
-function scheduleCountdown(cur){
-  if(countdownTimer)clearInterval(countdownTimer);
-  const tick=()=>{
-    // следующий кадр: +10 мин к текущему + ~4 мин обработки
-    const eta=cur+10*60e3+4*60e3-Date.now();
-    $('badge-next').textContent = eta>0 ? `~${Math.ceil(eta/60000)} мин` : 'скоро…';
-  };
-  tick(); countdownTimer=setInterval(tick,15000);
-}
-function flashBtn(b){ const o=b.textContent; b.textContent='✓ Обновлено'; setTimeout(()=>b.textContent=o,1200); }
 
-/* ============================== GIF-ПРОИГРЫВАТЕЛЬ ============================== */
-const GIF_PROXY=[
-  u=>'https://api.allorigins.win/raw?url='+encodeURIComponent(u),
-  u=>'https://api.cors.lol/?url='+encodeURIComponent(u),
-  u=>'https://api.codetabs.com/v1/proxy?quest='+encodeURIComponent(u),
+/* ---------------------------------------------------------
+   NEXT FRAME
+   --------------------------------------------------------- */
+
+nextFrame.addEventListener(
+    "click",
+    () => {
+
+        let value =
+            Number(timeRange.value);
+
+        const max =
+            Number(timeRange.max);
+
+        if (value < max) {
+            value++;
+        }
+
+        timeRange.value =
+            value;
+
+        updateTimeline();
+
+    }
+);
+
+
+/* ---------------------------------------------------------
+   PLAY
+   --------------------------------------------------------- */
+
+playButton.addEventListener(
+    "click",
+    () => {
+
+        if (playing) {
+
+            playing = false;
+
+            clearInterval(playTimer);
+
+            playButton.textContent =
+                "▶";
+
+            return;
+        }
+
+
+        playing = true;
+
+        playButton.textContent =
+            "Ⅱ";
+
+
+        playTimer =
+            setInterval(
+                () => {
+
+                    let value =
+                        Number(timeRange.value);
+
+                    const max =
+                        Number(timeRange.max);
+
+
+                    if (value >= max) {
+
+                        value = 0;
+
+                    } else {
+
+                        value++;
+
+                    }
+
+
+                    timeRange.value =
+                        value;
+
+                    updateTimeline();
+
+                },
+                700
+            );
+
+    }
+);
+
+
+/* ---------------------------------------------------------
+   STATIONS
+   --------------------------------------------------------- */
+
+let stationsVisible = true;
+
+const stationLayer =
+    L.layerGroup().addTo(map);
+
+
+/*
+ * Пока показываем только несколько
+ * тестовых точек интерфейса.
+ *
+ * Это НЕ радиолокационные данные.
+ * Позже сюда подключается настоящий
+ * список ДМРЛ.
+ */
+
+const demoStations = [
+
+    {
+        name: "Москва",
+        lat: 55.75,
+        lon: 37.62
+    },
+
+    {
+        name: "Уфа",
+        lat: 54.74,
+        lon: 55.97
+    },
+
+    {
+        name: "Казань",
+        lat: 55.79,
+        lon: 49.12
+    },
+
+    {
+        name: "Новосибирск",
+        lat: 55.03,
+        lon: 82.92
+    }
+
 ];
-let gifFrames=[], gifDelays=[], gifIdx=0, gifPlaying=false, gifTimer=null;
-let gifAnchor=0; // время последнего кадра (мс)
-let gifLoaded=false, gifLoading=false;
-let view={scale:1,x:0,y:0}; // трансформация канваса
 
-function gifTabOpened(){ if(!gifLoaded&&!gifLoading) loadGif(); }
 
-async function fetchWithProgress(url,timeoutMs){
-  const ctrl=new AbortController(); const to=setTimeout(()=>ctrl.abort(),timeoutMs);
-  try{
-    const r=await fetch(url,{signal:ctrl.signal});
-    if(!r.ok) throw new Error('HTTP '+r.status);
-    const total=+r.headers.get('content-length')||13350000;
-    const reader=r.body.getReader(); const chunks=[]; let got=0;
-    for(;;){
-      const {done,value}=await reader.read();
-      if(done)break;
-      chunks.push(value); got+=value.length;
-      $('gif-progress-bar').style.width=Math.min(99,got/total*100)+'%';
-      $('gif-progress-txt').querySelector('b').textContent=(got/1048576).toFixed(1)+' МБ';
+demoStations.forEach(
+    station => {
+
+        const marker =
+            L.circleMarker(
+                [
+                    station.lat,
+                    station.lon
+                ],
+                {
+                    radius: 5,
+                    weight: 1,
+                    color: "#ffffff",
+                    fillColor: "#4d9cff",
+                    fillOpacity: .9
+                }
+            );
+
+        marker.bindTooltip(
+            station.name
+        );
+
+        stationLayer.addLayer(
+            marker
+        );
+
     }
-    const buf=new Uint8Array(got); let off=0;
-    chunks.forEach(c=>{buf.set(c,off);off+=c.length;});
-    return buf.buffer;
-  }finally{clearTimeout(to);}
-}
+);
 
-async function getGifuct(){
-  const urls=['https://esm.sh/gifuct-js@2.1.2','https://esm.run/gifuct-js@2.1.2'];
-  for(const u of urls){
-    try{ const m=await import(u); if(m.parseGIF&&m.decompressFrames) return m; }catch(e){}
-  }
-  throw new Error('no decoder lib');
-}
 
-function decodeWithGifuct(mod,buf){
-  const gif=mod.parseGIF(buf);
-  const frames=mod.decompressFrames(gif,true);
-  return bakeFrames(frames);
-}
-async function decodeWithImageDecoder(buf){
-  if(!('ImageDecoder' in window)) throw new Error('no ImageDecoder');
-  const dec=new ImageDecoder({data:buf,type:'image/gif'});
-  await dec.tracks.ready;
-  const track=dec.tracks.selectedTrack;
-  const out=[];
-  for(let i=0;i<track.frameCount;i++){
-    const {image}=await dec.decode({frameIndex:i});
-    out.push({bmp:image,delay:(image.duration||700000)/1000});
-  }
-  return out;
-}
-function bakeFrames(frames){
-  // отрисовка кадров с учётом disposal
-  const W=frames[0].dims.width,H=frames[0].dims.height;
-  const scene=document.createElement('canvas'); scene.width=W; scene.height=H;
-  const sctx=scene.getContext('2d');
-  const patch=document.createElement('canvas'); const pctx=patch.getContext('2d');
-  const out=[];
-  for(const f of frames){
-    if(f.patch){
-      patch.width=f.dims.width; patch.height=f.dims.height;
-      pctx.putImageData(new ImageData(new Uint8ClampedArray(f.patch),f.dims.width,f.dims.height),0,0);
-      sctx.drawImage(patch,f.dims.left,f.dims.top);
+document
+    .getElementById("stations-button")
+    .addEventListener(
+        "click",
+        () => {
+
+            stationsVisible =
+                !stationsVisible;
+
+            if (stationsVisible) {
+
+                stationLayer.addTo(map);
+
+            } else {
+
+                map.removeLayer(
+                    stationLayer
+                );
+
+            }
+
+        }
+    );
+
+
+/* ---------------------------------------------------------
+   COVERAGE
+   --------------------------------------------------------- */
+
+let coverageVisible = false;
+
+const coverageLayer =
+    L.layerGroup();
+
+
+demoStations.forEach(
+    station => {
+
+        L.circle(
+            [
+                station.lat,
+                station.lon
+            ],
+            {
+                radius: 250000,
+                color: "#4d9cff",
+                weight: 1,
+                fillOpacity: .025
+            }
+        )
+        .bindTooltip(
+            `Зона обзора: ${station.name}`
+        )
+        .addTo(coverageLayer);
+
     }
-    const bmpCanvas=document.createElement('canvas');
-    // экономия памяти: не более 1000px
-    const k=Math.min(1,1000/W);
-    bmpCanvas.width=Math.round(W*k); bmpCanvas.height=Math.round(H*k);
-    bmpCanvas.getContext('2d').drawImage(scene,0,0,bmpCanvas.width,bmpCanvas.height);
-    out.push({canvas:bmpCanvas,delay:f.delay||700});
-    if(f.disposalType===2) sctx.clearRect(f.dims.left,f.dims.top,f.dims.width,f.dims.height);
-  }
-  return out;
-}
+);
 
-async function loadGif(){
-  gifLoading=true;
-  $('gif-progress').style.display='block';
-  $('gif-progress-txt').firstChild.textContent='Загрузка радарной сводки ЦАО… ';
-  $('gif-progress-bar').style.width='2%';
-  let buf=null;
-  for(const wrap of GIF_PROXY){
-    try{ buf=await fetchWithProgress(wrap(SRC.gif+'?_='+Date.now()),60000); if(buf&&buf.byteLength>500000)break; else buf=null; }catch(e){ buf=null; }
-  }
-  try{
-    if(!buf) throw new Error('all proxies failed');
-    $('gif-progress-txt').firstChild.textContent='Декодирование кадров… ';
-    let frames=null;
-    try{ const mod=await getGifuct(); frames=decodeWithGifuct(mod,buf); }
-    catch(e){ frames=await decodeWithImageDecoder(buf); }
-    gifFrames=frames.map(f=>f.canvas||f.bmp);
-    gifDelays=frames.map(f=>f.delay||700);
-    gifAnchor=Math.floor(Date.now()/600000)*600000;
-    gifIdx=gifFrames.length-1;
-    gifLoaded=true;
-    $('frame-slider').max=gifFrames.length-1;
-    $('gif-progress').style.display='none';
-    $('gif-toolbar').style.display='flex';
-    showFrame(gifIdx);
-    startPlay();
-    setStatus('ok','данные: РИГМЦ · live');
-  }catch(e){
-    // фолбэк: нативный GIF (анимируется браузером)
-    $('gif-progress').style.display='none';
-    const img=$('gif-img-fallback');
-    img.src=SRC.gif+'?_='+Date.now();
-    img.style.display='block';
-    $('gif-canvas').style.display='none';
-    $('gif-toolbar').style.display='flex';
-    $('frame-slider').disabled=true;
-    $('fr-prev').disabled=$('fr-next').disabled=$('fr-play').disabled=true;
-    $('frame-label').innerHTML='режим: нативный GIF<br>(прокси недоступны)';
-    gifLoaded=true;
-    setStatus('wait','упрощённый режим анимации');
-  }
-  gifLoading=false;
-}
 
-function frameTime(i){
-  const t=new Date(gifAnchor-(gifFrames.length-1-i)*600000);
-  return '≈ '+fmtUTC(t)+' · '+fmtMSK(t);
-}
-function showFrame(i){
-  if(!gifFrames.length)return;
-  gifIdx=Math.max(0,Math.min(gifFrames.length-1,i));
-  const c=$('gif-canvas');
-  const f=gifFrames[gifIdx];
-  if(c.width!==f.width){c.width=f.width;c.height=f.height;}
-  c.getContext('2d').drawImage(f,0,0);
-  $('frame-slider').value=gifIdx;
-  $('frame-label').innerHTML=`кадр <b>${gifIdx+1}/${gifFrames.length}</b><br>${frameTime(gifIdx)}`;
-  applyView();
-}
-function stepFrame(d){ stopPlay(); showFrame(gifIdx+d); }
-function startPlay(){
-  if(!gifFrames.length)return;
-  gifPlaying=true; $('fr-play').textContent='⏸';
-  const loop=()=>{
-    gifTimer=setTimeout(()=>{
-      showFrame((gifIdx+1)%gifFrames.length);
-      if(gifPlaying)loop();
-    }, +$('speed-sel').value);
-  };
-  loop();
-}
-function stopPlay(){ gifPlaying=false; $('fr-play').textContent='▶'; clearTimeout(gifTimer); }
-function togglePlay(){ gifPlaying?stopPlay():startPlay(); }
+document
+    .getElementById("coverage-button")
+    .addEventListener(
+        "click",
+        () => {
 
-$('fr-play').addEventListener('click',togglePlay);
-$('fr-prev').addEventListener('click',()=>stepFrame(-1));
-$('fr-next').addEventListener('click',()=>stepFrame(1));
-$('frame-slider').addEventListener('input',e=>{stopPlay();showFrame(+e.target.value);});
-$('speed-sel').addEventListener('change',()=>{ if(gifPlaying){stopPlay();startPlay();} });
-$('gif-reload').addEventListener('click',()=>{
-  gifFrames=[];gifLoaded=false;
-  $('gif-canvas').style.display='block'; $('gif-img-fallback').style.display='none';
-  loadGif();
-});
+            coverageVisible =
+                !coverageVisible;
 
-/* ---------- зум/пан для кадров ---------- */
-function applyView(){
-  const c=$('gif-canvas');
-  c.style.transform=`translate(calc(-50% + ${view.x}px), calc(-50% + ${view.y}px)) scale(${view.scale})`;
-}
-function zoomAt(f,cx,cy){
-  const s0=view.scale;
-  view.scale=Math.max(.3,Math.min(8,view.scale*f));
-  const k=view.scale/s0;
-  view.x=cx-(cx-view.x)*k; view.y=cy-(cy-view.y)*k;
-  applyView();
-}
-$('zoom-in').addEventListener('click',()=>zoomAt(1.35,0,0));
-$('zoom-out').addEventListener('click',()=>zoomAt(1/1.35,0,0));
-$('zoom-reset').addEventListener('click',()=>{view={scale:1,x:0,y:0};applyView();});
-$('gif-stage').addEventListener('wheel',e=>{
-  e.preventDefault();
-  const r=$('gif-stage').getBoundingClientRect();
-  const px=e.clientX-r.left-r.width/2, py=e.clientY-r.top-r.height/2;
-  zoomAt(e.deltaY<0?1.15:1/1.15, px, py);
-},{passive:false});
-let drag=null;
-$('gif-stage').addEventListener('pointerdown',e=>{
-  drag={x:e.clientX-view.x,y:e.clientY-view.y};
-  $('gif-stage').classList.add('dragging');
-  $('gif-stage').setPointerCapture(e.pointerId);
-});
-$('gif-stage').addEventListener('pointermove',e=>{
-  if(!drag)return;
-  view.x=e.clientX-drag.x; view.y=e.clientY-drag.y; applyView();
-});
-['pointerup','pointercancel'].forEach(ev=>$('gif-stage').addEventListener(ev,()=>{drag=null;$('gif-stage').classList.remove('dragging');}));
-$('gif-stage').addEventListener('dblclick',()=>{view={scale:1,x:0,y:0};applyView();});
+            if (coverageVisible) {
 
-/* ---------- таблица станций ---------- */
-(function(){
-  const tb=document.querySelector('#station-table tbody');
-  tb.innerHTML=STATIONS.map(([n,la,lo])=>`<tr><td>${n}</td><td class="mono2">${la.toFixed(2)}°N ${lo.toFixed(2)}°E</td></tr>`).join('');
-})();
+                coverageLayer.addTo(map);
 
-/* ============================== СТАРТ ============================== */
-initMap();
-const startTab=(location.hash||'').replace('#','');
-if(['map','gif','info'].includes(startTab)) switchTab(startTab);
-pollCaps();
-setInterval(pollCaps,60000);
-/* автообновление сводки ЦАО раз в 10 минут */
-setInterval(()=>{
-  if(document.hidden||!gifLoaded||gifLoading)return;
-  if(gifFrames.length){ gifLoaded=false; gifFrames=[]; loadGif(); }
-  else{ const img=$('gif-img-fallback'); if(img.style.display==='block') img.src=SRC.gif+'?_='+Date.now(); }
-},600000);
-document.addEventListener('visibilitychange',()=>{ if(!document.hidden) pollCaps(); });
+            } else {
+
+                map.removeLayer(
+                    coverageLayer
+                );
+
+            }
+
+        }
+    );
+
+
+/* ---------------------------------------------------------
+   DARK MAP
+   --------------------------------------------------------- */
+
+let darkMap = true;
+
+document
+    .getElementById("dark-map-button")
+    .addEventListener(
+        "click",
+        () => {
+
+            darkMap =
+                !darkMap;
+
+            /*
+             * Позже сюда можно поставить
+             * отдельный тёмный tile provider.
+             *
+             * Сейчас не подключаем стороннюю
+             * карту без необходимости.
+             */
+
+        }
+    );
+
+
+/* ---------------------------------------------------------
+   LABELS
+   --------------------------------------------------------- */
+
+document
+    .getElementById("labels-button")
+    .addEventListener(
+        "click",
+        () => {
+
+            stationsVisible =
+                !stationsVisible;
+
+            if (stationsVisible) {
+
+                stationLayer.addTo(map);
+
+            } else {
+
+                map.removeLayer(
+                    stationLayer
+                );
+
+            }
+
+        }
+    );
+
+
+/* ---------------------------------------------------------
+   INITIAL STATE
+   --------------------------------------------------------- */
+
+updateTimeline();
+
+
+console.log(
+    "Daradar interface initialized."
+);
+
+console.log(
+    "Radar data source: not connected."
+);
 </script>
-<script src="Meteoinfo.js"></script>  
+
 </body>
 </html>

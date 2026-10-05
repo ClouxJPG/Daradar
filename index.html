@@ -4,19 +4,15 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover">
 <title>Quantum Meteo — Радиолокационная информация</title>
-
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
-
 <style>
 *{box-sizing:border-box}
-
 :root{
  --sat:env(safe-area-inset-top,0px);
  --sar:env(safe-area-inset-right,0px);
  --sab:env(safe-area-inset-bottom,0px);
  --sal:env(safe-area-inset-left,0px)
 }
-
 html,body{
  margin:0;
  height:100%;
@@ -27,30 +23,24 @@ html,body{
  -webkit-user-select:none;
  user-select:none
 }
-
 #map{
  position:absolute;
  inset:0;
  background:#b1b1b1
 }
-
 .leaflet-tile-pane{
  filter:saturate(.3) brightness(.94) contrast(.92)
 }
-
 .leaflet-image-layer{
  image-rendering:pixelated
 }
-
 .leaflet-container{
  font:13px Arial
 }
-
 .ov{
  position:absolute;
  z-index:1000
 }
-
 .wb{
  background:#f2f2f2;
  border:1px solid #aaa;
@@ -61,16 +51,13 @@ html,body{
  font:13px Arial;
  color:#000
 }
-
 .wb.on{
  background:#9fc3e8;
  border-color:#4a76a8
 }
-
 /* =========================================================
    ЛЕВЫЕ КНОПКИ
    ========================================================= */
-
 #zc{
  left:8px;
  top:calc(8px + var(--sat));
@@ -85,19 +72,16 @@ html,body{
  font:bold 22px/23px Arial;
  text-align:center
 }
-
 #zc div{
  flex:1;
  cursor:pointer
 }
-
 #rl{
  left:44px;
  top:calc(17px + var(--sat));
  width:29px;
  height:25px
 }
-
 #vc{
  left:80px;
  top:calc(17px + var(--sat));
@@ -106,11 +90,9 @@ html,body{
  font-size:12px;
  font-weight:600
 }
-
 /* =========================================================
    ПАНЕЛЬ СЛОЁВ
    ========================================================= */
-
 #lp{
  left:0;
  top:calc(70px + var(--sat));
@@ -120,7 +102,6 @@ html,body{
  line-height:20px;
  font-size:14px
 }
-
 #lp .wb{
  height:20px;
  line-height:18px;
@@ -128,7 +109,6 @@ html,body{
  border-radius:3px;
  margin:0 1px
 }
-
 #lp .it{
  cursor:pointer;
  display:flex;
@@ -136,7 +116,6 @@ html,body{
  height:20px;
  padding-left:1px
 }
-
 #lp .it i{
  font:bold 22px/10px Arial;
  font-style:normal;
@@ -144,15 +123,12 @@ html,body{
  margin-right:2px;
  display:inline-block
 }
-
 #lp .it.off{
  opacity:.35
 }
-
 /* =========================================================
    ЛЕГЕНДА
    ========================================================= */
-
 #leg{
  left:var(--sal);
  bottom:var(--sab);
@@ -163,14 +139,12 @@ html,body{
  padding:3px 2px 2px 3px;
  font-size:12px
 }
-
 #leg div{
  height:17px;
  display:flex;
  align-items:center;
  white-space:nowrap
 }
-
 #leg i{
  width:14px;
  height:14px;
@@ -178,11 +152,9 @@ html,body{
  border:1px solid #333;
  flex:none
 }
-
 /* =========================================================
    QUANTUM METEO
    ========================================================= */
-
 #logo{
  right:calc(8px + var(--sar));
  top:calc(6px + var(--sat));
@@ -193,7 +165,6 @@ html,body{
  justify-content:center;
  pointer-events:none
 }
-
 #qm-mark{
  width:150px;
  height:54px;
@@ -201,18 +172,15 @@ html,body{
  align-items:center;
  justify-content:flex-end
 }
-
 #qm-svg{
  width:150px;
  height:54px;
  display:block;
  filter:drop-shadow(0 1px 2px #0003)
 }
-
 /* =========================================================
    ПРАВАЯ КНОПКА
    ========================================================= */
-
 #fs{
  right:calc(7px + var(--sar));
  top:calc(9px + var(--sat));
@@ -220,541 +188,375 @@ html,body{
  height:29px;
  background:#e8eef8cc
 }
-
 /* =========================================================
-   НИЖНЯЯ ПАНЕЛЬ
+   НИЖНЯЯ ПАНЕЛЬ / ТАЙМЛАЙН
    ========================================================= */
-
 #bp{
  right:var(--sar);
  bottom:var(--sab);
-
- width:458px;
+ width:min(500px,calc(100vw - var(--sal) - var(--sar)));
  max-width:calc(100vw - var(--sal) - var(--sar));
-
- border:1px solid #555;
- background:#dcdcdc;
-
+ border:1px solid #444;
+ background:#e2e2e2;
  font-size:14px;
  overflow:hidden;
-
  z-index:1100
 }
-
-/* =========================================================
-   ЗАГОЛОВОК
-   ========================================================= */
-
 #bp .tt{
- height:18px;
+ min-height:18px;
  line-height:17px;
-
- background:#cfcfcf;
-
- border-bottom:1px solid #888;
-
+ background:#dcdcdc;
  padding:0 4px;
-
  white-space:nowrap;
  overflow:hidden;
-
- font-weight:400;
- color:#111
+ font-weight:600
 }
-
 /* =========================================================
-   СТРОКА РЕЖИМОВ
+   ИНФОРМАЦИЯ
    ========================================================= */
-
+#meta{
+ min-height:34px;
+ background:#c9c9c9;
+ border-top:1px solid #aaa;
+ border-bottom:1px solid #999;
+ display:flex;
+ flex-direction:column;
+ justify-content:center;
+ align-items:flex-start;
+ gap:1px;
+ padding:2px 5px;
+ overflow:hidden;
+ white-space:nowrap;
+ font-size:12px;
+ line-height:14px
+}
+#coords{
+ white-space:nowrap;
+ overflow:visible
+}
+#dl{
+ white-space:nowrap;
+ overflow:visible;
+ font-size:12px
+}
 #bp .st{
- height:19px;
-
- background:#858585;
-
+ height:17px;
+ background:#808080;
  display:flex;
  align-items:center;
-
  padding-left:2px;
-
- gap:1px
+ gap:6px
 }
-
 .b{
- height:18px;
+ height:19px;
  min-width:29px;
-
  border:1px solid #4a8fa5;
-
  background:#a9dbea;
-
- font:14px/15px Arial;
-
+ font:14px/14px Arial;
  padding:0 4px;
-
  cursor:pointer;
-
  color:#000
 }
-
 .b.red{
  background:#f08080;
  border-color:#a05050
 }
-
 .st .b{
- height:18px;
- width:29px;
- min-width:29px;
- padding:0
+ height:16px;
+ width:29px
 }
-
-/* =========================================================
-   СТРОКА УПРАВЛЕНИЯ ВРЕМЕНЕМ
-   ========================================================= */
-
 #bp .dr{
  height:25px;
-
  display:flex;
  align-items:center;
-
  padding-left:2px;
-
- gap:2px;
-
+ gap:3px;
  white-space:nowrap;
  font-size:14px;
-
  min-width:0;
- overflow:hidden;
-
- background:#dcdcdc
-}
-
-#bp .dr .b{
- height:20px;
- width:31px;
- min-width:31px;
- flex:0 0 31px;
-
- font-weight:bold;
-
- margin:0;
- padding:0
-}
-
-/* =========================================================
-   ДАТА
-   ========================================================= */
-
-#di{
- height:20px;
-
- width:134px;
- min-width:80px;
-
- border:1px solid #888;
-
- background:#fff;
-
- font:13px Arial;
-
- padding:0 3px;
-
- margin-left:3px;
-
- flex:0 1 134px
-}
-
-#ck{
- width:15px;
- height:15px;
-
- margin:0 4px 0 1px;
-
- flex:0 0 15px
-}
-
-/* =========================================================
-   ЧАСЫ
-   ========================================================= */
-
-#hrs{
- display:flex;
-
- height:18px;
-
- border-top:1px solid #555;
-
- overflow:hidden;
-
- background:#e2e2e2
-}
-
-#hrs div{
- flex:1;
-
- min-width:0;
-
- text-align:center;
-
- border-left:1px solid #777;
-
- line-height:17px;
-
- cursor:pointer;
-
- background:#e2e2e2;
-
- font-size:10px;
-
  overflow:hidden
 }
-
+#bp .dr .b{
+ height:21px;
+ width:34px;
+ font-weight:bold;
+ margin:0;
+ flex:0 0 34px
+}
+#di{
+ height:21px;
+ width:134px;
+ min-width:80px;
+ border:1px solid #888;
+ background:#fff;
+ font:14px Arial;
+ padding:0 3px;
+ margin-left:5px;
+ flex:0 1 134px
+}
+#ck{
+ width:17px;
+ height:17px;
+ margin:0 4px 0 0;
+ flex:0 0 17px
+}
+/* =========================================================
+   ЧАСЫ ТАЙМЛАЙНА
+   ========================================================= */
+#hrs{
+ display:flex;
+ height:18px;
+ border-top:1px solid #555;
+ overflow:hidden
+}
+#hrs div{
+ flex:1;
+ min-width:0;
+ text-align:center;
+ border-left:1px solid #555;
+ line-height:17px;
+ cursor:pointer;
+ background:#e2e2e2;
+ font-size:10px;
+ overflow:hidden
+}
 #hrs div:first-child{
  border-left:0
 }
-
 #hrs div.c{
  background:#cfe4ff;
  font-weight:bold
 }
-
 /* =========================================================
-   ШКАЛА ВРЕМЕНИ
+   ГЛАВНЫЙ ТАЙМЛАЙН
    ========================================================= */
-
 #bar{
  display:block;
-
  width:100%;
  height:20px;
-
  border-top:1px solid #555;
-
  cursor:grab;
-
- touch-action:none;
-
- background:#d7d7d7
+ touch-action:none
 }
-
 #bar:active{
  cursor:grabbing
 }
-
 /* =========================================================
    ВЕРТИКАЛЬНОЕ СЕЧЕНИЕ
    ========================================================= */
-
 #sx{
  display:none;
-
  right:calc(37px + var(--sar));
  top:calc(15px + var(--sat));
-
  width:530px;
  max-width:530px;
  height:310px;
-
  background:#eee;
-
  border-radius:6px;
-
  box-shadow:0 2px 10px #0006;
-
  font:10px Arial;
-
  transform-origin:top right;
-
  z-index:1200
 }
-
 #sh{
  margin:4px 4px 0;
-
  height:30px;
-
  border-radius:5px;
-
  background:linear-gradient(#f9b84e,#eeaf47);
-
  color:#fff;
-
  font:bold 15px/30px Arial;
-
  padding-left:16px;
-
  text-shadow:0 1px 1px #0005;
-
  cursor:move;
-
  touch-action:none
 }
-
 #sc{
  position:absolute;
-
  right:9px;
  top:8px;
-
  width:20px;
  height:20px;
-
  border-radius:3px;
-
  background:#fbe08c;
-
  color:#e08a10;
-
  font:bold 15px/19px Arial;
-
  text-align:center;
-
  cursor:pointer;
-
  text-shadow:none
 }
-
 #sx .yl{
  position:absolute;
-
  left:6px;
  top:40px;
-
  line-height:10px;
-
  font-size:10px
 }
-
 #sst{
  position:absolute;
-
  left:49px;
  top:45px;
-
  font:10px "Courier New",monospace
 }
-
 #sx canvas{
  position:absolute;
-
  left:42px;
  top:55px;
-
  background:#b8b8b8;
-
  border-left:1px solid #666;
  border-bottom:1px solid #666
 }
-
 #sx .yt{
  position:absolute;
-
  left:22px;
-
  width:16px;
-
  text-align:right;
-
  font-size:10px;
  line-height:10px
 }
-
 #sx .xl{
  position:absolute;
-
  left:0;
  right:0;
-
  bottom:12px;
-
  text-align:center
 }
-
 #zl{
  position:absolute;
-
  left:484px;
  top:67px;
-
  width:42px;
-
  background:#fff;
-
  text-align:left;
-
  font-size:11px;
-
  padding:0 0 1px 1px
 }
-
 #zl b{
  display:block;
-
  font-size:12px;
  line-height:14px;
-
  text-align:center;
-
  margin-bottom:1px
 }
-
 #zl div{
  height:11px;
-
  display:flex;
  align-items:center;
-
  font-size:11px
 }
-
 #zl i{
  width:14px;
  height:10px;
-
  border:1px solid #444;
-
  margin-right:3px;
-
  flex:none
 }
-
 /* =========================================================
    СООБЩЕНИЯ
    ========================================================= */
-
 #msg{
  left:70px;
-
  bottom:calc(100px + var(--sab));
-
  font-size:12px;
-
  color:#a00;
-
  background:#fffd;
-
  padding:0 4px;
-
  pointer-events:none;
-
  max-width:calc(100vw - 80px);
-
  overflow:hidden;
-
  text-overflow:ellipsis;
-
  white-space:nowrap
 }
-
 /* =========================================================
    МОБИЛЬНАЯ АДАПТАЦИЯ
    ========================================================= */
-
 @media(max-width:700px){
-
  #bp{
-  width:458px;
+  width:calc(100vw - var(--sal) - var(--sar));
   max-width:calc(100vw - var(--sal) - var(--sar));
-
   right:var(--sar);
   bottom:var(--sab)
  }
-
- #bp .dr .b{
-  width:29px;
-  min-width:29px;
-  flex-basis:29px
+ #meta{
+  font-size:10px;
+  line-height:12px
  }
-
- #di{
-  width:94px;
-  min-width:70px;
-  flex-basis:94px
+ #coords,
+ #dl{
+  font-size:10px
  }
-
- #hrs div{
+ #hrs div,
+ #hrs{
   font-size:9px
  }
-
+ #di{
+  width:86px;
+  min-width:70px;
+  flex-basis:86px
+ }
+ #bp .dr .b{
+  width:27px;
+  min-width:27px;
+  flex-basis:27px;
+  font-size:12px
+ }
  #logo{
   transform:scale(.82);
   transform-origin:top right;
   right:3px
  }
-
  #sx{
   top:calc(58px + var(--sat));
   right:3px
  }
-
  #leg{
   width:114px;
   font-size:11px
  }
-
  #leg div{
   height:16px
  }
-
  #leg i{
   width:13px;
   height:13px
  }
 }
-
 @media(max-width:390px){
-
- #bp{
-  width:100vw;
-  max-width:100vw;
-  right:0
- }
-
  #bp .dr{
-  gap:1px
+  gap:2px
  }
-
  #bp .dr .b{
-  width:26px;
-  min-width:26px;
-  flex-basis:26px;
-
-  font-size:12px
+  width:24px;
+  min-width:24px;
+  flex-basis:24px;
+  padding:0 2px
  }
-
  #di{
-  width:78px;
+  width:72px;
   min-width:64px;
-  flex-basis:78px;
-
+  flex-basis:72px;
   font-size:12px
  }
-
+ #coords,
+ #dl{
+  font-size:9px
+ }
  #logo{
   transform:scale(.7)
  }
 }
-
 @media(max-height:520px){
-
  #sx{
   top:4px
  }
 }
 </style>
 </head>
-
 <body>
-
 <div id="map"></div>
-
 <div class="ov" id="zc">
  <div id="zi">+</div>
  <div id="zo">−</div>
 </div>
-
 <button class="ov wb" id="rl">
  <svg width="20" height="16" viewBox="0 0 18 14">
   <rect x="1" y="5" width="16" height="6"
@@ -765,11 +567,8 @@ html,body{
    stroke="#333"/>
  </svg>
 </button>
-
 <button class="ov wb" id="vc">VC</button>
-
 <div class="ov" id="lp">
-
  <button class="wb" id="lb">
   <svg width="10" height="10" viewBox="0 0 10 10" style="vertical-align:-1px">
    <path d="M1 1h4M1 1v4M1 1l7 7"
@@ -778,37 +577,28 @@ html,body{
    <path d="M5 5l4 1-1 3z"/>
   </svg>
  </button>
-
  <div id="li"></div>
 </div>
-
 <div class="ov" id="leg"></div>
-
 <!-- =========================================================
      QUANTUM METEO
      ========================================================= -->
-
 <div class="ov" id="logo">
-
  <div id="qm-mark">
-
   <svg id="qm-svg"
        viewBox="0 0 300 108"
        xmlns="http://www.w3.org/2000/svg"
        aria-label="Quantum Meteo">
-
    <defs>
     <linearGradient id="qmBlue" x1="0" y1="0" x2="1" y2="1">
      <stop offset="0" stop-color="#1d82d0"/>
      <stop offset="1" stop-color="#124d91"/>
     </linearGradient>
-
     <linearGradient id="qmOrange" x1="0" y1="0" x2="1" y2="1">
      <stop offset="0" stop-color="#ffbd43"/>
      <stop offset="1" stop-color="#df7810"/>
     </linearGradient>
    </defs>
-
    <rect x="3" y="3"
          width="294"
          height="102"
@@ -816,47 +606,38 @@ html,body{
          fill="#ffffffee"
          stroke="#174f87"
          stroke-width="3"/>
-
    <circle cx="53" cy="54"
            r="34"
            fill="#edf6ff"
            stroke="url(#qmBlue)"
            stroke-width="4"/>
-
    <path d="M27 54a26 26 0 0 0 52 0"
          fill="none"
          stroke="#2d88d3"
          stroke-width="3"/>
-
    <path d="M34 54a19 19 0 0 0 38 0"
          fill="none"
          stroke="#2d88d3"
          stroke-width="3"/>
-
    <path d="M53 54L79 36A34 34 0 0 0 53 20Z"
          fill="#2d88d3"
          opacity=".28"/>
-
    <path d="M53 54L81 35"
          stroke="#155ca8"
          stroke-width="4"
          stroke-linecap="round"/>
-
    <circle cx="53"
            cy="54"
            r="5"
            fill="url(#qmOrange)"/>
-
    <path d="M25 31C35 8 70 8 82 31"
          fill="none"
          stroke="url(#qmOrange)"
          stroke-width="3"
          stroke-linecap="round"/>
-
    <circle cx="82" cy="31"
            r="3.5"
            fill="#ef9c17"/>
-
    <text x="98"
          y="49"
          font-family="Arial,Helvetica,sans-serif"
@@ -866,7 +647,6 @@ html,body{
          fill="#174f87">
     QUANTUM
    </text>
-
    <text x="100"
          y="78"
          font-family="Arial,Helvetica,sans-serif"
@@ -876,12 +656,9 @@ html,body{
          fill="#df8615">
     METEO
    </text>
-
   </svg>
-
  </div>
 </div>
-
 <button class="ov wb" id="fs">
  <svg width="16" height="16" viewBox="0 0 14 14">
   <path d="M2 12L12 2M6 2h6v6"
@@ -890,119 +667,86 @@ html,body{
    fill="none"/>
  </svg>
 </button>
-
 <div class="ov" id="msg"></div>
-
 <!-- =========================================================
-     НИЖНЯЯ ПАНЕЛЬ
+     ТАЙМЛАЙН
      ========================================================= -->
-
 <div class="ov" id="bp">
-
  <div class="tt" id="tt">
   Метеоявления
  </div>
-
- <div class="st">
-
-  <button class="b red" data-m="S">S</button>
-
-  <button class="b" data-m="R">R</button>
-
-  <button class="b" data-m="H">H</button>
-
+ <div id="meta">
+  <span id="coords">Шир: —  Дол: —</span>
+  <span id="dl"></span>
  </div>
-
+ <div class="st">
+  <button class="b red" data-m="S">S</button>
+  <button class="b" data-m="R">R</button>
+  <button class="b" data-m="H">H</button>
+ </div>
  <div class="dr">
-
   <button class="b" id="n1">&lt;&lt;</button>
-
   <button class="b" id="n2">&lt;</button>
-
   <button class="b" id="n3">|&gt;</button>
-
   <button class="b" id="n4">&gt;</button>
-
   <button class="b" id="n5">&gt;&gt;</button>
-
   <input id="di" type="date">
-
   <input id="ck"
          type="checkbox"
          title="Автообновление">
-
  </div>
-
  <div id="hrs"></div>
-
  <canvas id="bar" height="20"></canvas>
-
 </div>
-
 <!-- =========================================================
      ВЕРТИКАЛЬНОЕ СЕЧЕНИЕ
      ========================================================= -->
-
 <div class="ov" id="sx">
-
  <div id="sh">
   Вертикальное сечение р/л отражаемости Z
  </div>
-
  <div id="sc">×</div>
-
  <div class="yl">
   Высота,<br>км
  </div>
-
  <div id="sst"></div>
-
  <canvas id="sp"
          width="440"
          height="222"></canvas>
-
  <div id="yt"></div>
-
  <div class="xl">
   Расстояние, км
  </div>
-
  <div id="zl"></div>
-
 </div>
-
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
-
 <script>
 const $=i=>document.getElementById(i),
       pad=n=>String(n).padStart(2,'0');
-
 /* =========================================================
    НАСТРОЙКИ ВРЕМЕНИ
    ========================================================= */
-
 const MSK_OFFSET=3*60*60*1000;
-
-const ARCHIVE_HOURS=24;
+/*
+   Теперь показываем только последние 12 часов.
+   12 часов × 6 кадров в час = 72 кадра.
+*/
+const ARCHIVE_HOURS=12;
 const STEP_MS=6e5;
 const ARCHIVE_STEPS=ARCHIVE_HOURS*6;
-
-/* =========================================================
-   ЧАСОВОЙ ПОЯС
-   ========================================================= */
-
+/*
+   Все timestamps внутри приложения — UTC.
+   МСК используется только для интерфейса.
+*/
 function toMSK(d){
  return new Date(+d+MSK_OFFSET);
 }
-
 function fromMSK(d){
  return new Date(+d-MSК_OFFSET);
 }
-
 /* =========================================================
    ПАЛИТРА
    ========================================================= */
-
 const L2=[
  ['Обл. в. ср. яр.','#9caab1'],
  ['Слоист. обл.','#a2c6ff'],
@@ -1024,18 +768,14 @@ const L2=[
  ['Гроз+Шкв сильн.','#c700c7'],
  ['Смерч','#3f3f5f']
 ];
-
 const P=L2.map(l=>
  [1,3,5].map(i=>parseInt(l[1].substr(i,2),16))
-);
-
-const TOL=48;
-
+),
+TOL=48;
 const ZT=[
  -30,-10,-5,0,5,10,15,20,25,
  30,35,40,45,50,55,60,65,70
 ];
-
 const ZC=[
  '#dcdcdc','#a6a6a4','#a9d3ec','#cdff97',
  '#56ff3d','#10a5f9','#0c4bee','#0003b9',
@@ -1043,34 +783,28 @@ const ZC=[
  '#ff0000','#3fd01a','#0aa104','#ec08f3',
  '#a405f5','#710100'
 ];
-
 $('leg').innerHTML=L2.map(l=>
  `<div><i style="background:${l[1]}"></i>${l[0]}</div>`
 ).join('');
-
 $('zl').innerHTML=
  '<b>Z,dbZ</b>'+
  ZT.map((t,i)=>
   `<div><i style="background:${ZC[i]}"></i>&gt;${t<0?'-'+(-t):t}</div>`
  ).join('');
-
 /* =========================================================
    СЛОИ
    ========================================================= */
-
 const TTL={
  S:'Метеоявления',
  R:'Радиолокационная отражаемость',
  H:'Высота верхней границы облачности'
 };
-
 const LG={
  wwlln:['WWLLN','#e6e600'],
  planeta:['Планета','#000'],
  vgi:['ВГИ','#e22'],
  alves:['Алвес','#f80']
 };
-
 const S={
  api:localStorage.api||'',
  m:'S',
@@ -1085,24 +819,20 @@ const S={
  va:null,
  vb:null
 };
-
 $('li').innerHTML=Object.keys(LG).map(k=>
  `<div class="it off" data-k="${k}">
   <i style="color:${LG[k][1]}">+</i>${LG[k][0]}
  </div>`
 ).join('');
-
 /* =========================================================
    КАРТА
    ========================================================= */
-
 const map=L.map('map',{
  zoomControl:false,
  worldCopyJump:true,
  minZoom:2,
  attributionControl:true
 }).setView([56,50],5);
-
 L.tileLayer(
  'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
  {
@@ -1110,257 +840,194 @@ L.tileLayer(
   attribution:'© OpenStreetMap'
  }
 ).addTo(map);
-
 const msg=t=>$('msg').textContent=t||'';
-
 const jf=async p=>{
  const r=await fetch(S.api+p);
  if(!r.ok)throw 0;
  return r.json()
 };
-
 const wd=[
  'вс','пн','вт','ср','чт','пт','сб'
 ];
-
 const mn=[
  'янв','фев','мар','апр','мая','июн',
  'июл','авг','сен','окт','ноя','дек'
 ];
-
 /* =========================================================
-   UTC TIMESTAMP
+   UTC TIMESTAMP ДЛЯ API
    ========================================================= */
-
 const stp=d=>
  `${d.getUTCFullYear()}${pad(d.getUTCMonth()+1)}${pad(d.getUTCDate())}_${pad(d.getUTCHours())}${pad(d.getUTCMinutes())}00`;
-
 /* =========================================================
-   ДАТА
+   ДАТА ДЛЯ INPUT DATE — МСК
    ========================================================= */
-
 const dstr=d=>{
-
  const m=toMSK(d);
-
  return `${m.getUTCFullYear()}-${pad(m.getUTCMonth()+1)}-${pad(m.getUTCDate())}`;
 };
-
 /* =========================================================
-   ПОСЛЕДНИЙ ДОСТУПНЫЙ КАДР
+   ПОСЛЕДНИЙ ЗАВЕРШЁННЫЙ РАДАРНЫЙ КАДР
    ========================================================= */
-
 const latest=()=>
  new Date(
   Math.floor(Date.now()/STEP_MS)*STEP_MS-STEP_MS
  );
-
 S.T=latest();
-
 /* =========================================================
-   ПРЕДЕЛЫ 24-ЧАСОВОЙ ШКАЛЫ
+   ПРЕДЕЛЫ 12-ЧАСОВОГО ТАЙМЛАЙНА
    ========================================================= */
-
 function timelineStart(){
-
  return new Date(
   +latest()-(ARCHIVE_STEPS-1)*STEP_MS
  );
 }
-
 function clampTime(d){
-
  let n=new Date(d);
-
+ /*
+    Сначала округляем к 10 минутам.
+ */
  n=new Date(
   Math.floor(+n/STEP_MS)*STEP_MS
  );
-
  const mx=latest();
  const mn0=timelineStart();
-
+ /*
+    Нельзя выбрать будущее.
+ */
  if(+n>+mx)
   n=mx;
-
+ /*
+    Нельзя уйти дальше 12 часов назад.
+ */
  if(+n<+mn0)
   n=mn0;
-
  return n;
 }
-
 /* =========================================================
-   ЧАСЫ 0–23 КАК НА СКРИНШОТЕ
+   ТАЙМЛАЙН: ПОДПИСИ КАЖДЫЕ 2 ЧАСА
    ========================================================= */
-
 function renderHours(){
-
  const hrs=$('hrs');
-
- hrs.innerHTML='';
-
  const start=timelineStart();
  const end=latest();
-
- const startMSK=toMSK(start);
- const endMSK=toMSK(end);
-
- for(let h=0;h<24;h++){
-
+ /*
+    В 12-часовом окне показываем отметки
+    через 2 часа, чтобы шкала не была забита.
+ */
+ const total=+end-+start;
+ const interval=2*60*60*1000;
+ const first=
+  new Date(
+   Math.ceil(+start/interval)*interval
+  );
+ hrs.innerHTML='';
+ for(
+  let t=+first;
+  t<=+end;
+  t+=interval
+ ){
+  const d=new Date(t);
+  const m=toMSK(d);
   const x=document.createElement('div');
-
-  x.textContent=String(h);
-
-  let d=
-   new Date(
-    Date.UTC(
-     startMSK.getUTCFullYear(),
-     startMSK.getUTCMonth(),
-     startMSK.getUTCDate(),
-     h,
-     0,
-     0,
-     0
-    )
-   );
-
-  d=
-   new Date(
-    +d-MSК_OFFSET
-   );
-
-  while(+d<+start)
-   d=new Date(+d+24*36e5);
-
-  if(+d>+end){
-
-   x.dataset.disabled='1';
-   x.style.color='#777';
-   x.style.cursor='default';
-
-  }else{
-
-   x.dataset.t=String(+d);
-
-   if(
-    Math.abs(+d-+S.T)<30*60*1000
-   )
-    x.classList.add('c');
-  }
-
+  x.textContent=
+   pad(m.getUTCHours());
+  x.dataset.t=String(+d);
+  if(
+   Math.abs(+d-+S.T)<STEP_MS
+  )
+   x.classList.add('c');
+  hrs.appendChild(x);
+ }
+ /*
+    Если по какой-либо причине отметок нет —
+    оставляем текущий кадр.
+ */
+ if(!hrs.children.length){
+  const d=new Date(S.T);
+  const m=toMSK(d);
+  const x=document.createElement('div');
+  x.textContent=
+   pad(m.getUTCHours());
+  x.dataset.t=String(+d);
+  x.classList.add('c');
   hrs.appendChild(x);
  }
 }
-
 /* =========================================================
-   UI
+   ИНФОРМАЦИЯ ПАНЕЛИ
    ========================================================= */
-
 function ui(){
-
  S.T=clampTime(S.T);
-
- $('di').value=dstr(S.T);
-
+ const d=S.T;
+ const m=toMSK(d);
+ $('dl').textContent=
+  `${wd[m.getUTCDay()]}, ${m.getUTCDate()} ${mn[m.getUTCMonth()]} ${m.getUTCFullYear()} г., ${pad(m.getUTCHours())}:${pad(m.getUTCMinutes())} МСК`;
+ $('di').value=dstr(d);
+ /*
+    Календарь ограничен только тем же 12-часовым архивом.
+ */
  $('di').min=dstr(timelineStart());
  $('di').max=dstr(latest());
-
  $('tt').textContent=TTL[S.m];
-
  document.querySelectorAll('.st .b').forEach(b=>
   b.classList.toggle(
    'red',
    b.dataset.m==S.m
   )
  );
-
  $('leg').style.display=
   S.m=='S'?'block':'none';
-
+ updateCoords();
  renderHours();
  bar();
 }
-
 /* =========================================================
-   ЗЕЛЁНАЯ ШКАЛА
+   РИСОВАНИЕ 12-ЧАСОВОГО ТАЙМЛАЙНА
    ========================================================= */
-
 function bar(){
-
  const c=$('bar');
-
  const w=Math.max(
   1,
   $('bp').clientWidth-2
  );
-
  c.width=w;
-
  const g=c.getContext('2d');
-
  const start=timelineStart();
  const end=latest();
-
- const total=
-  Math.max(
-   STEP_MS,
-   +end-+start
-  );
-
+ const total=+end-+start;
  g.clearRect(
   0,
   0,
   w,
   20
  );
-
  /*
-   Сначала вся шкала серая.
-   Серый участок после последнего кадра
-   остаётся только визуальным — выбрать его нельзя.
+    Никакого будущего участка.
+    Вся шкала — только реальные прошлые кадры.
  */
-
- g.fillStyle='#d7d7d7';
-
- g.fillRect(
-  0,
-  0,
-  w,
-  20
- );
-
- /*
-   Зелёная часть = только реально существующее время.
- */
-
- const available=
-  ((+end-+start)/total)*w;
-
- g.fillStyle='#268c26';
-
- g.fillRect(
-  0,
-  0,
-  Math.max(1,Math.round(available)),
-  20
- );
-
- /*
-   Часовые разделители.
- */
-
- for(let h=0;h<=24;h++){
-
+ for(let i=0;i<ARCHIVE_STEPS;i++){
+  const t=
+   new Date(
+    +start+i*STEP_MS
+   );
+  if(+t>+end)
+   break;
   const x=
    Math.round(
-    (h/24)*w
+    ((+t-+start)/total)*w
    );
-
-  g.fillStyle=
-   h<=24 &&
-   x<=available?
-   '#0d5a0d':
-   '#888';
-
+  const x2=
+   Math.round(
+    ((+t-+start+STEP_MS)/total)*w
+   );
+  g.fillStyle='#268c26';
+  g.fillRect(
+   x,
+   0,
+   Math.max(1,x2-x),
+   20
+  );
+  g.fillStyle='#0d5a0d';
   g.fillRect(
    x,
    0,
@@ -1368,157 +1035,130 @@ function bar(){
    20
   );
  }
-
  /*
-   Жёлтый указатель.
+    Отметки каждые 2 часа.
  */
-
- let f=
-  (+S.T-+start)/total;
-
- f=Math.max(
+ const interval=2*60*60*1000;
+ for(
+  let t=+start;
+  t<=+end;
+  t+=interval
+ ){
+  const x=
+   ((t-+start)/total)*w;
+  g.fillStyle='#064d06';
+  g.fillRect(
+   Math.round(x),
+   0,
+   1,
+   20
+  );
+ }
+ /*
+    Выбранный кадр.
+ */
+ let x=
+  ((+S.T-+start)/total)*w;
+ x=Math.max(
   0,
   Math.min(
-   1,
-   f
+   w-1,
+   x
   )
  );
-
- const x=
-  Math.round(f*w);
-
  g.fillStyle='#f0ff20';
-
  g.fillRect(
-  Math.max(0,x-1),
+  Math.round(x)-1,
   0,
   3,
   20
  );
-
  document.querySelectorAll('#hrs div').forEach(e=>{
-
   const t=Number(e.dataset.t);
-
   e.classList.toggle(
    'c',
-   Number.isFinite(t)&&
-   Math.abs(t-+S.T)<30*60*1000
+   Math.abs(t-+S.T)<STEP_MS
   );
  });
 }
-
 /* =========================================================
    УСТАНОВКА ВРЕМЕНИ
    ========================================================= */
-
 const setT=d=>{
-
  const n=clampTime(d);
-
  S.T=n;
-
  ui();
  show();
-
  if(S.vb)
   sect();
-
  lightning();
 };
-
 /* =========================================================
-   КНОПКИ ВРЕМЕНИ
+   КНОПКИ ПЕРЕМЕЩЕНИЯ
    ========================================================= */
-
 $('n1').onclick=()=>
  setT(
   new Date(
    +S.T-36e5
   )
 );
-
 $('n2').onclick=()=>
  setT(
   new Date(
    +S.T-STEP_MS
   )
 );
-
 $('n4').onclick=()=>
  setT(
   new Date(
    +S.T+STEP_MS
   )
 );
-
 $('n5').onclick=()=>
  setT(
   new Date(
    +S.T+36e5
   )
 );
-
 /* =========================================================
-   PLAY
+   АНИМАЦИЯ
    ========================================================= */
-
 $('n3').onclick=()=>{
-
  S.play^=1;
-
  $('n3').classList.toggle(
   'on',
   !!S.play
  );
-
  clearInterval(S.tm);
-
  if(S.play)
-
   S.tm=setInterval(()=>{
-
    const lim=latest();
-
    const n=
     new Date(
      +S.T+STEP_MS
     );
-
    if(n>lim){
-
     S.play=0;
-
     $('n3').classList.remove(
      'on'
     );
-
     clearInterval(S.tm);
-
     return;
    }
-
    setT(n);
-
   },800);
 };
-
 /* =========================================================
-   КАЛЕНДАРЬ
+   КАЛЕНДАРЬ — МСК
    ========================================================= */
-
 $('di').onchange=e=>{
-
  const [y,m,d]=
   e.target.value
    .split('-')
    .map(Number);
-
  if(!y)
   return;
-
  const cur=toMSK(S.T);
-
  const msk=
   new Date(Date.UTC(
    y,
@@ -1527,123 +1167,85 @@ $('di').onchange=e=>{
    cur.getUTCHours(),
    cur.getUTCMinutes()
   ));
-
+ /*
+    Исправлено:
+    используется латинское K в MSK_OFFSET.
+ */
  const utc=
   new Date(
    +msk-MSК_OFFSET
   );
-
  setT(utc);
 };
-
 /* =========================================================
-   ЧАСЫ
+   КЛИК ПО ЧАСОВЫМ ОТМЕТКАМ
    ========================================================= */
-
 $('hrs').onclick=e=>{
-
  const el=e.target.closest('div');
-
  if(!el)
   return;
-
- if(el.dataset.disabled)
-  return;
-
  const t=Number(el.dataset.t);
-
  if(!Number.isFinite(t))
   return;
-
  setT(
   new Date(t)
  );
 };
-
 /* =========================================================
-   DRAG ШКАЛЫ
+   ПЕРЕТАСКИВАНИЕ ТАЙМЛАЙНА
    ========================================================= */
-
 let barDragging=false;
-
 function barTime(e){
-
  const r=
   $('bar').getBoundingClientRect();
-
  let f=
   (e.clientX-r.left)/r.width;
-
  f=Math.max(
   0,
-  Math.min(
-   1,
-   f
-  )
+  Math.min(1,f)
  );
-
  const start=timelineStart();
  const end=latest();
-
- /*
-   Даже если палец попал в серую область,
-   время всё равно ограничивается latest().
- */
-
  let d=
   new Date(
    +start+
-   Math.round(
+   Math.floor(
     f*((+end-+start)/STEP_MS)
    )*STEP_MS
   );
-
  return clampTime(d);
 }
-
 $('bar').addEventListener(
  'pointerdown',
  e=>{
-
   if(
    e.pointerType==='mouse' &&
    e.button!==0
   )
    return;
-
   barDragging=true;
-
   try{
    $('bar').setPointerCapture(
     e.pointerId
    );
   }catch(_){}
-
   setT(barTime(e));
-
   e.preventDefault();
  }
 );
-
 $('bar').addEventListener(
  'pointermove',
  e=>{
-
   if(!barDragging)
    return;
-
   setT(barTime(e));
-
   e.preventDefault();
  }
 );
-
 $('bar').addEventListener(
  'pointerup',
  e=>{
-
   barDragging=false;
-
   try{
    $('bar').releasePointerCapture(
     e.pointerId
@@ -1651,81 +1253,51 @@ $('bar').addEventListener(
   }catch(_){}
  }
 );
-
 $('bar').addEventListener(
  'pointercancel',
  ()=>{
   barDragging=false;
  }
 );
-
 /* =========================================================
    АВТООБНОВЛЕНИЕ
    ========================================================= */
-
 $('ck').onchange=e=>{
-
  S.auto=+e.target.checked;
-
  if(S.auto)
   setT(latest());
 };
-
 setInterval(()=>{
-
  if(S.auto){
-
   S.T=latest();
-
   ui();
   show();
  }
 },60000);
-
 /* =========================================================
    РЕЖИМЫ
    ========================================================= */
-
 document.querySelectorAll('.st .b').forEach(b=>
-
  b.onclick=()=>{
-
   S.m=b.dataset.m;
-
   ui();
   show();
  }
 );
-
 /* =========================================================
-   РАДАРЫ
+   РАДАРЫ И КАДРЫ
    ========================================================= */
-
 let RD=[],OV={},RG=[],C={};
-
 async function init(){
-
- /*
-   Если адрес API не задан —
-   ничего не показываем и никаких сообщений
-   про настройки не выводим.
- */
-
  if(!S.api)
   return;
-
  try{
-
   RD=await jf('/api/radars');
-
   msg('');
-
   RG.forEach(
    x=>x.remove()
   );
-
   RG=RD.map(r=>
-
    L.circleMarker(
     [r.lat,r.lon],
     {
@@ -1738,54 +1310,39 @@ async function init(){
    .addTo(map)
    .bindTooltip(r.name)
   );
-
   show();
-
  }catch(e){
-
   msg(
-   'сервер недоступен: '+S.api
+   S.api?
+   'сервер недоступен: '+S.api:
+   ''
   );
  }
 }
-
 /* =========================================================
-   ЗАГРУЗКА КАДРА
+   ЗАГРУЗКА РАДАРНОГО КАДРА
    ========================================================= */
-
 async function frame(r,ts){
-
  const k=r.id+ts;
-
  if(C[k])
   return C[k];
-
  const im=new Image();
-
  im.crossOrigin='anonymous';
-
  await new Promise((ok,no)=>{
-
   im.onload=ok;
   im.onerror=no;
-
   im.src=
    `${S.api}/api/img/${r.id}/${ts}?p=4&m=S`;
  });
-
  const c=document.createElement('canvas');
-
  c.width=im.width;
  c.height=im.height;
-
  const g=c.getContext('2d');
-
  g.drawImage(
   im,
   0,
   0
  );
-
  const d=
   g.getImageData(
    0,
@@ -1793,134 +1350,95 @@ async function frame(r,ts){
    c.width,
    c.height
   ).data;
-
  const a=
   new Int8Array(
    c.width*c.height
   );
-
  for(let p=0;p<a.length;p++){
-
   a[p]=-1;
-
   if(d[p*4+3]<128)
    continue;
-
   let m=1e9,
       q0=-1;
-
   for(let q=0;q<19;q++){
-
    const e=
     (d[p*4]-P[q][0])**2+
     (d[p*4+1]-P[q][1])**2+
     (d[p*4+2]-P[q][2])**2;
-
    if(e<m){
-
     m=e;
     q0=q
    }
   }
-
   if(m<=TOL*TOL)
    a[p]=q0;
  }
-
  return C[k]={
   w:c.width,
   h:c.height,
   a
  };
 }
-
 /* =========================================================
-   ПЕРЕКРАСКА
+   ПЕРЕКРАСКА РАДАРА
    ========================================================= */
-
 function url(f){
-
  const c=document.createElement('canvas');
-
  c.width=f.w;
  c.height=f.h;
-
  const g=c.getContext('2d');
-
  const im=
   g.createImageData(
    f.w,
    f.h
   );
-
  const d=im.data;
-
  for(let p=0;p<f.a.length;p++){
-
   const q=f.a[p];
-
   if(q<0)
    continue;
-
   d[p*4]=P[q][0];
   d[p*4+1]=P[q][1];
   d[p*4+2]=P[q][2];
   d[p*4+3]=255;
  }
-
  g.putImageData(
   im,
   0,
   0
  );
-
  return c.toDataURL();
 }
-
 /* =========================================================
-   РАДАР
+   ОТРИСОВКА РАДАРА
    ========================================================= */
-
 async function show(){
-
  if(!RD.length||!S.api)
   return;
-
  const z=map.getZoom();
  const b=map.getBounds();
  const tk=++S.tk;
-
  const ts=stp(S.T);
-
  const bb=r=>[
   [r.bounds[0],r.bounds[1]],
   [r.bounds[2],r.bounds[3]]
  ];
-
  const vis=
   z>=5?
   RD
    .filter(r=>b.intersects(bb(r)))
    .slice(0,10):
   [];
-
  Object.keys(OV).forEach(id=>{
-
   if(!vis.find(r=>r.id==id)){
-
    OV[id].remove();
    delete OV[id]
   }
  });
-
  let bad=0;
-
  await Promise.all(
-
   vis.map(async r=>{
-
    try{
-
     const src=
      S.m=='S'?
      url(
@@ -1930,16 +1448,11 @@ async function show(){
       )
      ):
      `${S.api}/api/img/${r.id}/${ts}?p=4&m=${S.m}`;
-
     if(tk!=S.tk)
      return;
-
     if(OV[r.id])
-
      OV[r.id].setUrl(src);
-
     else
-
      OV[r.id]=
       L.imageOverlay(
        src,
@@ -1949,23 +1462,16 @@ async function show(){
         zIndex:300
        }
       ).addTo(map);
-
    }catch(e){
-
     bad++;
-
     if(OV[r.id]){
-
      OV[r.id].remove();
-
      delete OV[r.id]
     }
    }
   })
  );
-
  if(tk==S.tk){
-
   msg(
    vis.length&&bad==vis.length?
    'нет данных за '+ts+' UTC':
@@ -1975,95 +1481,112 @@ async function show(){
   );
  }
 }
-
 map.on('moveend',()=>{
-
  show();
  lightning();
+ /*
+    Координаты центра также обновляются
+    при завершении перемещения карты.
+ */
+ updateCoords();
 });
-
+/* =========================================================
+   КООРДИНАТЫ ЦЕНТРА КАРТЫ
+   ========================================================= */
+const dms=v=>{
+ const a=Math.abs(v);
+ let d=Math.floor(a);
+ let m=Math.floor(
+  (a-d)*60
+ );
+ let s=Math.round(
+  ((a-d)*60-m)*60
+ );
+ /*
+    Защита от ситуации 59'60".
+ */
+ if(s>=60){
+  s=0;
+  m++;
+  if(m>=60){
+   m=0;
+   d++;
+  }
+ }
+ return d+'°'+
+  pad(m)+"'"+
+  pad(s)+'"';
+};
+function updateCoords(){
+ const c=map.getCenter();
+ const latNS=
+  c.lat>=0?'N':'S';
+ const lonEW=
+  c.lng>=0?'E':'W';
+ $('coords').textContent=
+  `Шир: ${dms(c.lat)} ${latNS}  Дол: ${dms(c.lng)} ${lonEW}`;
+}
+/*
+   ВАЖНО:
+   Здесь больше НЕТ map.on('mousemove').
+   Координаты не следуют за курсором.
+*/
 /* =========================================================
    КНОПКИ
    ========================================================= */
-
 $('zi').onclick=()=>
  map.zoomIn();
-
 $('zo').onclick=()=>
  map.zoomOut();
-
 $('fs').onclick=()=>
-
  document.fullscreenElement?
-
  document.exitFullscreen():
-
  document.documentElement.requestFullscreen&&
  document.documentElement.requestFullscreen();
-
 $('lb').onclick=()=>{
-
  const v=
   $('li').style.display=='none';
-
  $('li').style.display=
   v?'':'none';
 };
-
 /* =========================================================
    МОЛНИИ
    ========================================================= */
-
 const LL={};
-
 async function lightning(){
-
  if(!S.api)
   return;
-
  for(const k in LG){
-
   if(LL[k]){
-
    LL[k].remove();
    delete LL[k]
   }
-
   if(!S.lg[k])
    continue;
-
   try{
-
    const b=
     map.getBounds();
-
    const t1=
     new Date(
      +S.T+STEP_MS
     ).toISOString();
-
    const t0=
     new Date(
      +S.T
     ).toISOString();
-
    const j=
     await jf(
      `/api/lightning?src=${k}&from=${t0}&to=${t1}&s=${b.getSouth()}&w=${b.getWest()}&n=${b.getNorth()}&e=${b.getEast()}`
     );
-
    if(!S.lg[k])
     continue;
-
    LL[k]=
     L.layerGroup(
      j.slice(0,3000).map(p=>
-
       L.marker(
        p,
        {
         interactive:false,
-
         icon:L.divIcon({
          className:'',
          html:
@@ -2074,155 +1597,105 @@ async function lightning(){
       )
      )
     ).addTo(map);
-
   }catch(e){
-
    msg(
     'молнии '+LG[k][0]+': нет данных'
    );
   }
  }
 }
-
 $('li').onclick=e=>{
-
  const k=
   e.target.closest('.it');
-
  if(!k)
   return;
-
  const n=k.dataset.k;
-
  S.lg[n]=!S.lg[n];
-
  k.classList.toggle(
   'off',
   !S.lg[n]
  );
-
  lightning();
 };
-
 /* =========================================================
    ЛИНЕЙКА
    ========================================================= */
-
 let rp=[],rpl=null,rtt=null;
-
 $('rl').onclick=()=>{
-
  S.rl^=1;
-
  $('rl').classList.toggle(
   'on',
   !!S.rl
  );
-
  if(!S.rl){
-
   rp=[];
-
   if(rpl)
    rpl.remove();
-
   if(rtt)
    rtt.remove();
-
   rpl=rtt=null;
-
  }else{
-
   S.vc=0;
-
   $('vc').classList.remove(
    'on'
   );
  }
 };
-
 /* =========================================================
    ВЕРТИКАЛЬНОЕ СЕЧЕНИЕ
    ========================================================= */
-
 let va,vb,vl,vm=[];
-
 $('vc').onclick=()=>{
-
  S.vc^=1;
-
  $('vc').classList.toggle(
   'on',
   !!S.vc
  );
-
  if(S.vc){
-
   S.rl=0;
-
   $('rl').classList.remove(
    'on'
   );
-
   vclear();
-
  }else{
-
   vclear();
  }
 };
-
 function vclear(){
-
  va=
  vb=
  S.va=
  S.vb=
  null;
-
  if(vl)
   vl.remove();
-
  vm.forEach(
   m=>m.remove()
  );
-
  vm=[];
-
  vl=null;
-
  $('sx').style.display='none';
 }
-
 /* =========================================================
-   ОГРАНИЧЕНИЕ ОКНА
+   ОГРАНИЧЕНИЕ ОКНА СЕЧЕНИЯ
    ========================================================= */
-
 function clampSX(){
-
  const w=$('sx');
-
  if(
   $('sx').style.display=='none'
  )
   return;
-
  const scale=
   parseFloat(
    w.dataset.scale||'1'
   );
-
  const ww=530*scale;
  const hh=310*scale;
-
  if(w.style.left){
-
   let left=
    parseFloat(w.style.left)||0;
-
   let top=
    parseFloat(w.style.top)||0;
-
   left=Math.max(
    0,
    Math.min(
@@ -2230,7 +1703,6 @@ function clampSX(){
     innerWidth-ww
    )
   );
-
   top=Math.max(
    0,
    Math.min(
@@ -2238,15 +1710,11 @@ function clampSX(){
     innerHeight-hh
    )
   );
-
   w.style.left=
    left+'px';
-
   w.style.top=
    top+'px';
-
  }else{
-
   w.style.right=
    Math.max(
     0,
@@ -2255,7 +1723,6 @@ function clampSX(){
      innerWidth-ww
     )
    )+'px';
-
   w.style.top=
    Math.max(
     0,
@@ -2266,17 +1733,13 @@ function clampSX(){
    )+'px';
  }
 }
-
 function fitSX(){
-
  const w=$('sx');
-
  if(
   !$('sx').style.display||
   $('sx').style.display=='none'
  )
   return;
-
  const scale=
   Math.min(
    1,
@@ -2289,31 +1752,23 @@ function fitSX(){
     (innerHeight-8)/310
    )
   );
-
  w.dataset.scale=scale;
-
  w.style.transform=
   `scale(${scale})`;
-
  clampSX();
 }
-
 /* =========================================================
    КЛИК ПО КАРТЕ
    ========================================================= */
-
 map.on('click',e=>{
-
+ /* =====================================================
+    ЛИНЕЙКА
+    ===================================================== */
  if(S.rl){
-
   rp.push(e.latlng);
-
   if(rpl)
-
    rpl.setLatLngs(rp);
-
   else
-
    rpl=
     L.polyline(
      rp,
@@ -2323,23 +1778,18 @@ map.on('click',e=>{
       dashArray:'4 3'
      }
     ).addTo(map);
-
   let d=0;
-
   for(
    let i=1;
    i<rp.length;
    i++
   )
-
    d+=
     rp[i-1].distanceTo(
      rp[i]
     );
-
   if(rtt)
    rtt.remove();
-
   rtt=
    L.tooltip({
     permanent:true,
@@ -2350,46 +1800,34 @@ map.on('click',e=>{
     (d/1000).toFixed(1)+' км'
    )
    .addTo(map);
-
   return;
  }
-
+ /* =====================================================
+    ВЕРТИКАЛЬНОЕ СЕЧЕНИЕ
+    ===================================================== */
  if(!S.vc)
   return;
-
  if(S.va&&S.vb){
-
   if(vl)
    vl.remove();
-
   vm.forEach(
    m=>m.remove()
   );
-
   vm=[];
-
   vl=null;
-
   S.va=null;
   S.vb=null;
-
   va=null;
   vb=null;
-
   $('sx').style.display='none';
  }
-
  if(!S.va){
-
   S.va=e.latlng;
-
   vm.push(
-
    L.marker(
     e.latlng,
     {
      interactive:false,
-
      icon:L.divIcon({
       className:'',
       html:
@@ -2399,14 +1837,10 @@ map.on('click',e=>{
     }
    ).addTo(map)
   );
-
   return;
  }
-
  if(!S.vb){
-
   S.vb=e.latlng;
-
   vl=
    L.polyline(
     [S.va,S.vb],
@@ -2416,9 +1850,7 @@ map.on('click',e=>{
      interactive:false
     }
    ).addTo(map);
-
   vm.push(
-
    L.circleMarker(
     S.vb,
     {
@@ -2429,107 +1861,76 @@ map.on('click',e=>{
     }
    ).addTo(map)
   );
-
   sect();
  }
 });
-
 /* =========================================================
    ШКАЛА ВЫСОТЫ
    ========================================================= */
-
 for(let k=1;k<=15;k++){
-
  const d=
   document.createElement('div');
-
  d.className='yt';
-
  d.style.top=
   (55+222*(15-k)/15+2)+'px';
-
  d.textContent=k;
-
  $('yt').appendChild(d);
 }
-
 /* =========================================================
-   СЕЧЕНИЕ
+   ОТРИСОВКА СЕЧЕНИЯ
    ========================================================= */
-
 async function sect(){
-
  $('sx').style.display='block';
-
  fitSX();
-
  const c=$('sp');
  const g=c.getContext('2d');
-
  g.fillStyle='#b8b8b8';
-
  g.fillRect(
   0,
   0,
   440,
   222
  );
-
  $('sst').textContent=
   'Данные загружаются...';
-
  const mid=
   L.latLng(
    (S.va.lat+S.vb.lat)/2,
    (S.va.lng+S.vb.lng)/2
   );
-
  let r=
   RD.slice().sort(
    (a,b)=>
     mid.distanceTo([a.lat,a.lon])-
     mid.distanceTo([b.lat,b.lon])
   )[0];
-
  try{
-
   if(!r)
    throw 0;
-
   const j=
    await jf(
     `/api/section?id=${r.id}&ts=${stp(S.T)}&a=${S.va.lat},${S.va.lng}&b=${S.vb.lat},${S.vb.lng}`
    );
-
   const n=j.z.length;
-
   const cw=440/n;
   const rh=222/15;
-
   $('sst').textContent='';
-
   j.z.forEach(
    (col,i)=>
-
     col.forEach(
      (v,k)=>{
-
       if(
        v==null||
        v<=-30
       )
        return;
-
       let q=0;
-
       while(
        q+1<ZT.length&&
        v>ZT[q+1]
       )
        q++;
-
       g.fillStyle=ZC[q];
-
       g.fillRect(
        Math.floor(i*cw),
        Math.round(
@@ -2541,108 +1942,74 @@ async function sect(){
      }
     )
   );
-
   g.strokeStyle='#888';
-
   g.setLineDash([
    4,3
   ]);
-
   [5,10,15].forEach(k=>{
-
    g.beginPath();
-
    g.moveTo(
     0,
     222-k*rh+.5
    );
-
    g.lineTo(
     440,
     222-k*rh+.5
    );
-
    g.stroke();
   });
-
   g.setLineDash([]);
-
  }catch(e){
-
   $('sst').textContent=
    'Нет данных вертикального сечения (сервер не отдаёт объёмные данные)';
  }
-
  fitSX();
 }
-
 /* =========================================================
-   КРЕСТИК
+   КРЕСТИК СЕЧЕНИЯ
    ========================================================= */
-
 $('sc').onclick=()=>{
-
  vclear();
 };
-
 /* =========================================================
-   ПЕРЕТАСКИВАНИЕ ОКНА
+   ПЕРЕТАСКИВАНИЕ ОКНА СЕЧЕНИЯ
    ========================================================= */
-
 (()=>{
-
  const h=$('sh');
  const w=$('sx');
-
  let o=null;
-
  h.onpointerdown=e=>{
-
   h.setPointerCapture(
    e.pointerId
   );
-
   const r=
    w.getBoundingClientRect();
-
   w.style.right='auto';
-
   w.style.left=
    r.left+'px';
-
   w.style.top=
    r.top+'px';
-
   w.style.transformOrigin=
    'top left';
-
   o=[
    e.clientX-r.left,
    e.clientY-r.top
   ];
-
   e.preventDefault();
  };
-
  h.onpointermove=e=>{
-
   if(!o)
    return;
-
   const scale=
    parseFloat(
     w.dataset.scale||'1'
    );
-
   const ww=530*scale;
   const hh=310*scale;
-
   let left=
    e.clientX-o[0];
-
   let top=
    e.clientY-o[1];
-
   left=Math.max(
    0,
    Math.min(
@@ -2650,7 +2017,6 @@ $('sc').onclick=()=>{
     innerWidth-ww
    )
   );
-
   top=Math.max(
    0,
    Math.min(
@@ -2658,59 +2024,42 @@ $('sc').onclick=()=>{
     innerHeight-hh
    )
   );
-
   w.style.left=
    left+'px';
-
   w.style.top=
    top+'px';
  };
-
  const stop=()=>{
-
   o=null;
-
   clampSX();
  };
-
  h.onpointerup=stop;
  h.onpointercancel=stop;
-
 })();
-
 /* =========================================================
    RESIZE
    ========================================================= */
-
 addEventListener(
  'resize',
  ()=>{
-
   renderHours();
   bar();
-
   const bp=$('bp');
-
   bp.style.left='';
   bp.style.top='';
   bp.style.right='var(--sar)';
   bp.style.bottom='var(--sab)';
-
   if(
    $('sx').style.display!='none'
   )
    fitSX();
  }
 );
-
 /* =========================================================
    ЗАПУСК
    ========================================================= */
-
 ui();
 init();
-
 </script>
-
 </body>
 </html>

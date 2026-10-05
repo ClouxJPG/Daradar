@@ -2,9 +2,13 @@
 <html lang="ru">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
 
-<title>Daradar — Радиолокационная карта России</title>
+<meta
+  name="viewport"
+  content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no"
+>
+
+<title>Daradar — Web-GIS</title>
 
 <link
   rel="stylesheet"
@@ -12,1224 +16,2595 @@
 />
 
 <style>
-/* =========================================================
-   DARADAR — RADAR MAP
-   Один файл: HTML + CSS + JavaScript
-   ========================================================= */
 
-* {
-  box-sizing: border-box;
-}
+/* =========================================================
+   DARADAR
+   WEB-GIS RADAR INTERFACE
+   Светлый классический GIS-интерфейс
+   ========================================================= */
 
 html,
 body {
-  margin: 0;
-  width: 100%;
-  height: 100%;
-  overflow: hidden;
-  font-family: Arial, Helvetica, sans-serif;
-  background: #080b10;
-  color: #fff;
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+
+    font-family:
+        Arial,
+        Helvetica,
+        sans-serif;
+
+    font-size: 13px;
+
+    background: #d8d8d8;
+    color: #222;
 }
 
-#app {
-  width: 100%;
-  height: 100%;
-  position: relative;
+* {
+    box-sizing: border-box;
 }
+
+button,
+select,
+input {
+    font-family: Arial, Helvetica, sans-serif;
+}
+
 
 /* =========================================================
-   HEADER
+   ОСНОВНОЕ ОКНО
+   ========================================================= */
+
+#app {
+    position: relative;
+
+    width: 100%;
+    height: 100%;
+
+    overflow: hidden;
+
+    background: #dcdcdc;
+}
+
+
+/* =========================================================
+   ВЕРХНЯЯ ПАНЕЛЬ
    ========================================================= */
 
 #topbar {
-  position: absolute;
-  z-index: 1000;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 54px;
+    position: absolute;
 
-  display: flex;
-  align-items: center;
-  gap: 18px;
+    z-index: 1000;
 
-  padding: 0 16px;
+    top: 0;
+    left: 0;
+    right: 0;
 
-  background: rgba(10, 13, 19, .96);
-  border-bottom: 1px solid rgba(255,255,255,.1);
-  box-shadow: 0 2px 12px rgba(0,0,0,.45);
+    height: 34px;
+
+    display: flex;
+    align-items: center;
+
+    background:
+        linear-gradient(
+            to bottom,
+            #f8f8f8 0%,
+            #dedede 48%,
+            #c7c7c7 100%
+        );
+
+    border-bottom: 1px solid #888;
+
+    box-shadow:
+        0 1px 2px rgba(0,0,0,.25);
 }
 
-.logo {
-  font-size: 21px;
-  font-weight: 800;
-  letter-spacing: -.5px;
-  white-space: nowrap;
-}
-
-.logo span {
-  color: #4da3ff;
-}
-
-.status {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-
-  font-size: 12px;
-  color: #aeb7c4;
-}
-
-.status-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: #43d17a;
-  box-shadow: 0 0 8px rgba(67,209,122,.7);
-}
-
-.top-buttons {
-  margin-left: auto;
-  display: flex;
-  gap: 6px;
-}
-
-.top-btn {
-  height: 34px;
-  padding: 0 11px;
-
-  border: 1px solid rgba(255,255,255,.1);
-  border-radius: 6px;
-
-  background: #151a22;
-  color: #d9e0e8;
-
-  cursor: pointer;
-  font-size: 13px;
-}
-
-.top-btn:hover {
-  background: #202733;
-}
 
 /* =========================================================
-   MAP
+   ЛОГО
+   ========================================================= */
+
+#logo {
+    height: 34px;
+
+    display: flex;
+    align-items: center;
+
+    padding: 0 13px;
+
+    font-weight: bold;
+    font-size: 15px;
+
+    color: #303030;
+
+    border-right: 1px solid #aaa;
+}
+
+
+/* =========================================================
+   МЕНЮ
+   ========================================================= */
+
+.menu {
+    position: relative;
+
+    height: 34px;
+}
+
+.menu-button {
+    height: 33px;
+
+    padding: 0 13px;
+
+    border: 0;
+    border-left: 1px solid transparent;
+    border-right: 1px solid transparent;
+
+    background: transparent;
+
+    color: #222;
+
+    cursor: pointer;
+
+    font-size: 13px;
+}
+
+.menu-button:hover,
+.menu-button.active {
+    background: #eeeeee;
+
+    border-left-color: #aaa;
+    border-right-color: #aaa;
+}
+
+
+/* =========================================================
+   ВЫПАДАЮЩЕЕ МЕНЮ
+   ========================================================= */
+
+.dropdown {
+    position: absolute;
+
+    display: none;
+
+    left: 0;
+    top: 33px;
+
+    min-width: 245px;
+
+    padding: 3px;
+
+    background: #f5f5f5;
+
+    border:
+        1px solid #777;
+
+    box-shadow:
+        2px 3px 7px rgba(0,0,0,.35);
+
+    z-index: 2000;
+}
+
+.dropdown.open {
+    display: block;
+}
+
+.dropdown-item {
+    display: block;
+
+    width: 100%;
+
+    padding: 7px 9px;
+
+    border: 0;
+
+    text-align: left;
+
+    background: transparent;
+
+    color: #222;
+
+    cursor: pointer;
+
+    font-size: 12px;
+}
+
+.dropdown-item:hover {
+    background: #d9e8f6;
+}
+
+.dropdown-separator {
+    height: 1px;
+
+    margin: 3px 0;
+
+    background: #c5c5c5;
+}
+
+
+/* =========================================================
+   КАРТА
    ========================================================= */
 
 #map {
-  position: absolute;
-  inset: 0;
-  z-index: 1;
-  background: #10151d;
+    position: absolute;
+
+    z-index: 1;
+
+    top: 34px;
+    left: 0;
+    right: 0;
+    bottom: 0;
+
+    background: #e5e5e5;
 }
 
+
+/* =========================================================
+   LEAFLET
+   ========================================================= */
+
 .leaflet-control-zoom {
-  margin-top: 65px !important;
+    margin-top: 9px !important;
+    margin-left: 9px !important;
+}
+
+.leaflet-control-zoom a {
+    width: 26px !important;
+    height: 26px !important;
+
+    line-height: 24px !important;
+
+    background: #eeeeee !important;
+
+    color: #222 !important;
+
+    border-color: #888 !important;
+}
+
+.leaflet-control-zoom a:hover {
+    background: #ffffff !important;
 }
 
 .leaflet-control-attribution {
-  background: rgba(8,11,16,.75) !important;
-  color: #9aa5b3 !important;
+    font-size: 9px !important;
+
+    background:
+        rgba(245,245,245,.9) !important;
+
+    color: #555 !important;
 }
 
-.leaflet-control-attribution a {
-  color: #7fbaff !important;
-}
 
 /* =========================================================
-   LEFT PANEL
+   СТАРЫЕ GIS-КНОПКИ
    ========================================================= */
 
-#leftPanel {
-  position: absolute;
-  z-index: 900;
+#leftTools {
+    position: absolute;
 
-  left: 12px;
-  top: 68px;
+    z-index: 900;
 
-  width: 270px;
-  max-height: calc(100vh - 150px);
+    top: 76px;
+    left: 9px;
 
-  background: rgba(10,14,20,.94);
-  border: 1px solid rgba(255,255,255,.1);
-  border-radius: 9px;
+    width: 31px;
 
-  box-shadow: 0 8px 30px rgba(0,0,0,.45);
+    background: #ededed;
 
-  overflow: hidden;
+    border: 1px solid #777;
+
+    box-shadow:
+        1px 2px 4px rgba(0,0,0,.25);
 }
 
-.panel-title {
-  padding: 12px 14px;
+.tool-button {
+    position: relative;
 
-  font-size: 13px;
-  font-weight: 700;
+    width: 29px;
+    height: 29px;
 
-  border-bottom: 1px solid rgba(255,255,255,.08);
-  color: #dfe7f1;
+    padding: 0;
+
+    border: 0;
+
+    border-bottom: 1px solid #aaa;
+
+    background:
+        linear-gradient(
+            #fafafa,
+            #d4d4d4
+        );
+
+    color: #222;
+
+    cursor: pointer;
+
+    font-size: 14px;
 }
 
-.panel-section {
-  padding: 10px 12px;
-  border-bottom: 1px solid rgba(255,255,255,.06);
+.tool-button:last-child {
+    border-bottom: 0;
 }
 
-.section-label {
-  margin-bottom: 7px;
-
-  color: #8995a5;
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: .5px;
+.tool-button:hover {
+    background: #fff;
 }
 
-.select {
-  width: 100%;
-  height: 36px;
-
-  padding: 0 9px;
-
-  color: #e9eef5;
-  background: #171d26;
-
-  border: 1px solid rgba(255,255,255,.1);
-  border-radius: 5px;
-
-  outline: none;
+.tool-button.active {
+    background: #c8dceb;
 }
 
-.select:focus {
-  border-color: #3f91ef;
-}
-
-.option-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-
-  min-height: 30px;
-
-  color: #cbd3de;
-  font-size: 13px;
-}
-
-.option-row input {
-  accent-color: #398ff0;
-}
 
 /* =========================================================
-   RADAR LEGEND
+   ЛЕВАЯ ПАНЕЛЬ КАРТ
+   ========================================================= */
+
+#mapPanel {
+    position: absolute;
+
+    z-index: 850;
+
+    top: 76px;
+    left: 49px;
+
+    width: 235px;
+
+    background:
+        rgba(242,242,242,.96);
+
+    border: 1px solid #777;
+
+    box-shadow:
+        2px 3px 8px rgba(0,0,0,.3);
+
+    display: none;
+}
+
+#mapPanel.open {
+    display: block;
+}
+
+.panel-header {
+    height: 27px;
+
+    display: flex;
+    align-items: center;
+
+    padding: 0 8px;
+
+    background:
+        linear-gradient(
+            #eeeeee,
+            #c9c9c9
+        );
+
+    border-bottom: 1px solid #888;
+
+    font-weight: bold;
+}
+
+.panel-content {
+    padding: 7px;
+}
+
+.panel-row {
+    display: flex;
+
+    align-items: center;
+
+    min-height: 27px;
+
+    padding: 2px 4px;
+
+    border-bottom: 1px solid #ddd;
+}
+
+.panel-row:hover {
+    background: #e2edf7;
+}
+
+.panel-row input {
+    margin-right: 7px;
+}
+
+.panel-row label {
+    cursor: pointer;
+}
+
+
+/* =========================================================
+   ПРАВАЯ ВЕРХНЯЯ ПАНЕЛЬ
+   ========================================================= */
+
+#infoPanel {
+    position: absolute;
+
+    z-index: 850;
+
+    top: 44px;
+    right: 9px;
+
+    width: 270px;
+
+    background:
+        rgba(242,242,242,.96);
+
+    border: 1px solid #777;
+
+    box-shadow:
+        2px 3px 8px rgba(0,0,0,.3);
+}
+
+.info-header {
+    height: 26px;
+
+    display: flex;
+    align-items: center;
+
+    padding: 0 8px;
+
+    background:
+        linear-gradient(
+            #eeeeee,
+            #c9c9c9
+        );
+
+    border-bottom: 1px solid #888;
+
+    font-weight: bold;
+}
+
+.info-content {
+    padding: 7px 8px;
+}
+
+.info-line {
+    display: flex;
+
+    justify-content: space-between;
+
+    min-height: 22px;
+
+    border-bottom: 1px solid #ddd;
+
+    padding: 3px 0;
+}
+
+.info-name {
+    color: #555;
+}
+
+.info-value {
+    font-weight: bold;
+}
+
+
+/* =========================================================
+   ЛЕГЕНДА
    ========================================================= */
 
 #legend {
-  position: absolute;
-  z-index: 900;
+    position: absolute;
 
-  right: 14px;
-  top: 68px;
+    z-index: 850;
 
-  width: 285px;
+    top: 78px;
+    right: 288px;
 
-  padding: 11px 12px;
+    width: 190px;
 
-  background: rgba(10,14,20,.94);
-  border: 1px solid rgba(255,255,255,.1);
-  border-radius: 8px;
+    background:
+        rgba(250,250,250,.94);
 
-  box-shadow: 0 8px 30px rgba(0,0,0,.4);
+    border: 1px solid #777;
+
+    box-shadow:
+        1px 2px 5px rgba(0,0,0,.25);
+
+    display: none;
+}
+
+#legend.open {
+    display: block;
 }
 
 .legend-title {
-  font-size: 12px;
-  font-weight: 700;
-  margin-bottom: 8px;
+    padding: 5px 7px;
+
+    background: #dedede;
+
+    border-bottom: 1px solid #999;
+
+    font-weight: bold;
+
+    font-size: 11px;
 }
 
-.legend-bar {
-  width: 100%;
-  height: 14px;
-  border-radius: 3px;
+.legend-row {
+    display: flex;
 
-  background:
-    linear-gradient(
-      to right,
-      #163cff 0%,
-      #00aaff 10%,
-      #00e6d0 20%,
-      #00c840 30%,
-      #72e600 40%,
-      #e7e600 50%,
-      #ffb000 60%,
-      #ff6500 70%,
-      #ff1800 80%,
-      #d00000 90%,
-      #ff00ff 100%
-    );
+    align-items: center;
+
+    height: 18px;
+
+    padding: 0 6px;
+
+    font-size: 10px;
 }
 
-.legend-values {
-  display: flex;
-  justify-content: space-between;
+.legend-color {
+    width: 23px;
+    height: 12px;
 
-  margin-top: 4px;
+    margin-right: 7px;
 
-  color: #aeb7c3;
-  font-size: 10px;
+    border: 1px solid rgba(0,0,0,.25);
 }
+
 
 /* =========================================================
-   STATIONS
+   НИЖНЯЯ ПАНЕЛЬ
    ========================================================= */
 
-.radar-station {
-  width: 12px;
-  height: 12px;
+#bottomPanel {
+    position: absolute;
 
-  border-radius: 50%;
+    z-index: 950;
 
-  background: #50a8ff;
-  border: 2px solid white;
+    left: 50%;
+    transform: translateX(-50%);
 
-  box-shadow:
-    0 0 0 2px rgba(80,168,255,.3),
-    0 0 10px rgba(80,168,255,.8);
+    bottom: 10px;
+
+    width: min(760px, calc(100vw - 30px));
+
+    background:
+        rgba(238,238,238,.97);
+
+    border: 1px solid #777;
+
+    box-shadow:
+        2px 3px 8px rgba(0,0,0,.35);
 }
+
 
 /* =========================================================
-   TIMELINE
+   ВРЕМЕННАЯ ПАНЕЛЬ
    ========================================================= */
 
-#timeline {
-  position: absolute;
-  z-index: 950;
+#timelineTop {
+    display: flex;
 
-  left: 50%;
-  bottom: 15px;
-  transform: translateX(-50%);
+    align-items: center;
 
-  width: min(850px, calc(100vw - 30px));
+    height: 31px;
 
-  padding: 11px 13px;
+    padding: 3px 5px;
 
-  background: rgba(10,14,20,.95);
+    background:
+        linear-gradient(
+            #eeeeee,
+            #cccccc
+        );
 
-  border: 1px solid rgba(255,255,255,.1);
-  border-radius: 9px;
-
-  box-shadow: 0 8px 30px rgba(0,0,0,.5);
+    border-bottom: 1px solid #999;
 }
 
-.timeline-top {
-  display: flex;
-  align-items: center;
-  gap: 9px;
+.old-button {
+    min-width: 29px;
+    height: 24px;
+
+    padding: 0 7px;
+
+    border: 1px solid #888;
+
+    background:
+        linear-gradient(
+            #ffffff,
+            #d0d0d0
+        );
+
+    color: #222;
+
+    cursor: pointer;
+
+    font-size: 12px;
 }
 
-#play {
-  width: 38px;
-  height: 32px;
-
-  border: 0;
-  border-radius: 5px;
-
-  color: white;
-  background: #267ee0;
-
-  cursor: pointer;
-  font-size: 15px;
+.old-button:hover {
+    background: #fff;
 }
 
-#play:hover {
-  background: #318dec;
+#timelineTitle {
+    flex: 1;
+
+    text-align: center;
+
+    font-size: 11px;
+
+    color: #333;
 }
 
-#range {
-  flex: 1;
-  accent-color: #3b92ed;
+#timelineSlider {
+    width: 100%;
+
+    margin: 0;
+
+    accent-color: #777;
 }
 
-#timeLabel {
-  min-width: 150px;
-  text-align: right;
+#timelineBottom {
+    display: flex;
 
-  color: #dbe4ef;
-  font-size: 12px;
+    align-items: center;
+
+    gap: 7px;
+
+    padding: 3px 6px;
+
+    height: 31px;
+
+    background: #ededed;
 }
 
-.timeline-bottom {
-  display: flex;
-  justify-content: space-between;
-
-  margin-top: 6px;
-
-  color: #7f8b9b;
-  font-size: 10px;
+#timelineRange {
+    flex: 1;
 }
+
+#timelineTime {
+    width: 150px;
+
+    text-align: right;
+
+    font-family: monospace;
+
+    font-size: 11px;
+}
+
 
 /* =========================================================
-   COORDINATES
+   АВТООБНОВЛЕНИЕ
    ========================================================= */
 
-#coords {
-  position: absolute;
-  z-index: 900;
-
-  left: 12px;
-  bottom: 88px;
-
-  padding: 7px 9px;
-
-  color: #c8d0dc;
-  background: rgba(10,14,20,.88);
-
-  border: 1px solid rgba(255,255,255,.08);
-  border-radius: 5px;
-
-  font-family: monospace;
-  font-size: 11px;
+#autoUpdate {
+    margin-right: 5px;
 }
+
 
 /* =========================================================
-   LOADING
+   КООРДИНАТЫ
    ========================================================= */
 
-#loading {
-  position: absolute;
-  z-index: 2000;
+#coordinates {
+    position: absolute;
 
-  left: 50%;
-  top: 50%;
+    z-index: 900;
 
-  transform: translate(-50%,-50%);
+    right: 10px;
+    bottom: 8px;
 
-  padding: 12px 18px;
+    min-width: 150px;
 
-  background: rgba(8,11,16,.94);
-  border: 1px solid rgba(255,255,255,.12);
-  border-radius: 7px;
+    padding: 3px 6px;
 
-  color: #dce5ef;
-  font-size: 13px;
+    background:
+        rgba(245,245,245,.9);
 
-  display: none;
+    border:
+        1px solid #999;
+
+    color: #333;
+
+    font-family: monospace;
+
+    font-size: 10px;
+
+    text-align: center;
 }
 
-#loading.show {
-  display: block;
+
+/* =========================================================
+   СЕТКА
+   ========================================================= */
+
+.grid-line {
+    pointer-events: none;
 }
+
+
+/* =========================================================
+   РАДАРНЫЕ СТАНЦИИ
+   ========================================================= */
+
+.station-icon {
+    width: 11px;
+    height: 11px;
+
+    border-radius: 50%;
+
+    background: #555;
+
+    border: 1px solid white;
+
+    box-shadow:
+        0 0 0 1px #444;
+}
+
+
+/* =========================================================
+   ЗАГЛУШКА РАДАРА
+   ========================================================= */
+
+.radar-placeholder {
+    position: absolute;
+
+    z-index: 700;
+
+    top: 50%;
+    left: 50%;
+
+    transform:
+        translate(-50%,-50%);
+
+    padding: 7px 12px;
+
+    background:
+        rgba(255,255,255,.86);
+
+    border:
+        1px solid #999;
+
+    box-shadow:
+        1px 2px 5px rgba(0,0,0,.2);
+
+    color: #555;
+
+    font-size: 11px;
+
+    pointer-events: none;
+}
+
+
+/* =========================================================
+   МОДАЛЬНОЕ ОКНО
+   ========================================================= */
+
+#modal {
+    position: absolute;
+
+    z-index: 3000;
+
+    display: none;
+
+    left: 50%;
+    top: 50%;
+
+    transform:
+        translate(-50%,-50%);
+
+    width: min(450px, calc(100vw - 30px));
+
+    background: #eeeeee;
+
+    border:
+        1px solid #666;
+
+    box-shadow:
+        3px 4px 14px rgba(0,0,0,.4);
+}
+
+#modal.open {
+    display: block;
+}
+
+#modalHeader {
+    height: 29px;
+
+    display: flex;
+
+    align-items: center;
+
+    justify-content: space-between;
+
+    padding: 0 7px;
+
+    background:
+        linear-gradient(
+            #eeeeee,
+            #c7c7c7
+        );
+
+    border-bottom: 1px solid #888;
+
+    font-weight: bold;
+}
+
+#modalClose {
+    width: 22px;
+    height: 21px;
+
+    border: 1px solid #888;
+
+    background: #ddd;
+
+    cursor: pointer;
+}
+
+#modalBody {
+    padding: 12px;
+
+    line-height: 1.5;
+}
+
 
 /* =========================================================
    MOBILE
    ========================================================= */
 
-@media (max-width: 700px) {
+@media(max-width:700px) {
 
-  #topbar {
-    height: 48px;
-    padding: 0 10px;
-    gap: 10px;
-  }
+    #topbar {
+        height: 32px;
+    }
 
-  .logo {
-    font-size: 18px;
-  }
+    #logo {
+        font-size: 12px;
+        padding: 0 7px;
+    }
 
-  .status {
-    display: none;
-  }
+    .menu-button {
+        padding: 0 7px;
+        font-size: 11px;
+    }
 
-  .top-btn {
-    padding: 0 8px;
-    font-size: 11px;
-  }
+    #map {
+        top: 32px;
+    }
 
-  #leftPanel {
-    left: 8px;
-    top: 57px;
-    width: 220px;
-    max-height: 48vh;
-  }
+    #infoPanel {
+        display: none;
+    }
 
-  #legend {
-    right: 8px;
-    top: auto;
-    bottom: 115px;
-    width: 190px;
-  }
+    #legend {
+        right: 7px;
+        top: 50px;
+        width: 155px;
+    }
 
-  #coords {
-    display: none;
-  }
+    #mapPanel {
+        left: 43px;
+        width: 210px;
+    }
 
-  #timeline {
-    bottom: 8px;
-    width: calc(100vw - 16px);
-  }
+    #bottomPanel {
+        bottom: 5px;
+        width: calc(100vw - 10px);
+    }
 
-  #timeLabel {
-    min-width: 105px;
-    font-size: 10px;
-  }
+    #timelineTime {
+        width: 105px;
+        font-size: 9px;
+    }
 
-  .leaflet-control-zoom {
-    margin-top: 58px !important;
-  }
+    #coordinates {
+        bottom: 75px;
+        right: 5px;
+    }
+
 }
+
 
 /* =========================================================
-   HIDE LEAFLET DEFAULT BORDER
+   СТИЛЬ ВСПЛЫВАЮЩИХ ОКОН
    ========================================================= */
 
-.leaflet-bar {
-  border: 0 !important;
-  box-shadow: 0 2px 8px rgba(0,0,0,.4) !important;
+.leaflet-popup-content-wrapper,
+.leaflet-popup-tip {
+    background: #eeeeee;
 }
 
-.leaflet-bar a {
-  background: #151b24 !important;
-  color: #dce5ef !important;
-  border-bottom-color: #2a323e !important;
+.leaflet-popup-content {
+    font-size: 12px;
 }
 
-.leaflet-bar a:hover {
-  background: #202833 !important;
-}
+
+/* =========================================================
+   END CSS
+   ========================================================= */
+
 </style>
 </head>
 
+
 <body>
+
 
 <div id="app">
 
-  <!-- =====================================================
-       HEADER
-       ===================================================== -->
 
-  <header id="topbar">
+<!-- =====================================================
+     ВЕРХНЕЕ МЕНЮ
+     ===================================================== -->
 
-    <div class="logo">
-      Dara<span>dar</span>
-    </div>
+<div id="topbar">
 
-    <div class="status">
-      <span class="status-dot"></span>
-      <span id="statusText">Система готова</span>
-    </div>
-
-    <div class="top-buttons">
-      <button class="top-btn" id="homeBtn">Россия</button>
-      <button class="top-btn" id="locateBtn">⌖</button>
-      <button class="top-btn" id="fullscreenBtn">⛶</button>
-    </div>
-
-  </header>
-
-
-  <!-- =====================================================
-       MAP
-       ===================================================== -->
-
-  <div id="map"></div>
-
-
-  <!-- =====================================================
-       LEFT CONTROL PANEL
-       ===================================================== -->
-
-  <aside id="leftPanel">
-
-    <div class="panel-title">
-      Радиолокационные данные
-    </div>
-
-    <div class="panel-section">
-
-      <div class="section-label">
-        Продукт
-      </div>
-
-      <select id="product" class="select">
-
-        <option value="reflectivity">
-          Отражаемость (dBZ)
-        </option>
-
-        <option value="precipitation">
-          Интенсивность осадков
-        </option>
-
-        <option value="velocity">
-          Радиальная скорость
-        </option>
-
-        <option value="echo-top">
-          Высота ВГО
-        </option>
-
-      </select>
-
+    <div id="logo">
+        Daradar
     </div>
 
 
-    <div class="panel-section">
+    <div class="menu">
 
-      <div class="section-label">
-        Слои
-      </div>
+        <button
+            class="menu-button"
+            id="mapsMenuButton"
+        >
+            Карты ▾
+        </button>
 
-      <label class="option-row">
-        <input type="checkbox" id="radarLayer" checked>
-        Радиолокационное поле
-      </label>
 
-      <label class="option-row">
-        <input type="checkbox" id="stationsLayer" checked>
-        ДМРЛ
-      </label>
+        <div
+            class="dropdown"
+            id="mapsMenu"
+        >
 
-      <label class="option-row">
-        <input type="checkbox" id="coverageLayer">
-        Зоны действия
-      </label>
+            <button
+                class="dropdown-item"
+                data-map="phenomena"
+            >
+                Объединённая карта метеоявлений
+            </button>
+
+            <button
+                class="dropdown-item"
+                data-map="precipitation"
+            >
+                Интенсивность осадков
+            </button>
+
+            <button
+                class="dropdown-item"
+                data-map="echo"
+            >
+                Высота верхней границы облачности
+            </button>
+
+            <div class="dropdown-separator"></div>
+
+            <button
+                class="dropdown-item"
+                data-map="animation"
+            >
+                Анимация последних данных
+            </button>
+
+            <button
+                class="dropdown-item"
+                data-map="archive"
+            >
+                Архив радиолокационных наблюдений
+            </button>
+
+            <div class="dropdown-separator"></div>
+
+            <button
+                class="dropdown-item"
+                data-map="individual"
+            >
+                Отдельный ДМРЛ
+            </button>
+
+        </div>
 
     </div>
 
 
-    <div class="panel-section">
+    <div class="menu">
 
-      <div class="section-label">
-        Режим
-      </div>
-
-      <label class="option-row">
-        <input type="checkbox" id="autoUpdate" checked>
-        Автообновление
-      </label>
-
-      <label class="option-row">
-        <input type="checkbox" id="animation">
-        Анимация кадров
-      </label>
+        <button
+            class="menu-button"
+            id="layersButton"
+        >
+            Слои
+        </button>
 
     </div>
 
 
-    <div class="panel-section">
+    <div class="menu">
 
-      <div class="section-label">
-        Масштаб
-      </div>
-
-      <button
-        class="top-btn"
-        style="width:100%"
-        id="networkBtn"
-      >
-        Вся сеть ДМРЛ
-      </button>
+        <button
+            class="menu-button"
+            id="helpButton"
+        >
+            Справка
+        </button>
 
     </div>
 
-  </aside>
+</div>
 
 
-  <!-- =====================================================
-       LEGEND
-       ===================================================== -->
+<!-- =====================================================
+     КАРТА
+     ===================================================== -->
 
-  <div id="legend">
+<div id="map"></div>
+
+
+<!-- =====================================================
+     ЛЕВЫЕ ИНСТРУМЕНТЫ
+     ===================================================== -->
+
+<div id="leftTools">
+
+    <button
+        class="tool-button"
+        title="Увеличить"
+        onclick="map.zoomIn()"
+    >
+        +
+    </button>
+
+    <button
+        class="tool-button"
+        title="Уменьшить"
+        onclick="map.zoomOut()"
+    >
+        −
+    </button>
+
+    <button
+        class="tool-button"
+        id="gridButton"
+        title="Сетка"
+    >
+        ▦
+    </button>
+
+    <button
+        class="tool-button"
+        id="measureButton"
+        title="Измерение"
+    >
+        ↔
+    </button>
+
+    <button
+        class="tool-button"
+        id="centerButton"
+        title="Россия"
+    >
+        ⌂
+    </button>
+
+</div>
+
+
+<!-- =====================================================
+     ПАНЕЛЬ КАРТ
+     ===================================================== -->
+
+<div id="mapPanel">
+
+    <div class="panel-header">
+        Слои карты
+    </div>
+
+
+    <div class="panel-content">
+
+        <div class="panel-row">
+            <label>
+                <input
+                    type="checkbox"
+                    id="layerRadar"
+                    checked
+                >
+                Радиолокационное поле
+            </label>
+        </div>
+
+
+        <div class="panel-row">
+            <label>
+                <input
+                    type="checkbox"
+                    id="layerStations"
+                    checked
+                >
+                ДМРЛ
+            </label>
+        </div>
+
+
+        <div class="panel-row">
+            <label>
+                <input
+                    type="checkbox"
+                    id="layerCoverage"
+                >
+                Зоны обзора ДМРЛ
+            </label>
+        </div>
+
+
+        <div class="panel-row">
+            <label>
+                <input
+                    type="checkbox"
+                    id="layerGrid"
+                    checked
+                >
+                Сетка 5°
+            </label>
+        </div>
+
+
+        <div class="panel-row">
+            <label>
+                <input
+                    type="checkbox"
+                    id="layerCities"
+                    checked
+                >
+                Города
+            </label>
+        </div>
+
+    </div>
+
+</div>
+
+
+<!-- =====================================================
+     ИНФОРМАЦИЯ
+     ===================================================== -->
+
+<div id="infoPanel">
+
+    <div class="info-header">
+        Радиолокационная информация
+    </div>
+
+    <div class="info-content">
+
+        <div class="info-line">
+            <span class="info-name">
+                Продукт
+            </span>
+
+            <span
+                class="info-value"
+                id="infoProduct"
+            >
+                Метеоявления
+            </span>
+        </div>
+
+
+        <div class="info-line">
+            <span class="info-name">
+                Время
+            </span>
+
+            <span
+                class="info-value"
+                id="infoTime"
+            >
+                --:--
+            </span>
+        </div>
+
+
+        <div class="info-line">
+            <span class="info-name">
+                Состояние
+            </span>
+
+            <span
+                class="info-value"
+                id="infoStatus"
+            >
+                Заглушка
+            </span>
+        </div>
+
+
+        <div class="info-line">
+            <span class="info-name">
+                Источник
+            </span>
+
+            <span
+                class="info-value"
+            >
+                ДМРЛ-С
+            </span>
+        </div>
+
+    </div>
+
+</div>
+
+
+<!-- =====================================================
+     ЛЕГЕНДА
+     ===================================================== -->
+
+<div id="legend">
 
     <div class="legend-title">
-      Отражаемость, dBZ
+        Легенда радиолокационной информации
     </div>
 
-    <div class="legend-bar"></div>
 
-    <div class="legend-values">
-      <span>-30</span>
-      <span>0</span>
-      <span>20</span>
-      <span>40</span>
-      <span>50</span>
-      <span>60+</span>
+    <div class="legend-row">
+        <span
+            class="legend-color"
+            style="background:#a8e6a3"
+        ></span>
+
+        Слабые осадки
     </div>
 
-  </div>
+
+    <div class="legend-row">
+        <span
+            class="legend-color"
+            style="background:#43c95a"
+        ></span>
+
+        Умеренные осадки
+    </div>
 
 
-  <!-- =====================================================
-       COORDINATES
-       ===================================================== -->
+    <div class="legend-row">
+        <span
+            class="legend-color"
+            style="background:#f4e33b"
+        ></span>
 
-  <div id="coords">
+        Сильные осадки
+    </div>
+
+
+    <div class="legend-row">
+        <span
+            class="legend-color"
+            style="background:#ff8c24"
+        ></span>
+
+        Очень сильные
+    </div>
+
+
+    <div class="legend-row">
+        <span
+            class="legend-color"
+            style="background:#e32626"
+        ></span>
+
+        Опасные
+    </div>
+
+
+    <div class="legend-row">
+        <span
+            class="legend-color"
+            style="background:#b400b4"
+        ></span>
+
+        Экстремальные
+    </div>
+
+</div>
+
+
+<!-- =====================================================
+     ЗАГЛУШКА РАДАРА
+     ===================================================== -->
+
+<div
+    class="radar-placeholder"
+    id="radarPlaceholder"
+>
+    Радиолокационные данные не подключены
+</div>
+
+
+<!-- =====================================================
+     НИЖНЯЯ ПАНЕЛЬ
+     ===================================================== -->
+
+<div id="bottomPanel">
+
+
+    <div id="timelineTop">
+
+        <button
+            class="old-button"
+            id="archiveBack"
+            title="Предыдущий кадр"
+        >
+            &lt;
+        </button>
+
+
+        <button
+            class="old-button"
+            id="animationButton"
+            title="Анимация"
+        >
+            ▶
+        </button>
+
+
+        <div id="timelineTitle">
+            Архив радиолокационных наблюдений
+        </div>
+
+
+        <button
+            class="old-button"
+            id="archiveForward"
+            title="Следующий кадр"
+        >
+            &gt;
+        </button>
+
+    </div>
+
+
+    <div id="timelineBottom">
+
+        <input
+            type="range"
+            id="timelineRange"
+            min="0"
+            max="17"
+            value="17"
+        >
+
+
+        <span id="timelineTime">
+            последний кадр
+        </span>
+
+
+        <label>
+            <input
+                type="checkbox"
+                id="autoUpdate"
+            >
+
+            авто
+        </label>
+
+    </div>
+
+</div>
+
+
+<!-- =====================================================
+     КООРДИНАТЫ
+     ===================================================== -->
+
+<div id="coordinates">
     55.7558° N&nbsp;&nbsp;37.6173° E
-  </div>
+</div>
 
 
-  <!-- =====================================================
-       TIMELINE
-       ===================================================== -->
+<!-- =====================================================
+     МОДАЛЬНОЕ ОКНО
+     ===================================================== -->
 
-  <div id="timeline">
+<div id="modal">
 
-    <div class="timeline-top">
+    <div id="modalHeader">
 
-      <button id="play">▶</button>
+        <span id="modalTitle">
+            Daradar
+        </span>
 
-      <input
-        id="range"
-        type="range"
-        min="0"
-        max="17"
-        value="17"
-      >
-
-      <div id="timeLabel">
-        Последний кадр
-      </div>
+        <button id="modalClose">
+            ×
+        </button>
 
     </div>
 
-    <div class="timeline-bottom">
 
-      <span id="oldTime">
-        −3 ч
-      </span>
+    <div id="modalBody">
+        Веб-ГИС Daradar.<br><br>
 
-      <span id="frameInfo">
-        Кадр 18 / 18
-      </span>
-
-      <span id="newTime">
-        сейчас
-      </span>
-
+        Здесь будут отображаться реальные
+        радиолокационные продукты ДМРЛ-С после
+        подключения источника данных.
     </div>
 
-  </div>
+</div>
 
-
-  <div id="loading">
-    Загрузка радиолокационных данных…
-  </div>
 
 </div>
 
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
+
 <script>
+
 /* =========================================================
-   DARADAR
-   Основной JavaScript
+   DARADAR JAVASCRIPT
    ========================================================= */
 
 
 /* =========================================================
-   MAP
+   КАРТА
    ========================================================= */
 
-const map = L.map("map", {
-  zoomControl: true,
-  preferCanvas: true,
-  minZoom: 3,
-  maxZoom: 12
-}).setView([60, 90], 4);
+const map = L.map(
+    "map",
+    {
+        zoomControl: true,
 
+        minZoom: 3,
+        maxZoom: 12,
 
-/* =========================================================
-   BASE MAP
-   ========================================================= */
-
-const baseMap = L.tileLayer(
-  "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
-  {
-    maxZoom: 19,
-    attribution: "&copy; OpenStreetMap"
-  }
+        preferCanvas: true
+    }
 );
 
-baseMap.addTo(map);
+
+/* =========================================================
+   ПОДЛОЖКА
+   ========================================================= */
+
+const baseLayer = L.tileLayer(
+    "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+    {
+        maxZoom: 19,
+
+        attribution:
+            "&copy; OpenStreetMap contributors"
+    }
+);
+
+baseLayer.addTo(map);
 
 
 /* =========================================================
-   RUSSIA BOUNDS
+   РОССИЯ
    ========================================================= */
 
-const RUSSIA_BOUNDS = [
-  [41, 19],
-  [82, 180]
+const russiaBounds = [
+    [40, 20],
+    [82, 180]
 ];
 
+map.fitBounds(
+    russiaBounds
+);
+
 
 /* =========================================================
-   HOME
+   СЕТКА 5°
    ========================================================= */
 
-function showRussia() {
+const gridLayer = L.layerGroup();
 
-  map.fitBounds(RUSSIA_BOUNDS, {
-    padding: [20, 20]
-  });
+
+function buildGrid() {
+
+    gridLayer.clearLayers();
+
+
+    for (
+        let lat = 40;
+        lat <= 80;
+        lat += 5
+    ) {
+
+        L.polyline(
+            [
+                [lat, 20],
+                [lat, 180]
+            ],
+            {
+                color: "#777",
+                weight: 0.7,
+                opacity: 0.35,
+                dashArray: "3,3",
+                interactive: false
+            }
+        ).addTo(gridLayer);
+
+    }
+
+
+    for (
+        let lon = 20;
+        lon <= 180;
+        lon += 5
+    ) {
+
+        L.polyline(
+            [
+                [40, lon],
+                [82, lon]
+            ],
+            {
+                color: "#777",
+                weight: 0.7,
+                opacity: 0.35,
+                dashArray: "3,3",
+                interactive: false
+            }
+        ).addTo(gridLayer);
+
+    }
 
 }
 
-document
-  .getElementById("homeBtn")
-  .addEventListener("click", showRussia);
 
-document
-  .getElementById("networkBtn")
-  .addEventListener("click", showRussia);
+buildGrid();
+
+gridLayer.addTo(map);
 
 
 /* =========================================================
-   COORDINATES
+   ДМРЛ
    ========================================================= */
 
-map.on("mousemove", function(e) {
+const stations = [
 
-  const lat = e.latlng.lat.toFixed(4);
-  const lon = e.latlng.lng.toFixed(4);
-
-  document.getElementById("coords").textContent =
-    `${lat}° N    ${lon}° E`;
-
-});
-
-
-/* =========================================================
-   RADAR STATIONS
-   ========================================================= */
-
-/*
-   Это реальные географические точки ДМРЛ,
-   но список является только интерфейсным слоем.
-
-   Само наличие станции здесь НЕ означает,
-   что через неё уже получаются радиолокационные данные.
-
-   Когда будет настоящий feed, этот массив можно
-   заменить автоматической загрузкой станции из backend.
-*/
-
-const radarStations = [
-
-  ["Москва", 55.60, 37.30],
-  ["Санкт-Петербург", 59.95, 30.30],
-  ["Нижний Новгород", 56.25, 43.95],
-  ["Казань", 55.80, 49.10],
-  ["Самара", 53.20, 50.15],
-  ["Уфа", 54.75, 56.00],
-  ["Екатеринбург", 56.85, 60.60],
-  ["Челябинск", 55.15, 61.40],
-  ["Омск", 54.95, 73.40],
-  ["Новосибирск", 55.05, 82.90],
-  ["Красноярск", 56.00, 92.90],
-  ["Иркутск", 52.30, 104.30],
-  ["Владивосток", 43.10, 131.90],
-  ["Ростов-на-Дону", 47.25, 39.70],
-  ["Волгоград", 48.70, 44.50],
-  ["Сочи", 43.60, 39.70]
+    ["Москва", 55.60, 37.30],
+    ["Санкт-Петербург", 59.95, 30.30],
+    ["Нижний Новгород", 56.25, 43.95],
+    ["Казань", 55.80, 49.10],
+    ["Самара", 53.20, 50.15],
+    ["Уфа", 54.75, 56.00],
+    ["Екатеринбург", 56.85, 60.60],
+    ["Челябинск", 55.15, 61.40],
+    ["Омск", 54.95, 73.40],
+    ["Новосибирск", 55.05, 82.90],
+    ["Красноярск", 56.01, 92.87],
+    ["Иркутск", 52.30, 104.30],
+    ["Владивосток", 43.10, 131.90],
+    ["Ростов-на-Дону", 47.25, 39.70],
+    ["Волгоград", 48.70, 44.50],
+    ["Сочи", 43.60, 39.70]
 ];
 
 
 const stationLayer = L.layerGroup();
 
 
-radarStations.forEach(station => {
+stations.forEach(
+    station => {
 
-  const name = station[0];
-  const lat = station[1];
-  const lon = station[2];
+        const name = station[0];
+        const lat = station[1];
+        const lon = station[2];
 
-  const icon = L.divIcon({
-    className: "",
-    html: `<div class="radar-station"></div>`,
-    iconSize: [12,12],
-    iconAnchor: [6,6]
-  });
 
-  const marker = L.marker(
-    [lat, lon],
-    { icon }
-  );
+        const icon =
+            L.divIcon(
+                {
+                    className: "",
 
-  marker.bindPopup(`
-    <b>${name}</b><br>
-    ДМРЛ<br>
-    Координаты: ${lat.toFixed(2)}, ${lon.toFixed(2)}
-  `);
+                    html:
+                        '<div class="station-icon"></div>',
 
-  marker.addTo(stationLayer);
+                    iconSize: [11,11],
 
-});
+                    iconAnchor: [5,5]
+                }
+            );
+
+
+        const marker =
+            L.marker(
+                [lat,lon],
+                {
+                    icon: icon
+                }
+            );
+
+
+        marker.bindPopup(
+            `
+            <b>${name}</b><br>
+            ДМРЛ-С<br><br>
+            Координаты:<br>
+            ${lat.toFixed(3)}° N<br>
+            ${lon.toFixed(3)}° E
+            `
+        );
+
+
+        marker.addTo(
+            stationLayer
+        );
+
+    }
+);
 
 
 stationLayer.addTo(map);
 
 
 /* =========================================================
-   COVERAGE
+   ЗОНЫ ОБЗОРА
    ========================================================= */
 
 const coverageLayer = L.layerGroup();
 
 
-radarStations.forEach(station => {
+stations.forEach(
+    station => {
 
-  L.circle(
-    [station[1], station[2]],
-    {
-      radius: 120000,
-      color: "#3e9cff",
-      weight: 1,
-      opacity: .16,
-      fillColor: "#3e9cff",
-      fillOpacity: .035
+        L.circle(
+            [station[1], station[2]],
+            {
+                radius: 250000,
+
+                color: "#555",
+
+                weight: 1,
+
+                opacity: 0.18,
+
+                fill: false,
+
+                interactive: false
+            }
+        ).addTo(
+            coverageLayer
+        );
+
     }
-  ).addTo(coverageLayer);
-
-});
+);
 
 
 /* =========================================================
-   RADAR DATA LAYER
+   МЕНЮ КАРТ
    ========================================================= */
 
-/*
-   ВАЖНО:
+const mapsMenuButton =
+    document.getElementById(
+        "mapsMenuButton"
+    );
 
-   Здесь НЕ используется фальшивый radar tile.
+const mapsMenu =
+    document.getElementById(
+        "mapsMenu"
+    );
 
-   Когда будет настоящий источник, функция ниже должна
-   возвращать реальный radar product.
 
-   Возможные варианты backend:
+mapsMenuButton.addEventListener(
+    "click",
+    event => {
 
-   /api/radar/tiles/{z}/{x}/{y}
-   /api/radar/wms
-   /api/radar/bufr
-   /api/radar/baltrad
+        event.stopPropagation();
 
-   Сам URL намеренно не выдумываем.
-*/
+        mapsMenu.classList.toggle(
+            "open"
+        );
 
-let radarLayer = null;
+        mapsMenuButton.classList.toggle(
+            "active"
+        );
+
+    }
+);
+
+
+document.addEventListener(
+    "click",
+    () => {
+
+        mapsMenu.classList.remove(
+            "open"
+        );
+
+        mapsMenuButton.classList.remove(
+            "active"
+        );
+
+    }
+);
+
+
+mapsMenu.addEventListener(
+    "click",
+    event => {
+
+        event.stopPropagation();
+
+    }
+);
 
 
 /* =========================================================
-   REAL RADAR CONNECTOR
+   ВЫБОР ПРОДУКТА
    ========================================================= */
 
-async function loadRealRadar() {
+document
+.querySelectorAll(
+    ".dropdown-item"
+)
+.forEach(
+    button => {
 
-  /*
-     Здесь будет подключение реального источника.
+        button.addEventListener(
+            "click",
+            () => {
 
-     Пример архитектуры:
+                const type =
+                    button.dataset.map;
 
-     const response = await fetch(
-       "/api/radar/latest"
-     );
 
-     const data = await response.json();
+                let title =
+                    "Метеоявления";
 
-     renderRadar(data);
 
-     Но пока реального разрешённого endpoint
-     у Daradar нет.
-  */
+                if (
+                    type ===
+                    "precipitation"
+                ) {
 
-  document.getElementById("statusText").textContent =
-    "Ожидание источника радиолокационных данных";
+                    title =
+                        "Интенсивность осадков";
 
-}
+                }
+
+
+                if (
+                    type ===
+                    "echo"
+                ) {
+
+                    title =
+                        "Высота ВГО";
+
+                }
+
+
+                if (
+                    type ===
+                    "animation"
+                ) {
+
+                    title =
+                        "Анимация";
+
+                }
+
+
+                if (
+                    type ===
+                    "archive"
+                ) {
+
+                    title =
+                        "Архив";
+
+                }
+
+
+                if (
+                    type ===
+                    "individual"
+                ) {
+
+                    title =
+                        "Отдельный ДМРЛ";
+
+                }
+
+
+                document
+                    .getElementById(
+                        "infoProduct"
+                    )
+                    .textContent =
+                    title;
+
+
+                document
+                    .getElementById(
+                        "modalTitle"
+                    )
+                    .textContent =
+                    title;
+
+
+                document
+                    .getElementById(
+                        "modalBody"
+                    )
+                    .innerHTML =
+                    `
+                    <b>${title}</b><br><br>
+                    Функция подготовлена.
+                    Реальные радиолокационные данные
+                    будут подключены отдельно.
+                    `;
+
+
+                document
+                    .getElementById(
+                        "modal"
+                    )
+                    .classList.add(
+                        "open"
+                    );
+
+            }
+        );
+
+    }
+);
 
 
 /* =========================================================
-   TIMELINE
+   ПАНЕЛЬ СЛОЁВ
    ========================================================= */
 
-const range = document.getElementById("range");
-const play = document.getElementById("play");
-const timeLabel = document.getElementById("timeLabel");
-const frameInfo = document.getElementById("frameInfo");
+const mapPanel =
+    document.getElementById(
+        "mapPanel"
+    );
 
-let playing = false;
-let timer = null;
 
-const FRAME_COUNT = 18;
+document
+.getElementById(
+    "layersButton"
+)
+.addEventListener(
+    "click",
+    () => {
+
+        mapPanel.classList.toggle(
+            "open"
+        );
+
+    }
+);
+
+
+/* =========================================================
+   РАДАР — ЗАГЛУШКА
+   ========================================================= */
+
+const radarPlaceholder =
+    document.getElementById(
+        "radarPlaceholder"
+    );
+
+
+document
+.getElementById(
+    "layerRadar"
+)
+.addEventListener(
+    "change",
+    event => {
+
+        radarPlaceholder.style.display =
+            event.target.checked
+                ? "block"
+                : "none";
+
+    }
+);
+
+
+/* =========================================================
+   СТАНЦИИ
+   ========================================================= */
+
+document
+.getElementById(
+    "layerStations"
+)
+.addEventListener(
+    "change",
+    event => {
+
+        if (
+            event.target.checked
+        ) {
+
+            stationLayer.addTo(
+                map
+            );
+
+        } else {
+
+            map.removeLayer(
+                stationLayer
+            );
+
+        }
+
+    }
+);
+
+
+/* =========================================================
+   ЗОНЫ ОБЗОРА
+   ========================================================= */
+
+document
+.getElementById(
+    "layerCoverage"
+)
+.addEventListener(
+    "change",
+    event => {
+
+        if (
+            event.target.checked
+        ) {
+
+            coverageLayer.addTo(
+                map
+            );
+
+        } else {
+
+            map.removeLayer(
+                coverageLayer
+            );
+
+        }
+
+    }
+);
+
+
+/* =========================================================
+   СЕТКА
+   ========================================================= */
+
+document
+.getElementById(
+    "layerGrid"
+)
+.addEventListener(
+    "change",
+    event => {
+
+        if (
+            event.target.checked
+        ) {
+
+            gridLayer.addTo(
+                map
+            );
+
+        } else {
+
+            map.removeLayer(
+                gridLayer
+            );
+
+        }
+
+    }
+);
+
+
+document
+.getElementById(
+    "gridButton"
+)
+.addEventListener(
+    "click",
+    () => {
+
+        const checkbox =
+            document.getElementById(
+                "layerGrid"
+            );
+
+        checkbox.checked =
+            !checkbox.checked;
+
+        checkbox.dispatchEvent(
+            new Event("change")
+        );
+
+    }
+);
+
+
+/* =========================================================
+   ЦЕНТРИРОВАНИЕ
+   ========================================================= */
+
+document
+.getElementById(
+    "centerButton"
+)
+.addEventListener(
+    "click",
+    () => {
+
+        map.fitBounds(
+            russiaBounds
+        );
+
+    }
+);
+
+
+/* =========================================================
+   КООРДИНАТЫ
+   ========================================================= */
+
+map.on(
+    "mousemove",
+    event => {
+
+        const lat =
+            event.latlng.lat
+                .toFixed(4);
+
+        const lon =
+            event.latlng.lng
+                .toFixed(4);
+
+
+        document
+            .getElementById(
+                "coordinates"
+            )
+            .textContent =
+            `${lat}° N   ${lon}° E`;
+
+    }
+);
+
+
+/* =========================================================
+   ТАЙМЛАЙН
+   ========================================================= */
+
+const timeline =
+    document.getElementById(
+        "timelineRange"
+    );
+
+const timelineTime =
+    document.getElementById(
+        "timelineTime"
+    );
+
+
+const FRAME_MINUTES = 10;
 
 
 function updateTimeline() {
 
-  const frame = Number(range.value);
+    const frame =
+        Number(
+            timeline.value
+        );
 
-  frameInfo.textContent =
-    `Кадр ${frame + 1} / ${FRAME_COUNT}`;
-
-  if (frame === FRAME_COUNT - 1) {
-
-    timeLabel.textContent = "Последний кадр";
-
-  } else {
 
     const minutesAgo =
-      (FRAME_COUNT - 1 - frame) * 10;
+        (
+            17 - frame
+        ) *
+        FRAME_MINUTES;
 
-    timeLabel.textContent =
-      `${minutesAgo} мин назад`;
 
-  }
+    if (
+        minutesAgo === 0
+    ) {
 
-  /*
-     Здесь при наличии backend вызывается:
+        timelineTime.textContent =
+            "последний кадр";
 
-     loadRadarFrame(frame);
-  */
+    } else {
+
+        timelineTime.textContent =
+            `−${minutesAgo} мин`;
+
+    }
+
+
+    document
+        .getElementById(
+            "infoTime"
+        )
+        .textContent =
+        minutesAgo === 0
+            ? "сейчас"
+            : `${minutesAgo} мин назад`;
 
 }
 
 
-range.addEventListener(
-  "input",
-  updateTimeline
+timeline.addEventListener(
+    "input",
+    updateTimeline
 );
 
 
-function startAnimation() {
+/* =========================================================
+   АРХИВ НАЗАД
+   ========================================================= */
 
-  if (playing) return;
+document
+.getElementById(
+    "archiveBack"
+)
+.addEventListener(
+    "click",
+    () => {
 
-  playing = true;
-  play.textContent = "Ⅱ";
+        let value =
+            Number(
+                timeline.value
+            );
 
-  timer = setInterval(() => {
 
-    let next = Number(range.value) + 1;
+        value--;
 
-    if (next >= FRAME_COUNT) {
-      next = 0;
+        if (
+            value < 0
+        ) {
+
+            value = 0;
+
+        }
+
+
+        timeline.value =
+            value;
+
+
+        updateTimeline();
+
     }
+);
 
-    range.value = next;
 
-    updateTimeline();
+/* =========================================================
+   АРХИВ ВПЕРЁД
+   ========================================================= */
 
-  }, 700);
+document
+.getElementById(
+    "archiveForward"
+)
+.addEventListener(
+    "click",
+    () => {
 
-}
+        let value =
+            Number(
+                timeline.value
+            );
+
+
+        value++;
+
+        if (
+            value > 17
+        ) {
+
+            value = 17;
+
+        }
+
+
+        timeline.value =
+            value;
+
+
+        updateTimeline();
+
+    }
+);
+
+
+/* =========================================================
+   АНИМАЦИЯ
+   ========================================================= */
+
+let animationTimer =
+    null;
+
+let animationRunning =
+    false;
+
+
+const animationButton =
+    document.getElementById(
+        "animationButton"
+    );
 
 
 function stopAnimation() {
 
-  playing = false;
-  play.textContent = "▶";
+    if (
+        animationTimer
+    ) {
 
-  if (timer) {
-    clearInterval(timer);
-    timer = null;
-  }
+        clearInterval(
+            animationTimer
+        );
+
+        animationTimer =
+            null;
+
+    }
+
+
+    animationRunning =
+        false;
+
+    animationButton.textContent =
+        "▶";
 
 }
 
 
-play.addEventListener("click", () => {
+function startAnimation() {
 
-  if (playing) {
-    stopAnimation();
-  } else {
-    startAnimation();
-  }
+    if (
+        animationRunning
+    ) {
 
-});
+        return;
+
+    }
+
+
+    animationRunning =
+        true;
+
+    animationButton.textContent =
+        "Ⅱ";
+
+
+    animationTimer =
+        setInterval(
+            () => {
+
+                let value =
+                    Number(
+                        timeline.value
+                    );
+
+
+                value++;
+
+
+                if (
+                    value > 17
+                ) {
+
+                    value = 0;
+
+                }
+
+
+                timeline.value =
+                    value;
+
+
+                updateTimeline();
+
+            },
+            650
+        );
+
+}
+
+
+animationButton.addEventListener(
+    "click",
+    () => {
+
+        if (
+            animationRunning
+        ) {
+
+            stopAnimation();
+
+        } else {
+
+            startAnimation();
+
+        }
+
+    }
+);
 
 
 /* =========================================================
-   LAYER CONTROLS
+   АВТООБНОВЛЕНИЕ
    ========================================================= */
 
-document
-  .getElementById("stationsLayer")
-  .addEventListener("change", function() {
-
-    if (this.checked) {
-      stationLayer.addTo(map);
-    } else {
-      map.removeLayer(stationLayer);
-    }
-
-  });
-
-
-document
-  .getElementById("coverageLayer")
-  .addEventListener("change", function() {
-
-    if (this.checked) {
-      coverageLayer.addTo(map);
-    } else {
-      map.removeLayer(coverageLayer);
-    }
-
-  });
-
-
-document
-  .getElementById("radarLayer")
-  .addEventListener("change", function() {
-
-    if (!radarLayer) return;
-
-    if (this.checked) {
-      radarLayer.addTo(map);
-    } else {
-      map.removeLayer(radarLayer);
-    }
-
-  });
-
-
-/* =========================================================
-   PRODUCT
-   ========================================================= */
-
-document
-  .getElementById("product")
-  .addEventListener("change", function() {
-
-    const product = this.value;
-
-    console.log(
-      "Выбран продукт:",
-      product
-    );
-
-    /*
-       Здесь переключается настоящий продукт:
-
-       reflectivity
-       precipitation
-       velocity
-       echo-top
-    */
-
-  });
-
-
-/* =========================================================
-   AUTO UPDATE
-   ========================================================= */
-
-let updateTimer = null;
+let autoTimer =
+    null;
 
 
 function startAutoUpdate() {
 
-  if (updateTimer) {
-    clearInterval(updateTimer);
-  }
+    if (
+        autoTimer
+    ) {
 
-  updateTimer = setInterval(() => {
+        clearInterval(
+            autoTimer
+        );
 
-    loadRealRadar();
+    }
 
-  }, 60000);
+
+    autoTimer =
+        setInterval(
+            () => {
+
+                /*
+                   Здесь впоследствии будет запрос
+                   настоящего свежего радиолокационного
+                   продукта.
+                */
+
+                document
+                    .getElementById(
+                        "infoStatus"
+                    )
+                    .textContent =
+                    "Обновлено";
+
+            },
+            60000
+        );
 
 }
 
 
 document
-  .getElementById("autoUpdate")
-  .addEventListener("change", function() {
+.getElementById(
+    "autoUpdate"
+)
+.addEventListener(
+    "change",
+    event => {
 
-    if (this.checked) {
+        if (
+            event.target.checked
+        ) {
 
-      startAutoUpdate();
+            startAutoUpdate();
 
-    } else {
+        } else {
 
-      clearInterval(updateTimer);
-      updateTimer = null;
+            if (
+                autoTimer
+            ) {
+
+                clearInterval(
+                    autoTimer
+                );
+
+                autoTimer =
+                    null;
+
+            }
+
+        }
 
     }
-
-  });
+);
 
 
 /* =========================================================
-   FULLSCREEN
+   МОДАЛЬНОЕ ОКНО
    ========================================================= */
 
 document
-  .getElementById("fullscreenBtn")
-  .addEventListener("click", function() {
+.getElementById(
+    "modalClose"
+)
+.addEventListener(
+    "click",
+    () => {
 
-    if (!document.fullscreenElement) {
-
-      document.documentElement.requestFullscreen()
-        .catch(() => {});
-
-    } else {
-
-      document.exitFullscreen()
-        .catch(() => {});
+        document
+            .getElementById(
+                "modal"
+            )
+            .classList.remove(
+                "open"
+            );
 
     }
-
-  });
+);
 
 
 /* =========================================================
-   GEOLOCATION
+   СПРАВКА
    ========================================================= */
 
 document
-  .getElementById("locateBtn")
-  .addEventListener("click", function() {
+.getElementById(
+    "helpButton"
+)
+.addEventListener(
+    "click",
+    () => {
 
-    if (!navigator.geolocation) {
-      return;
+        document
+            .getElementById(
+                "modalTitle"
+            )
+            .textContent =
+            "Справка";
+
+
+        document
+            .getElementById(
+                "modalBody"
+            )
+            .innerHTML =
+            `
+            <b>Daradar — Web-GIS</b><br><br>
+
+            Управление картой:<br>
+            • мышь — перемещение<br>
+            • + / − — масштаб<br>
+            • стрелки — перемещение<br>
+            • курсор — координаты<br><br>
+
+            Временная панель:<br>
+            • &lt; — предыдущий кадр<br>
+            • &gt; — следующий кадр<br>
+            • ▶ — анимация<br>
+            • авто — автоматическое обновление
+            `;
+
+
+        document
+            .getElementById(
+                "modal"
+            )
+            .classList.add(
+                "open"
+            );
+
     }
-
-    navigator.geolocation.getCurrentPosition(
-      position => {
-
-        const lat =
-          position.coords.latitude;
-
-        const lon =
-          position.coords.longitude;
-
-        map.setView(
-          [lat, lon],
-          8
-        );
-
-      }
-    );
-
-  });
+);
 
 
 /* =========================================================
-   INITIALIZATION
+   КЛАВИАТУРА
    ========================================================= */
 
-showRussia();
+document.addEventListener(
+    "keydown",
+    event => {
+
+        if (
+            event.key ===
+            "ArrowUp"
+        ) {
+
+            map.panBy(
+                [0,-80]
+            );
+
+        }
+
+
+        if (
+            event.key ===
+            "ArrowDown"
+        ) {
+
+            map.panBy(
+                [0,80]
+            );
+
+        }
+
+
+        if (
+            event.key ===
+            "ArrowLeft"
+        ) {
+
+            map.panBy(
+                [-80,0]
+            );
+
+        }
+
+
+        if (
+            event.key ===
+            "ArrowRight"
+        ) {
+
+            map.panBy(
+                [80,0]
+            );
+
+        }
+
+    }
+);
+
+
+/* =========================================================
+   ИЗМЕРЕНИЕ — ЗАГЛУШКА
+   ========================================================= */
+
+document
+.getElementById(
+    "measureButton"
+)
+.addEventListener(
+    "click",
+    () => {
+
+        document
+            .getElementById(
+                "modalTitle"
+            )
+            .textContent =
+            "Измерение";
+
+
+        document
+            .getElementById(
+                "modalBody"
+            )
+            .innerHTML =
+            `
+            Инструмент измерения расстояния
+            подготовлен как заглушка.<br><br>
+
+            После подключения полноценного
+            GIS-модуля здесь можно будет измерять
+            расстояния между точками.
+            `;
+
+
+        document
+            .getElementById(
+                "modal"
+            )
+            .classList.add(
+                "open"
+            );
+
+    }
+);
+
+
+/* =========================================================
+   ИНИЦИАЛИЗАЦИЯ
+   ========================================================= */
 
 updateTimeline();
 
-loadRealRadar();
-
-startAutoUpdate();
-
 
 /* =========================================================
-   END
+   КОНЕЦ
    ========================================================= */
+
 </script>
 
 </body>

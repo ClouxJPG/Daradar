@@ -1,93 +1,91 @@
-<!DOCTYPE html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>ДМРЛ — Метеоявления</title>
+<!DOCTYPE html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>ДМРЛ</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
 <style>
-*{box-sizing:border-box}html,body{margin:0;height:100%}body{background:#f0f0f0;font:12px Tahoma,"MS Sans Serif",Arial,sans-serif;color:#000;display:flex;flex-direction:column}
-#top{display:flex;align-items:center;height:20px;flex:none;background:#f0f0f0;overflow-x:auto;white-space:nowrap}
-#top button{height:19px;min-width:26px;font:10px Tahoma,Arial;border:1px solid #adadad;background:#e1e1e1;padding:0 8px;margin:0}
-#top button.on{background:#cce4f7;border-color:#0078d7}#top .t{flex:1;text-align:center;font:bold 15px "Courier New",monospace;min-width:230px;letter-spacing:.5px}
-#app{flex:1;display:flex;min-height:0}#mapw{flex:1;position:relative;overflow:hidden;background:#d0d0d0;min-width:0}
-canvas{position:absolute;left:0;top:0;touch-action:none}#side{width:178px;flex:none;background:#f0f0f0;overflow-y:auto;padding-bottom:4px}
-#spd{background:#00ffff;border:1px solid #fff;margin:0 0 0 0;padding:1px 3px;font-size:12px;height:19px}
-#info{margin:22px 0 0 10px;line-height:14px;height:60px}
-.row{display:flex;align-items:center;gap:12px;margin:8px 0 0 4px}
-.ib{width:21px;height:21px;border:1px solid #adadad;border-radius:3px;background:#fff;padding:0;display:flex;align-items:center;justify-content:center;cursor:pointer}
-.ib:active,.ib.p{border-color:#0078d7;background:#e5f1fb}.ib svg{width:17px;height:17px}
-#dtw{display:flex;justify-content:space-between;margin:24px 0 0 14px;font:bold 12px Tahoma,Arial}#dt{line-height:30px;margin-top:-2px}
-#rad{display:flex;flex-direction:column;gap:5px;margin:8px 4px 0 0}
-#rad i{width:12px;height:12px;border-radius:50%;border:1px solid #8e8f8f;background:radial-gradient(#fff,#e6e6e6);cursor:pointer}#rad i.s{background:radial-gradient(circle,#3a9fe0 0 2px,#0e3f66 3px 4px,#e6e6e6 5px)}
-h4{text-align:center;font:15px "Courier New",monospace;letter-spacing:2px;margin:6px 0 0;position:relative;font-weight:400}h4 b{position:absolute;right:6px;top:-4px;font:bold 11px Arial;letter-spacing:0}
-#tb{display:flex;gap:6px;margin:6px 0 4px 6px;align-items:center}#tb input{width:13px;height:13px;margin:0 0 0 2px}
-#files{background:#dcdcdc;border:1px solid #777;border-top-color:#555;height:200px;overflow-y:scroll;margin:0 6px 0 4px;font:bold 12px Tahoma,Arial}
-#files div{padding:1px 4px;height:17px;cursor:pointer;white-space:nowrap}#files div.s{background:#ffa500}
-#leg{background:#d1e7d8;border:1px solid #999;margin:7px 0 0 4px;padding:1px 4px 2px;font-size:11px}#leg div{display:flex;align-items:center;height:12px}
-#leg i{width:20px;height:9px;margin:0 6px 0 5px;border:1px solid #000}
-#dlg{position:fixed;inset:0;background:#0007;display:none;align-items:center;justify-content:center;z-index:9}#dlg>div{background:#f0f0f0;border:1px solid #555;padding:12px;width:300px;max-width:92vw}
-#dlg label{display:flex;justify-content:space-between;align-items:center;margin:7px 0}#dlg button{width:100%;margin-top:6px;height:26px}.nt{font-size:10px;color:#900;margin-top:6px}
-@media(max-width:760px){#app{flex-direction:column;overflow-y:auto}#mapw{flex:none;height:62vh;min-height:320px}#side{width:100%;overflow:visible;display:grid;grid-template-columns:1fr 1fr;column-gap:6px}#side>#spd,#side>#info,#side>.row,#side>#dtw,#side>h4{grid-column:1}#files{height:150px}#leg{grid-column:2;grid-row:1/9;margin-top:4px}#info{margin-top:6px}.ib{width:30px;height:30px}#dtw{margin-top:8px}#top button{height:26px;min-width:34px}#top{height:28px}}
+*{box-sizing:border-box}html,body{margin:0;height:100%;overflow:hidden}body{background:#f0f0f0;font:12px Tahoma,"MS Sans Serif",Arial,sans-serif;color:#000}
+#app{display:flex;height:100%}#left{flex:1;min-width:0;display:flex;flex-direction:column}
+#top{height:18px;flex:none;display:flex;overflow:hidden;white-space:nowrap}
+#top button{font:9px Tahoma,Arial;border:1px solid #adadad;background:#e1e1e1;padding:0;margin:0 0 0 1px;width:23px}#top button.on{background:#cce4f7;border-color:#0078d7}
+#top .t{flex:1;text-align:center;font:13px "Courier New",monospace;line-height:16px;min-width:0;overflow:hidden}#top .w{width:145px;font-size:11px;margin-left:3px}#top .d{width:44px;font-size:10px;margin-left:2px}
+#map{flex:1;background:#d0d0d0}.leaflet-tile-pane{filter:grayscale(1) contrast(.85) brightness(1.08)}.leaflet-image-layer{image-rendering:pixelated}
+.rd{width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-bottom:11px solid #000;position:relative}.rd b{position:absolute;left:12px;top:-2px;font:12px Arial;white-space:nowrap;color:#000;text-shadow:0 0 2px #fff,0 0 2px #fff}.rd.sel{border-bottom-color:#f00}
+#msg{position:absolute;left:4px;bottom:4px;z-index:999;font-size:10px;color:#900;background:#fffc;padding:0 3px;pointer-events:none}
+#side{position:relative;width:178px;height:767px;flex:none;background:#f0f0f0;overflow:hidden}#side>*{position:absolute}
+#spd{left:1px;top:15px;width:172px;height:18px;background:#0ff;padding:1px 2px;white-space:nowrap;overflow:hidden}#info{left:10px;top:54px;line-height:16px;width:150px}
+.ib{width:20px;height:20px;top:284px;border:1px solid #888;border-radius:3px;background:#fff;padding:0;display:flex;align-items:center;justify-content:center;cursor:pointer}.ib svg{width:16px;height:16px}.ib.p{border-color:#2a6bb5;box-shadow:inset 0 0 0 1px #8fb8e8}
+#dt{left:10px;top:205px;font:bold 13px Tahoma,Arial;line-height:27px}#rad i{position:absolute;left:166px;width:12px;height:12px;border-radius:50%;border:1px solid #8e8f8f;background:radial-gradient(#fff,#dcdcdc);cursor:pointer}#rad i.s{background:radial-gradient(circle,#2f9de0 0 2px,#0b3a63 3px 4px,#e0e0e0 5px)}
+#ttl2{left:0;width:166px;top:258px;text-align:center;font:17px Tahoma,Arial;letter-spacing:1px}#nr{left:150px;top:260px;font:bold 11px Arial}
+#files{left:1px;top:309px;width:172px;height:213px;background:#dcdcdc;border:1px solid #777;overflow-y:scroll;font:bold 12px Tahoma,Arial}#files div{height:17px;line-height:17px;padding:0 3px;cursor:pointer;white-space:nowrap}#files div.s{background:#ffa500}
+#leg{left:1px;top:528px;width:172px;height:239px;background:#d1e7d8;border:1px solid #9a9a9a;padding-top:1px;font-size:11px}#leg div{height:12px;display:flex;align-items:center}#leg i{width:20px;height:10px;margin:0 4px 0 5px}
+#chk{left:114px;top:287px;width:13px;height:13px;margin:0}
+#dlg{position:fixed;inset:0;background:#0007;display:none;align-items:center;justify-content:center;z-index:9999}#dlg>div{background:#f0f0f0;border:1px solid #555;padding:12px;width:320px;max-width:92vw}
+#dlg label{display:flex;justify-content:space-between;align-items:center;margin:7px 0}#dlg input[type=text]{width:190px}#dlg button{width:100%;margin-top:6px;height:26px}
+@media(max-width:820px){#app{flex-direction:column;overflow-y:auto}html,body{overflow:auto}#left{flex:none;height:68vh;min-height:340px}#side{margin:0 auto}#top{height:26px}#top button{width:30px;font-size:11px}#top .t{display:none}}
 </style></head><body>
-<div id="top"></div>
-<div id="app"><div id="mapw"><canvas id="c"></canvas><canvas id="o"></canvas></div>
-<div id="side"><div id="spd">v=— м/с az=—</div><div id="info">Az —<br>R —<br>Значение<br>н/д</div>
-<div class="row"><button class="ib p" id="fit"><svg viewBox="0 0 17 17"><rect x="1" y="1" width="15" height="15" fill="#fff" stroke="#00c" /><rect x="2" y="2" width="3" height="13" fill="#00c"/><rect x="6" y="2" width="1" height="13" fill="#00c"/><rect x="6" y="8" width="9" height="1" fill="#00c"/><rect x="9" y="5" width="5" height="5" fill="#ff0"/><rect x="11" y="6" width="3" height="3" fill="#f00"/></svg></button>
-<svg id="play" width="26" height="26" viewBox="0 0 26 26" style="cursor:pointer"><polygon points="4,3 22,13 4,23" fill="#0a6a0a"/></svg></div>
-<div id="dtw"><div id="dt"></div><div id="rad"><i></i><i class="s"></i><i></i><i></i></div></div>
-<h4>ДМРЛ<b>nr</b></h4>
-<div id="tb"><button class="ib" id="bset"><svg viewBox="0 0 17 17"><path d="M1 4h5l1 1h6v2H4L1 14z" fill="#6b6b00"/><path d="M4 7h12l-3 7H1z" fill="#c8c850"/><path d="M11 3q3 0 3 3" fill="none" stroke="#000" stroke-width="1.5"/></svg></button>
-<button class="ib p" id="bdn"><svg viewBox="0 0 17 17"><path d="M6 1h5v8h3l-5.5 7L3 9h3z" fill="#f00" stroke="#000"/></svg></button>
-<button class="ib" id="bup"><svg viewBox="0 0 17 17"><path d="M6 16h5V8h3L8.5 1 3 8h3z" fill="#f00" stroke="#000"/></svg></button>
-<button class="ib" id="bsv"><svg viewBox="0 0 17 17"><path d="M2 9l6-5 7 3-6 5z" fill="#fff" stroke="#000"/><path d="M2 9v4l7 3 6-4V8l-6 4z" fill="#e00" stroke="#000"/><path d="M5 7l5-3" stroke="#000"/></svg></button>
-<input type="checkbox" id="chk" checked></div>
-<div id="files"></div><div id="leg"></div></div></div>
+<div id="app"><div id="left"><div id="top"></div><div id="map"></div></div>
+<div id="side"><div id="spd">az=— R=— км</div><div id="info">Az —<br>R —<br>Значение<br>н/д</div>
+<button class="ib p" id="fit" style="left:3px;top:166px"><svg viewBox="0 0 17 17"><rect x=".5" y=".5" width="16" height="16" fill="#fff" stroke="#00c"/><rect x="2" y="2" width="3" height="13" fill="#00c"/><rect x="6" y="2" width="1" height="13" fill="#00c"/><rect x="6" y="9" width="9" height="1" fill="#00c"/><rect x="9" y="4" width="5" height="5" fill="#ff0"/><rect x="11" y="5" width="3" height="3" fill="#f00"/></svg></button>
+<svg id="play" style="left:38px;top:166px;cursor:pointer" width="22" height="22" viewBox="0 0 22 22"><polygon points="3,2 17,11 3,20" fill="#0a6a0a"/></svg>
+<div id="dt"></div><div id="rad"><i style="top:205px"></i><i class="s" style="top:219px"></i><i style="top:232px"></i><i style="top:246px"></i></div><div id="ttl2">ДМРЛ</div><div id="nr">nr</div>
+<button class="ib" id="bset" style="left:3px"><svg viewBox="0 0 17 17"><path d="M1 4h5l1 1h6v2H4L1 14z" fill="#6b6b00"/><path d="M4 7h12l-3 7H1z" fill="#c8c850"/><path d="M11 3q3 0 3 3" fill="none" stroke="#000" stroke-width="1.5"/></svg></button>
+<button class="ib" id="bdn" style="left:31px"><svg viewBox="0 0 17 17"><path d="M6 1h5v8h3l-5.5 7L3 9h3z" fill="#f00" stroke="#000"/></svg></button>
+<button class="ib" id="bup" style="left:59px"><svg viewBox="0 0 17 17"><path d="M6 16h5V8h3L8.5 1 3 8h3z" fill="#f00" stroke="#000"/></svg></button>
+<button class="ib" id="bsv" style="left:87px"><svg viewBox="0 0 17 17"><path d="M2 9l6-5 7 3-6 5z" fill="#fff" stroke="#000"/><path d="M2 9v4l7 3 6-4V8l-6 4z" fill="#e00" stroke="#000"/></svg></button>
+<input type="checkbox" id="chk" checked><div id="files"></div><div id="leg"></div></div></div>
 <div id="dlg"><div><b>Настройки</b>
-<label>Размер ячейки <input type="range" id="cs" min="3" max="12" value="6"></label>
+<label>Адрес сервера <input type="text" id="api" placeholder="https://your.server:8080"></label>
 <label>Прозрачность <input type="range" id="op" min="30" max="100" value="100"></label>
-<label>Координатная сетка <input type="checkbox" id="gr" checked></label>
 <label>Круги дальности <input type="checkbox" id="ci" checked></label>
-<label>Города <input type="checkbox" id="ct" checked></label>
-<label>Границы и реки <input type="checkbox" id="bd" checked></label>
 <label>ПГ <select id="pg"><option>теплый</option><option>холодный</option></select></label>
 <label>Анимация, мс <input type="number" id="sp" value="700" min="100" step="100" style="width:70px"></label>
-<button id="cl">Закрыть</button><div class="nt">Радарное поле — демо-генерация. Для реальных данных подключите свой источник в функции val().</div></div></div>
+<button id="ap">Применить</button><button id="cl">Закрыть</button></div></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script>
-const $=i=>document.getElementById(i),C=$('c'),O=$('o'),x=C.getContext('2d'),ox=O.getContext('2d'),W=$('mapw');
-const L=[['Обл.в.ср.яр.','#9caab1'],['Сл.образн.','#a2c6ff'],['Осадки слабы','#46ff93'],['Осадки умере','#00c25a'],['Осадки сильн','#009800'],['Кучевая обл.','#ffff80'],['Ливень слабы','#3e88ff'],['Ливень умере','#0138ff'],['Ливень сильн','#000074'],['Гроза (R)','#ffaa7f'],['Гроза R)','#ff557f'],['Гроза R','#ff0000'],['Град слабый','#cc6600'],['Град умеренн','#884400'],['Град сильный','#5f0000'],['Шквал слабый','#ffaaff'],['Шквал умерен','#ff55ff'],['Шквал сильны','#c700c7'],['Смерч','#3f3f5f']];
-$('leg').innerHTML='<div>Метеоявления</div>'+L.map(l=>`<div><i style="background:${l[1]}"></i>${l[0]}</div>`).join('');
-const S={cs:6,op:1,gr:1,ci:1,ct:1,bd:1,fr:5,play:0,dang:0,dyn:0,prod:4,wind:null,tm:null,rx:.495,ry:.465};
-const T=$('top');T.innerHTML=[...Array(12)].map((_,i)=>`<button data-p="${i+4}" class="${i?'':'on'}">${i+4}</button>`).join('')+'<div class="t" id="ttl">Метеоявления &nbsp;&nbsp;&nbsp;&nbsp; ПГ: теплый</div><button id="dng" style="width:118px">Опасные явления</button><button id="dyn" style="width:64px">Динамика</button>';
-T.onclick=e=>{const b=e.target.closest('button');if(!b)return;if(b.dataset.p){S.prod=+b.dataset.p;T.querySelectorAll('[data-p]').forEach(k=>k.classList.toggle('on',k===b))}else if(b.id=='dng'){S.dang^=1;b.classList.toggle('on')}else{S.dyn^=1;b.classList.toggle('on')}draw()};
-const base=new Date();base.setMinutes(Math.floor(base.getMinutes()/10)*10,0,0);const pad=n=>String(n).padStart(2,'0'),F=[];for(let i=11;i>=0;i--)F.push(new Date(base-i*6e5));
-const fn=d=>`${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}_${pad(d.getHours())}${pad(d.getMinutes())}00_1.lnr`;
-function lst(){$('files').innerHTML=F.map((d,i)=>`<div class="${i==S.fr?'s':''}" data-i="${i}">${fn(d)}</div>`).join('');const d=F[S.fr];$('dt').innerHTML=`${pad(d.getDate())}.${pad(d.getMonth()+1)}.${d.getFullYear()}<br>${pad(d.getHours())}:${pad(d.getMinutes())}:00`;const s=$('files').querySelector('.s');if(s)$('files').scrollTop=s.offsetTop-60}
-$('files').onclick=e=>{const i=e.target.dataset.i;if(i!=null){S.fr=+i;lst();draw()}};
-$('bdn').onclick=()=>{S.fr=Math.min(11,S.fr+1);lst();draw()};$('bup').onclick=()=>{S.fr=Math.max(0,S.fr-1);lst();draw()};
-$('bset').onclick=()=>$('dlg').style.display='flex';$('cl').onclick=()=>$('dlg').style.display='none';$('fit').onclick=()=>{S.wind=null;$('spd').textContent='v=— м/с az=—';draw()};
-$('rad').onclick=e=>{if(e.target.tagName=='I'){[...$('rad').children].forEach(k=>k.classList.toggle('s',k===e.target));S.prod=4+[...$('rad').children].indexOf(e.target);draw()}};
-$('bsv').onclick=()=>{const t=document.createElement('canvas');t.width=C.width;t.height=C.height;const g=t.getContext('2d');g.drawImage(C,0,0);g.drawImage(O,0,0);const a=document.createElement('a');a.download=fn(F[S.fr]).replace('.lnr','.png');a.href=t.toDataURL();a.click()};
-function run(){clearInterval(S.tm);if(S.play)S.tm=setInterval(()=>{S.fr=(S.fr+1)%12;lst();draw()},+$('sp').value)}
-$('play').onclick=()=>{S.play^=1;$('play').innerHTML=S.play?'<rect x="4" y="3" width="6" height="20" fill="#0a6a0a"/><rect x="15" y="3" width="6" height="20" fill="#0a6a0a"/>':'<polygon points="4,3 22,13 4,23" fill="#0a6a0a"/>';run()};
-$('sp').onchange=run;
-[['cs','cs',Number],['op','op',v=>v/100]].forEach(a=>$(a[0]).oninput=e=>{S[a[1]]=a[2](e.target.value);draw()});['gr','ci','ct','bd'].forEach(k=>$(k).onchange=e=>{S[k]=+e.target.checked;draw()});
-$('pg').onchange=e=>$('ttl').innerHTML='Метеоявления &nbsp;&nbsp;&nbsp;&nbsp; ПГ: '+e.target.value;
-const hs=(a,b,s)=>{const n=Math.sin(a*127.1+b*311.7+s*74.7)*43758.5453;return n-Math.floor(n)};
-const B=[[.58,.46,.07,1],[.5,.57,.05,.9],[.62,.3,.06,.95],[.63,.12,.04,.85],[.6,.07,.03,.8],[.49,.7,.05,.8],[.27,.84,.07,.75],[.67,.58,.04,.9],[.57,.62,.04,.8],[.61,.22,.04,.9],[.55,.43,.05,.8],[.66,.78,.1,.4]];
-function val(u,v,f){let s=0;for(const b of B){const dx=u-(b[0]+f*.0016),dy=v-(b[1]-f*.0022),r=b[2]*(1+.15*Math.sin(f+b[0]*9));s+=b[3]*Math.exp(-(dx*dx+dy*dy)*1.4/(r*r))}return s*(.78+.5*hs(Math.floor(u*160),Math.floor(v*100),f>>1))*(1+(S.prod-4)*.015)}
-const cls=s=>s<.12?-1:s<.22?0:s<.34?1:s<.5?2:s<.68?3:s<.85?4:s<.98?6:s<1.1?7:s<1.25?8:s<1.4?9:s<1.55?10:s<1.7?11:s<1.8?12:s<1.9?15:13;
-const CT=[['Городец',.27,.27,0],['Чкаловск',.265,.2,0],['ВолжскаяГМО',.31,.24,1],['Бор',.5,.43,0],['Дзержинск',.4,.5,0],['ННовгород',.495,.465,1],['Ройка',.5,.54,0],['Кстово',.55,.58,0],['Семёнов',.6,.2,1],['Рустай',.67,.35,0],['Лысково',.71,.63,1],['Воротынец',.88,.6,0],['Воскресенское',.8,.16,1],['Павлово',.29,.66,1],['Вача',.25,.76,0],['Муром',.07,.86,1],['Сосновское',.34,.76,0],['Дал.Константиново',.51,.76,1],['Перевоз',.62,.88,0],['Бутурлино',.7,.9,0],['Сергач',.82,.9,1],['Спасское',.86,.7,0],['Палех',.07,.17,0]];
-function draw(){const w=C.width=O.width=W.clientWidth,h=C.height=O.height=W.clientHeight;x.fillStyle='#d0d0d0';x.fillRect(0,0,w,h);
-if(S.bd){x.strokeStyle='#737373';x.lineWidth=1;x.beginPath();x.moveTo(w*.25,0);x.bezierCurveTo(w*.2,h*.1,w*.27,h*.2,w*.22,h*.3);x.lineTo(w*.05,h*.38);x.moveTo(w*.55,h*.07);x.lineTo(w*.64,h*.1);x.lineTo(w*.9,h*.22);x.moveTo(w*.7,h*.97);x.lineTo(w*.85,h*.55);x.stroke();
-x.strokeStyle='#c8641e';x.beginPath();x.moveTo(0,h*.48);x.lineTo(w*.36,h*.53);x.lineTo(w*.64,h*.6);x.lineTo(w*.92,h*.6);x.stroke();
-x.strokeStyle='#3e88ff';x.lineWidth=1;x.beginPath();x.moveTo(w*.3,h*.1);x.bezierCurveTo(w*.35,h*.3,w*.45,h*.4,w*.55,h*.5);x.bezierCurveTo(w*.65,h*.55,w*.8,h*.52,w*.95,h*.58);x.stroke()}
-const cs=S.cs,f=S.fr*2;x.globalAlpha=S.op;
-for(let py=0;py<h;py+=cs)for(let px=0;px<w;px+=cs){const c=cls(val(px/w,py/h,f));if(c<0||(S.dang&&c<9))continue;x.fillStyle=L[c][1];x.fillRect(px,py,cs,cs)}
-x.globalAlpha=1;const fs=Math.max(10,Math.min(12,w/70));x.font=fs+'px Arial';x.fillStyle='#000';
-if(S.gr){x.strokeStyle='#808080';x.lineWidth=1;x.setLineDash([1,3]);for(let i=0;i<5;i++){const px=Math.round(w*(.1+i*.2))+.5;x.beginPath();x.moveTo(px,0);x.lineTo(px,h);x.stroke();x.fillText(43+i,px-14,h*.15-3)}for(let j=0;j<5;j++){const py=Math.round(h*(.2+j*.15))+.5;x.beginPath();x.moveTo(0,py);x.lineTo(w,py);x.stroke();x.fillText(53+j,w*.1+5,py-3)}x.setLineDash([])}
-const cx=w*S.rx,cy=h*S.ry,R=Math.min(w,h);x.strokeStyle='#000';
-if(S.ci)[.05,.08,.28,.62].forEach(r=>{x.beginPath();x.arc(cx,cy,R*r,0,7);x.stroke()});x.strokeRect(cx-R*.03,cy-R*.035,R*.055,R*.055);
-if(S.ct)CT.forEach(c=>{const px=c[1]*w,py=c[2]*h;x.fillStyle='#d0d0d0';x.beginPath();if(c[3]){x.moveTo(px,py-5);x.lineTo(px+5,py+4);x.lineTo(px-5,py+4);x.closePath()}else x.arc(px,py,5,0,7);x.fill();x.stroke();x.fillStyle='#000';x.fillText(c[0],px+8,py+4)});
-ox.clearRect(0,0,w,h);if(S.wind){ox.strokeStyle='#000';ox.lineWidth=2;ox.beginPath();ox.moveTo(cx,cy);ox.lineTo(S.wind[0],S.wind[1]);ox.stroke()}
-if(S.dyn){ox.strokeStyle=ox.fillStyle='#000';ox.lineWidth=1;[[.6,.3],[.58,.46],[.5,.57],[.63,.12]].forEach(p=>{const a=p[0]*w,b=p[1]*h;ox.beginPath();ox.moveTo(a,b);ox.lineTo(a+34,b-46);ox.stroke();ox.beginPath();ox.arc(a+34,b-46,3,0,7);ox.fill()})}}
-const pos=e=>{const r=C.getBoundingClientRect();return[e.clientX-r.left,e.clientY-r.top]};
-function inf(p){const dx=p[0]-C.width*S.rx,dy=p[1]-C.height*S.ry,az=(Math.atan2(dx,-dy)*180/Math.PI+360)%360,r=Math.hypot(dx,dy)/Math.min(C.width,C.height)*205,c=cls(val(p[0]/C.width,p[1]/C.height,S.fr*2));return[az,r,c<0?'н/д':L[c][0]]}
-const show=e=>{const i=inf(pos(e));$('info').innerHTML=`Az ${i[0].toFixed(2)}<br>R ${i[1].toFixed(2)}<br>Значение<br>${i[2]}`};
-O.onpointermove=show;O.onpointerdown=e=>{show(e);const p=pos(e),i=inf(p);S.wind=p;$('spd').textContent=`v=${(8+i[1]/9).toFixed(2)} м/с az=${Math.round(i[0])} ${['С','СВ','В','ЮВ','Ю','ЮЗ','З','СЗ'][Math.round(i[0]/45)%8]}`;draw()};
-addEventListener('resize',draw);lst();draw();
+const $=i=>document.getElementById(i);
+const L2=[['Обл.в.ср.яр.','#9caab1'],['Сл.образн.','#a2c6ff'],['Осадки слабы','#46ff93'],['Осадки умере','#00c25a'],['Осадки сильн','#009800'],['Кучевая обл.','#ffff80'],['Ливень слабы','#3e88ff'],['Ливень умере','#0138ff'],['Ливень сильн','#000074'],['Гроза (R)','#ffaa7f'],['Гроза R)','#ff557f'],['Гроза R','#ff0000'],['Град слабый','#cc6600'],['Град умеренн','#884400'],['Град сильный','#5f0000'],['Шквал слабый','#ffaaff'],['Шквал умерен','#ff55ff'],['Шквал сильны','#c700c7'],['Смерч','#3f3f5f']];
+const P=L2.map(l=>[1,3,5].map(i=>parseInt(l[1].substr(i,2),16))),TOL=48;
+$('leg').innerHTML='<div style="height:14px;padding-left:5px">Метеоявления</div>'+L2.map(l=>`<div><i style="background:${l[1]}"></i>${l[0]}</div>`).join('');
+const S={api:localStorage.api||'',op:1,ci:1,dang:0,dyn:0,prod:4,fr:0,play:0,tm:null,rd:null,fl:[],rings:[],wl:null};
+const T=$('top');T.innerHTML=[...Array(12)].map((_,i)=>`<button data-p="${i+4}" class="${i?'':'on'}">${i+4}</button>`).join('')+'<div class="t" id="ttl">Метеоявления &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ПГ: теплый</div><button class="w" id="dng">Опасные явления</button><button class="d" id="dyn">Динамика</button>';
+T.onclick=e=>{const b=e.target.closest('button');if(!b)return;if(b.dataset.p){S.prod=+b.dataset.p;T.querySelectorAll('[data-p]').forEach(k=>k.classList.toggle('on',k===b));show()}else if(b.id=='dng'){S.dang^=1;b.classList.toggle('on');show()}else{S.dyn^=1;b.classList.toggle('on');show()}};
+const map=L.map('map',{zoomControl:true,worldCopyJump:true,minZoom:2}).setView([61,95],3);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:12,attribution:'© OpenStreetMap'}).addTo(map);
+const pad=n=>String(n).padStart(2,'0'),msg=t=>{let m=$('msg');if(!m){m=document.createElement('div');m.id='msg';$('map').appendChild(m)}m.textContent=t||''};
+const jf=async p=>{const r=await fetch(S.api+p);if(!r.ok)throw 0;return r.json()};
+const tsd=t=>new Date(Date.UTC(+t.slice(0,4),t.slice(4,6)-1,+t.slice(6,8),+t.slice(9,11),+t.slice(11,13),+t.slice(13,15)));
+// ---- радары ----
+let RD=[],mk=[];
+async function init(){if(!S.api){msg('Укажите адрес сервера в настройках (папка)');return}
+try{RD=await jf('/api/radars');mk.forEach(m=>m.remove());mk=RD.map(r=>{const m=L.marker([r.lat,r.lon],{icon:L.divIcon({className:'',html:`<div class="rd" id="rd_${r.id}"><b>${r.name}</b></div>`,iconSize:[12,11],iconAnchor:[6,6]})}).addTo(map);m.on('click',()=>pick(r));return m});msg('');if(RD.length)pick(RD[0],1)}catch(e){msg('сервер недоступен: '+S.api)}}
+async function pick(r,fit){S.rd=r;document.querySelectorAll('.rd').forEach(e=>e.classList.toggle('sel',e.id=='rd_'+r.id));
+const b=r.bounds;if(fit)map.fitBounds([[b[0],b[1]],[b[2],b[3]]]);S.rings.forEach(c=>c.remove());S.rings=[];if(S.ci)(r.rings||[25,50,125,250]).forEach(k=>S.rings.push(L.circle([r.lat,r.lon],{radius:k*1000,color:'#000',weight:1,fill:false,interactive:false}).addTo(map)));
+if(S.ov){S.ov.remove();S.ov=null}if(S.gh){S.gh.remove();S.gh=null}C={};
+try{S.fl=await jf('/api/frames/'+r.id);S.fr=Math.max(0,S.fl.length-1);lst();show()}catch(e){msg('нет кадров')}}
+function lst(){$('files').innerHTML=S.fl.map((t,i)=>`<div class="${i==S.fr?'s':''}" data-i="${i}">${t}_1.lnr</div>`).join('');const t=S.fl[S.fr];if(t){const d=tsd(t);$('dt').innerHTML=`${pad(d.getDate())}.${pad(d.getMonth()+1)}.${d.getFullYear()}<br>${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`}const s=$('files').querySelector('.s');if(s)$('files').scrollTop=s.offsetTop-70}
+// ---- кадры ----
+let C={};const key=(i)=>S.rd.id+i+'|'+S.prod;
+async function frame(i){const k=key(i);if(C[k])return C[k];const t=S.fl[i];
+const im=new Image();im.crossOrigin='anonymous';await new Promise((ok,no)=>{im.onload=ok;im.onerror=no;im.src=`${S.api}/api/img/${S.rd.id}/${t}?p=${S.prod}`});
+const c=document.createElement('canvas');c.width=im.width;c.height=im.height;const g=c.getContext('2d');g.drawImage(im,0,0);const d=g.getImageData(0,0,c.width,c.height).data,a=new Int8Array(c.width*c.height);
+for(let p=0;p<a.length;p++){a[p]=-1;if(d[p*4+3]<128)continue;let m=1e9,q0=-1;for(let q=0;q<19;q++){const e=(d[p*4]-P[q][0])**2+(d[p*4+1]-P[q][1])**2+(d[p*4+2]-P[q][2])**2;if(e<m){m=e;q0=q}}if(m<=TOL*TOL)a[p]=q0}
+return C[k]={w:c.width,h:c.height,a}}
+function url(f){const c=document.createElement('canvas');c.width=f.w;c.height=f.h;const g=c.getContext('2d'),im=g.createImageData(f.w,f.h),d=im.data;for(let p=0;p<f.a.length;p++){const q=f.a[p];if(q<0||(S.dang&&q<9))continue;d[p*4]=P[q][0];d[p*4+1]=P[q][1];d[p*4+2]=P[q][2];d[p*4+3]=255}g.putImageData(im,0,0);return c.toDataURL()}
+async function show(){if(!S.rd||!S.fl.length)return;const r=S.rd,b=[[r.bounds[0],r.bounds[1]],[r.bounds[2],r.bounds[3]]],i=S.fr;msg('загрузка…');
+try{const f=await frame(i);if(i!=S.fr)return;S.cur=f;if(!S.ov)S.ov=L.imageOverlay(url(f),b,{opacity:S.op,zIndex:300}).addTo(map);else S.ov.setUrl(url(f)).setOpacity(S.op).setBounds(b);
+if(S.dyn&&i>0){const p=await frame(i-1);if(!S.gh)S.gh=L.imageOverlay(url(p),b,{opacity:.35,zIndex:299}).addTo(map);else S.gh.setUrl(url(p))}else if(S.gh){S.gh.remove();S.gh=null}msg('')}catch(e){msg('кадр недоступен')}}
+const go=i=>{S.fr=Math.max(0,Math.min(S.fl.length-1,i));lst();show()};
+$('files').onclick=e=>{if(e.target.dataset.i!=null)go(+e.target.dataset.i)};$('bdn').onclick=()=>go(S.fr+1);$('bup').onclick=()=>go(S.fr-1);
+$('fit').onclick=()=>{if(S.rd){pick(S.rd,1);if(S.wl){S.wl.remove();S.wl=null}$('spd').textContent='az=— R=— км'}};
+$('rad').onclick=e=>{if(e.target.tagName=='I'){[...$('rad').children].forEach(k=>k.classList.toggle('s',k===e.target));S.prod=4+[...$('rad').children].indexOf(e.target);show()}};
+$('bsv').onclick=()=>{if(!S.ov)return;const a=document.createElement('a');a.download=S.fl[S.fr]+'.png';a.href=S.ov._image.src;a.click()};
+function run(){clearInterval(S.tm);if(S.play)S.tm=setInterval(()=>go((S.fr+1)%S.fl.length),+$('sp').value)}
+$('play').onclick=()=>{S.play^=1;$('play').innerHTML=S.play?'<rect x="3" y="2" width="5" height="18" fill="#0a6a0a"/><rect x="12" y="2" width="5" height="18" fill="#0a6a0a"/>':'<polygon points="3,2 17,11 3,20" fill="#0a6a0a"/>';run()};$('sp').onchange=run;
+$('bset').onclick=()=>{$('api').value=S.api;$('dlg').style.display='flex'};$('cl').onclick=()=>$('dlg').style.display='none';
+$('ap').onclick=()=>{S.api=$('api').value.trim().replace(/\/$/,'');localStorage.api=S.api;S.op=$('op').value/100;S.ci=+$('ci').checked;$('dlg').style.display='none';C={};init()};
+$('pg').onchange=e=>$('ttl').innerHTML='Метеоявления &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ПГ: '+e.target.value;
+// ---- геодезия ----
+const rad=Math.PI/180,brg=(a,b)=>{const y=Math.sin((b.lng-a.lon)*rad)*Math.cos(b.lat*rad),x=Math.cos(a.lat*rad)*Math.sin(b.lat*rad)-Math.sin(a.lat*rad)*Math.cos(b.lat*rad)*Math.cos((b.lng-a.lon)*rad);return(Math.atan2(y,x)/rad+360)%360},
+dist=(a,b)=>{const h=Math.sin((b.lat-a.lat)*rad/2)**2+Math.cos(a.lat*rad)*Math.cos(b.lat*rad)*Math.sin((b.lng-a.lon)*rad/2)**2;return 12742*Math.asin(Math.sqrt(h))};
+map.on('mousemove',e=>{if(!S.rd)return;const r=S.rd,az=brg(r,e.latlng),R=dist(r,e.latlng),b=r.bounds;let n='н/д';const f=S.cur;if(f){const px=Math.floor((e.latlng.lng-b[1])/(b[3]-b[1])*f.w),py=Math.floor((b[2]-e.latlng.lat)/(b[2]-b[0])*f.h);if(px>=0&&py>=0&&px<f.w&&py<f.h){const c=f.a[py*f.w+px];if(c>=0)n=L2[c][0]}}$('info').innerHTML=`Az ${az.toFixed(2)}<br>R ${R.toFixed(2)}<br>Значение<br>${n}`});
+map.on('click',e=>{if(!S.rd)return;const r=S.rd,az=brg(r,e.latlng);if(S.wl)S.wl.remove();S.wl=L.polyline([[r.lat,r.lon],e.latlng],{color:'#000',weight:2,interactive:false}).addTo(map);$('spd').textContent=`az=${Math.round(az)} ${['С','СВ','В','ЮВ','Ю','ЮЗ','З','СЗ'][Math.round(az/45)%8]}  R=${dist(r,e.latlng).toFixed(1)} км`});
+init();
 </script></body></html>

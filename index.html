@@ -222,87 +222,77 @@ html,body{
 }
 
 /* =========================================================
-   НИЖНЯЯ ПАНЕЛЬ / ТАЙМЛАЙН
+   НИЖНЯЯ ПАНЕЛЬ — В СТИЛЕ СКРИНШОТА
    ========================================================= */
 
 #bp{
  right:var(--sar);
  bottom:var(--sab);
 
- width:min(500px,calc(100vw - var(--sal) - var(--sar)));
+ width:458px;
  max-width:calc(100vw - var(--sal) - var(--sar));
 
- border:1px solid #444;
- background:#e2e2e2;
+ border:1px solid #555;
+ background:#dcdcdc;
+
  font-size:14px;
  overflow:hidden;
 
  z-index:1100
 }
 
+/* =========================================================
+   ЗАГОЛОВОК
+   ========================================================= */
+
 #bp .tt{
- min-height:18px;
+ height:18px;
  line-height:17px;
- background:#dcdcdc;
+
+ background:#cfcfcf;
+
+ border-bottom:1px solid #888;
+
  padding:0 4px;
+
  white-space:nowrap;
  overflow:hidden;
- font-weight:600
+
+ font-weight:400;
+ color:#111
 }
 
 /* =========================================================
-   ИНФОРМАЦИЯ
+   СТРОКА РЕЖИМОВ
    ========================================================= */
 
-#meta{
- min-height:34px;
- background:#c9c9c9;
- border-top:1px solid #aaa;
- border-bottom:1px solid #999;
-
- display:flex;
- flex-direction:column;
- justify-content:center;
- align-items:flex-start;
-
- gap:1px;
- padding:2px 5px;
-
- overflow:hidden;
- white-space:nowrap;
-
- font-size:12px;
- line-height:14px
-}
-
-#coords{
- white-space:nowrap;
- overflow:visible
-}
-
-#dl{
- white-space:nowrap;
- overflow:visible;
- font-size:12px
-}
-
 #bp .st{
- height:17px;
- background:#808080;
+ height:19px;
+
+ background:#858585;
+
  display:flex;
  align-items:center;
+
  padding-left:2px;
- gap:6px
+
+ gap:1px
 }
 
 .b{
- height:19px;
+ height:18px;
  min-width:29px;
+
  border:1px solid #4a8fa5;
+
  background:#a9dbea;
- font:14px/14px Arial;
+
+ font:14px/15px Arial;
+
  padding:0 4px;
+
  cursor:pointer;
+
  color:#000
 }
 
@@ -312,69 +302,112 @@ html,body{
 }
 
 .st .b{
- height:16px;
- width:29px
+ height:18px;
+ width:29px;
+ min-width:29px;
+ padding:0
 }
+
+/* =========================================================
+   СТРОКА УПРАВЛЕНИЯ ВРЕМЕНЕМ
+   ========================================================= */
 
 #bp .dr{
  height:25px;
+
  display:flex;
  align-items:center;
+
  padding-left:2px;
- gap:3px;
+
+ gap:2px;
+
  white-space:nowrap;
  font-size:14px;
+
  min-width:0;
- overflow:hidden
+ overflow:hidden;
+
+ background:#dcdcdc
 }
 
 #bp .dr .b{
- height:21px;
- width:34px;
+ height:20px;
+ width:31px;
+ min-width:31px;
+ flex:0 0 31px;
+
  font-weight:bold;
+
  margin:0;
- flex:0 0 34px
+ padding:0
 }
 
+/* =========================================================
+   ДАТА
+   ========================================================= */
+
 #di{
- height:21px;
+ height:20px;
+
  width:134px;
  min-width:80px;
+
  border:1px solid #888;
+
  background:#fff;
- font:14px Arial;
+
+ font:13px Arial;
+
  padding:0 3px;
- margin-left:5px;
+
+ margin-left:3px;
+
  flex:0 1 134px
 }
 
 #ck{
- width:17px;
- height:17px;
- margin:0 4px 0 0;
- flex:0 0 17px
+ width:15px;
+ height:15px;
+
+ margin:0 4px 0 1px;
+
+ flex:0 0 15px
 }
 
 /* =========================================================
-   ЧАСЫ ТАЙМЛАЙНА
+   ЧАСЫ
    ========================================================= */
 
 #hrs{
  display:flex;
+
  height:18px;
+
  border-top:1px solid #555;
- overflow:hidden
+
+ overflow:hidden;
+
+ background:#e2e2e2
 }
 
 #hrs div{
  flex:1;
+
  min-width:0;
+
  text-align:center;
- border-left:1px solid #555;
+
+ border-left:1px solid #777;
+
  line-height:17px;
+
  cursor:pointer;
+
  background:#e2e2e2;
+
  font-size:10px;
+
  overflow:hidden
 }
 
@@ -388,16 +421,22 @@ html,body{
 }
 
 /* =========================================================
-   ГЛАВНЫЙ ТАЙМЛАЙН
+   ЗЕЛЁНАЯ ШКАЛА
    ========================================================= */
 
 #bar{
  display:block;
+
  width:100%;
  height:20px;
+
  border-top:1px solid #555;
+
  cursor:grab;
- touch-action:none
+
+ touch-action:none;
+
+ background:#268c26
 }
 
 #bar:active{
@@ -410,119 +449,174 @@ html,body{
 
 #sx{
  display:none;
+
  right:calc(37px + var(--sar));
  top:calc(15px + var(--sat));
+
  width:530px;
  max-width:530px;
  height:310px;
+
  background:#eee;
+
  border-radius:6px;
+
  box-shadow:0 2px 10px #0006;
+
  font:10px Arial;
+
  transform-origin:top right;
+
  z-index:1200
 }
 
 #sh{
  margin:4px 4px 0;
+
  height:30px;
+
  border-radius:5px;
+
  background:linear-gradient(#f9b84e,#eeaf47);
+
  color:#fff;
+
  font:bold 15px/30px Arial;
+
  padding-left:16px;
+
  text-shadow:0 1px 1px #0005;
+
  cursor:move;
+
  touch-action:none
 }
 
 #sc{
  position:absolute;
+
  right:9px;
  top:8px;
+
  width:20px;
  height:20px;
+
  border-radius:3px;
+
  background:#fbe08c;
+
  color:#e08a10;
+
  font:bold 15px/19px Arial;
+
  text-align:center;
+
  cursor:pointer;
+
  text-shadow:none
 }
 
 #sx .yl{
  position:absolute;
+
  left:6px;
  top:40px;
+
  line-height:10px;
+
  font-size:10px
 }
 
 #sst{
  position:absolute;
+
  left:49px;
  top:45px;
+
  font:10px "Courier New",monospace
 }
 
 #sx canvas{
  position:absolute;
+
  left:42px;
  top:55px;
+
  background:#b8b8b8;
+
  border-left:1px solid #666;
  border-bottom:1px solid #666
 }
 
 #sx .yt{
  position:absolute;
+
  left:22px;
+
  width:16px;
+
  text-align:right;
+
  font-size:10px;
  line-height:10px
 }
 
 #sx .xl{
  position:absolute;
+
  left:0;
  right:0;
+
  bottom:12px;
+
  text-align:center
 }
 
 #zl{
  position:absolute;
+
  left:484px;
  top:67px;
+
  width:42px;
+
  background:#fff;
+
  text-align:left;
+
  font-size:11px;
+
  padding:0 0 1px 1px
 }
 
 #zl b{
  display:block;
+
  font-size:12px;
  line-height:14px;
+
  text-align:center;
+
  margin-bottom:1px
 }
 
 #zl div{
  height:11px;
+
  display:flex;
  align-items:center;
+
  font-size:11px
 }
 
 #zl i{
  width:14px;
  height:10px;
+
  border:1px solid #444;
+
  margin-right:3px;
+
  flex:none
 }
 
@@ -532,15 +626,25 @@ html,body{
 
 #msg{
  left:70px;
+
  bottom:calc(100px + var(--sab));
+
  font-size:12px;
+
  color:#a00;
+
  background:#fffd;
+
  padding:0 4px;
+
  pointer-events:none;
+
  max-width:calc(100vw - 80px);
+
  overflow:hidden;
+
  text-overflow:ellipsis;
+
  white-space:nowrap
 }
 
@@ -551,38 +655,27 @@ html,body{
 @media(max-width:700px){
 
  #bp{
-  width:calc(100vw - var(--sal) - var(--sar));
+  width:458px;
   max-width:calc(100vw - var(--sal) - var(--sar));
+
   right:var(--sar);
   bottom:var(--sab)
  }
 
- #meta{
-  font-size:10px;
-  line-height:12px
- }
-
- #coords,
- #dl{
-  font-size:10px
- }
-
- #hrs div,
- #hrs{
-  font-size:9px
+ #bp .dr .b{
+  width:29px;
+  min-width:29px;
+  flex-basis:29px
  }
 
  #di{
-  width:86px;
+  width:94px;
   min-width:70px;
-  flex-basis:86px
+  flex-basis:94px
  }
 
- #bp .dr .b{
-  width:27px;
-  min-width:27px;
-  flex-basis:27px;
-  font-size:12px
+ #hrs div{
+  font-size:9px
  }
 
  #logo{
@@ -613,27 +706,30 @@ html,body{
 
 @media(max-width:390px){
 
+ #bp{
+  width:100vw;
+  max-width:100vw;
+  right:0
+ }
+
  #bp .dr{
-  gap:2px
+  gap:1px
  }
 
  #bp .dr .b{
-  width:24px;
-  min-width:24px;
-  flex-basis:24px;
-  padding:0 2px
- }
+  width:26px;
+  min-width:26px;
+  flex-basis:26px;
 
- #di{
-  width:72px;
-  min-width:64px;
-  flex-basis:72px;
   font-size:12px
  }
 
- #coords,
- #dl{
-  font-size:9px
+ #di{
+  width:78px;
+  min-width:64px;
+  flex-basis:78px;
+
+  font-size:12px
  }
 
  #logo{
@@ -798,7 +894,7 @@ html,body{
 <div class="ov" id="msg"></div>
 
 <!-- =========================================================
-     ТАЙМЛАЙН
+     НИЖНЯЯ ПАНЕЛЬ
      ========================================================= -->
 
 <div class="ov" id="bp">
@@ -807,23 +903,30 @@ html,body{
   Метеоявления
  </div>
 
- <div id="meta">
-  <span id="coords">Шир: —  Дол: —</span>
-  <span id="dl"></span>
- </div>
+ <!-- РЕЖИМЫ КАК НА СКРИНШОТЕ -->
 
  <div class="st">
+
   <button class="b red" data-m="S">S</button>
+
   <button class="b" data-m="R">R</button>
+
   <button class="b" data-m="H">H</button>
+
  </div>
+
+ <!-- КНОПКИ ВРЕМЕНИ + ДАТА -->
 
  <div class="dr">
 
   <button class="b" id="n1">&lt;&lt;</button>
+
   <button class="b" id="n2">&lt;</button>
+
   <button class="b" id="n3">|&gt;</button>
+
   <button class="b" id="n4">&gt;</button>
+
   <button class="b" id="n5">&gt;&gt;</button>
 
   <input id="di" type="date">
@@ -834,7 +937,11 @@ html,body{
 
  </div>
 
+ <!-- ЧАСЫ -->
+
  <div id="hrs"></div>
+
+ <!-- ЗЕЛЁНАЯ ШКАЛА -->
 
  <canvas id="bar" height="20"></canvas>
 
@@ -884,19 +991,9 @@ const $=i=>document.getElementById(i),
 
 const MSK_OFFSET=3*60*60*1000;
 
-/*
-   Сколько прошлого показываем на таймлайне.
-   72 часа = 3 суток.
-*/
-const ARCHIVE_HOURS=72;
+const ARCHIVE_HOURS=12;
 const STEP_MS=6e5;
 const ARCHIVE_STEPS=ARCHIVE_HOURS*6;
-
-/*
-   Все внутренние timestamps остаются UTC.
-   МСК используется только для интерфейса
-   и календаря пользователя.
-*/
 
 function toMSK(d){
  return new Date(+d+MSK_OFFSET);
@@ -934,8 +1031,9 @@ const L2=[
 
 const P=L2.map(l=>
  [1,3,5].map(i=>parseInt(l[1].substr(i,2),16))
-),
-TOL=48;
+);
+
+const TOL=48;
 
 const ZT=[
  -30,-10,-5,0,5,10,15,20,25,
@@ -1035,14 +1133,14 @@ const mn=[
 ];
 
 /* =========================================================
-   UTC TIMESTAMP ДЛЯ API
+   UTC TIMESTAMP
    ========================================================= */
 
 const stp=d=>
  `${d.getUTCFullYear()}${pad(d.getUTCMonth()+1)}${pad(d.getUTCDate())}_${pad(d.getUTCHours())}${pad(d.getUTCMinutes())}00`;
 
 /* =========================================================
-   ДАТА ДЛЯ INPUT DATE — ИМЕННО МСК
+   ДАТА
    ========================================================= */
 
 const dstr=d=>{
@@ -1053,8 +1151,7 @@ const dstr=d=>{
 };
 
 /* =========================================================
-   ПОСЛЕДНИЙ ЗАВЕРШЁННЫЙ РАДАРНЫЙ КАДР
-   ВНУТРЕННЕ UTC
+   ПОСЛЕДНИЙ КАДР
    ========================================================= */
 
 const latest=()=>
@@ -1065,10 +1162,11 @@ const latest=()=>
 S.T=latest();
 
 /* =========================================================
-   ПРЕДЕЛЫ ТАЙМЛАЙНА
+   ПРЕДЕЛЫ АРХИВА
    ========================================================= */
 
 function timelineStart(){
+
  return new Date(
   +latest()-(ARCHIVE_STEPS-1)*STEP_MS
  );
@@ -1078,21 +1176,12 @@ function clampTime(d){
 
  let n=new Date(d);
 
- const mx=latest();
- const mn0=timelineStart();
-
- if(+n<+mn0)
-  n=mn0;
-
- if(+n>+mx)
-  n=mx;
-
- /*
-    Всегда оставляем время кратным 10 минутам.
- */
  n=new Date(
   Math.floor(+n/STEP_MS)*STEP_MS
  );
+
+ const mx=latest();
+ const mn0=timelineStart();
 
  if(+n>+mx)
   n=mx;
@@ -1104,10 +1193,7 @@ function clampTime(d){
 }
 
 /* =========================================================
-   ТАЙМЛАЙН: ЧАСОВЫЕ ПОДПИСИ
-   Показываем весь 72-часовой диапазон.
-   Подписи идут через 6 часов.
-   Время — МСК.
+   ЧАСЫ
    ========================================================= */
 
 function renderHours(){
@@ -1117,79 +1203,68 @@ function renderHours(){
  const start=timelineStart();
  const end=latest();
 
- const total=end-start;
+ const total=+end-+start;
+ const interval=2*60*60*1000;
 
- const arr=[];
+ const first=
+  new Date(
+   Math.ceil(+start/interval)*interval
+  );
 
- /*
-    Деления каждые 6 часов.
-    Первый и последний кадр всегда входят.
- */
-
- const first=new Date(
-  Math.ceil(+start/(6*60*60*1000))*
-  6*60*60*1000
- );
+ hrs.innerHTML='';
 
  for(
   let t=+first;
   t<=+end;
-  t+=6*60*60*1000
+  t+=interval
  ){
 
   const d=new Date(t);
   const m=toMSK(d);
 
-  const label=
-   `${pad(m.getUTCHours())}`;
-
-  arr.push({
-   t:d,
-   label
-  });
- }
-
- if(!arr.length)
-  return;
-
- /*
-    HTML делится пропорционально всему диапазону.
- */
-
- hrs.innerHTML='';
-
- arr.forEach(item=>{
-
   const x=document.createElement('div');
 
-  x.textContent=item.label;
+  x.textContent=pad(m.getUTCHours());
 
-  x.dataset.t=String(+item.t);
+  x.dataset.t=String(+d);
 
   if(
-   Math.abs(+item.t-+S.T)<STEP_MS
+   Math.abs(+d-+S.T)<STEP_MS
   )
    x.classList.add('c');
 
   hrs.appendChild(x);
- });
+ }
+
+ if(!hrs.children.length){
+
+  const d=new Date(S.T);
+  const m=toMSK(d);
+
+  const x=document.createElement('div');
+
+  x.textContent=pad(m.getUTCHours());
+
+  x.dataset.t=String(+d);
+
+  x.classList.add('c');
+
+  hrs.appendChild(x);
+ }
 }
 
 /* =========================================================
-   ИНФОРМАЦИЯ ПАНЕЛИ
+   UI
    ========================================================= */
 
 function ui(){
 
  S.T=clampTime(S.T);
 
- const d=S.T;
- const m=toMSK(d);
+ $('di').value=dstr(S.T);
 
- $('dl').textContent=
-  `${wd[m.getUTCDay()]}, ${m.getUTCDate()} ${mn[m.getUTCMonth()]} ${m.getUTCFullYear()} г., ${pad(m.getUTCHours())}:${pad(m.getUTCMinutes())} МСК`;
-
- $('di').value=dstr(d);
+ $('di').min=dstr(timelineStart());
+ $('di').max=dstr(latest());
 
  $('tt').textContent=TTL[S.m];
 
@@ -1208,7 +1283,7 @@ function ui(){
 }
 
 /* =========================================================
-   РИСОВАНИЕ 72-ЧАСОВОГО ТАЙМЛАЙНА
+   ТАЙМЛАЙН
    ========================================================= */
 
 function bar(){
@@ -1229,30 +1304,12 @@ function bar(){
 
  const total=+end-+start;
 
- /*
-    Фон.
- */
  g.clearRect(
   0,
   0,
   w,
   20
  );
-
- g.fillStyle='#d3d3d3';
-
- g.fillRect(
-  0,
-  0,
-  w,
-  20
- );
-
- /*
-    Каждый 10-минутный кадр.
-    Все кадры в диапазоне — прошлое.
-    Будущих ячеек здесь физически нет.
- */
 
  for(let i=0;i<ARCHIVE_STEPS;i++){
 
@@ -1282,35 +1339,20 @@ function bar(){
    Math.max(1,x2-x),
    20
   );
-
-  /*
-     Тонкая граница между кадрами.
-  */
-
-  g.fillStyle='#0d5a0d';
-
-  g.fillRect(
-   x,
-   0,
-   1,
-   20
-  );
  }
 
- /*
-    Вертикальные отметки каждые 6 часов.
- */
+ const interval=2*60*60*1000;
 
  for(
   let t=+start;
   t<=+end;
-  t+=6*60*60*1000
+  t+=interval
  ){
 
   const x=
    ((t-+start)/total)*w;
 
-  g.fillStyle='#064d06';
+  g.fillStyle='#0d5a0d';
 
   g.fillRect(
    Math.round(x),
@@ -1319,10 +1361,6 @@ function bar(){
    20
   );
  }
-
- /*
-    Текущий выбранный кадр.
- */
 
  let x=
   ((+S.T-+start)/total)*w;
@@ -1344,17 +1382,13 @@ function bar(){
   20
  );
 
- /*
-    Подсветка ближайшего часа.
- */
-
  document.querySelectorAll('#hrs div').forEach(e=>{
 
   const t=Number(e.dataset.t);
 
   e.classList.toggle(
    'c',
-   Math.abs(t-+S.T)<3*60*60*1000
+   Math.abs(t-+S.T)<STEP_MS
   );
  });
 }
@@ -1379,7 +1413,7 @@ const setT=d=>{
 };
 
 /* =========================================================
-   КНОПКИ ПЕРЕМЕЩЕНИЯ
+   КНОПКИ
    ========================================================= */
 
 $('n1').onclick=()=>
@@ -1411,7 +1445,7 @@ $('n5').onclick=()=>
 );
 
 /* =========================================================
-   АНИМАЦИЯ
+   PLAY
    ========================================================= */
 
 $('n3').onclick=()=>{
@@ -1436,11 +1470,6 @@ $('n3').onclick=()=>{
      +S.T+STEP_MS
     );
 
-   /*
-      Дошли до настоящего —
-      останавливаемся.
-   */
-
    if(n>lim){
 
     S.play=0;
@@ -1461,7 +1490,6 @@ $('n3').onclick=()=>{
 
 /* =========================================================
    КАЛЕНДАРЬ
-   ДАТА ВВОДИТСЯ В МСК
    ========================================================= */
 
 $('di').onchange=e=>{
@@ -1474,11 +1502,6 @@ $('di').onchange=e=>{
  if(!y)
   return;
 
- /*
-    Берём выбранный календарный день МСК
-    и сохраняем текущие часы/минуты МСК.
- */
-
  const cur=toMSK(S.T);
 
  const msk=
@@ -1490,10 +1513,6 @@ $('di').onchange=e=>{
    cur.getUTCMinutes()
   ));
 
- /*
-    Переводим обратно в UTC instant.
- */
-
  const utc=
   new Date(
    +msk-MSК_OFFSET
@@ -1503,7 +1522,7 @@ $('di').onchange=e=>{
 };
 
 /* =========================================================
-   КЛИК ПО ЧАСОВЫМ ОТМЕТКАМ
+   ЧАСОВЫЕ ОТМЕТКИ
    ========================================================= */
 
 $('hrs').onclick=e=>{
@@ -1524,7 +1543,7 @@ $('hrs').onclick=e=>{
 };
 
 /* =========================================================
-   ПЕРЕТАСКИВАНИЕ ИМЕННО ТАЙМЛАЙНА
+   DRAG ТАЙМЛАЙНА
    ========================================================= */
 
 let barDragging=false;
@@ -1553,9 +1572,7 @@ function barTime(e){
    )*STEP_MS
   );
 
- d=clampTime(d);
-
- return d;
+ return clampTime(d);
 }
 
 $('bar').addEventListener(
@@ -1655,19 +1672,12 @@ document.querySelectorAll('.st .b').forEach(b=>
 );
 
 /* =========================================================
-   РАДАРЫ И КАДРЫ
+   РАДАРЫ
    ========================================================= */
 
 let RD=[],OV={},RG=[],C={};
 
 async function init(){
-
- /*
-    ВАЖНО:
-    Если API не задан, теперь НИКАКОГО сообщения
-    «Укажите адрес сервера в настройках» нет.
-    Просто ждём существующий localStorage.api.
- */
 
  if(!S.api)
   return;
@@ -1701,22 +1711,16 @@ async function init(){
 
  }catch(e){
 
-  /*
-     Только реальная ошибка сервера.
-     Сообщения про отсутствие настройки API нет.
-  */
-
   msg(
    S.api?
    'сервер недоступен: '+S.api:
    ''
   );
-}
-
+ }
 }
 
 /* =========================================================
-   ЗАГРУЗКА РАДАРНОГО КАДРА
+   ЗАГРУЗКА КАДРА
    ========================================================= */
 
 async function frame(r,ts){
@@ -1801,7 +1805,7 @@ async function frame(r,ts){
 }
 
 /* =========================================================
-   ПЕРЕКРАСКА РАДАРА
+   ПЕРЕКРАСКА
    ========================================================= */
 
 function url(f){
@@ -1844,7 +1848,7 @@ function url(f){
 }
 
 /* =========================================================
-   ОТРИСОВКА РАДАРА
+   РАДАР
    ========================================================= */
 
 async function show(){
@@ -1855,10 +1859,6 @@ async function show(){
  const z=map.getZoom();
  const b=map.getBounds();
  const tk=++S.tk;
-
- /*
-    API получает настоящий UTC timestamp.
- */
 
  const ts=stp(S.T);
 
@@ -1936,11 +1936,6 @@ async function show(){
 
  if(tk==S.tk){
 
-  /*
-     В сообщениях API-время оставляем UTC,
-     чтобы серверный timestamp был однозначен.
-  */
-
   msg(
    vis.length&&bad==vis.length?
    'нет данных за '+ts+' UTC':
@@ -1955,35 +1950,6 @@ map.on('moveend',()=>{
 
  show();
  lightning();
-});
-
-/* =========================================================
-   КООРДИНАТЫ
-   ========================================================= */
-
-const dms=v=>{
-
- const a=Math.abs(v);
-
- const d=Math.floor(a);
-
- const m=Math.floor(
-  (a-d)*60
- );
-
- const s=Math.round(
-  ((a-d)*60-m)*60
- );
-
- return d+'°'+
-  pad(m)+"'"+
-  pad(s)+'"';
-};
-
-map.on('mousemove',e=>{
-
- $('coords').textContent=
-  `Шир: ${dms(e.latlng.lat)}  Дол: ${dms(e.latlng.lng)}`;
 });
 
 /* =========================================================
@@ -2199,7 +2165,7 @@ function vclear(){
 }
 
 /* =========================================================
-   ОГРАНИЧЕНИЕ ОКНА СЕЧЕНИЯ
+   ОГРАНИЧЕНИЕ ОКНА
    ========================================================= */
 
 function clampSX(){
@@ -2308,10 +2274,6 @@ function fitSX(){
 
 map.on('click',e=>{
 
- /* =====================================================
-    ЛИНЕЙКА
-    ===================================================== */
-
  if(S.rl){
 
   rp.push(e.latlng);
@@ -2361,10 +2323,6 @@ map.on('click',e=>{
 
   return;
  }
-
- /* =====================================================
-    ВЕРТИКАЛЬНОЕ СЕЧЕНИЕ
-    ===================================================== */
 
  if(!S.vc)
   return;
@@ -2466,7 +2424,7 @@ for(let k=1;k<=15;k++){
 }
 
 /* =========================================================
-   ОТРИСОВКА СЕЧЕНИЯ
+   СЕЧЕНИЕ
    ========================================================= */
 
 async function sect(){
@@ -2589,20 +2547,16 @@ async function sect(){
 }
 
 /* =========================================================
-   КРЕСТИК СЕЧЕНИЯ
+   КРЕСТИК
    ========================================================= */
 
 $('sc').onclick=()=>{
 
  vclear();
-
- /*
-    VC остаётся включённым.
- */
 };
 
 /* =========================================================
-   ПЕРЕТАСКИВАНИЕ ОКНА СЕЧЕНИЯ
+   ПЕРЕТАСКИВАНИЕ ОКНА
    ========================================================= */
 
 (()=>{

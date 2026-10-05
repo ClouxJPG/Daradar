@@ -213,41 +213,12 @@ html,body{
    ПРАВЫЕ КНОПКИ
    ========================================================= */
 
-#hp{
- right:calc(54px + var(--sar));
- top:calc(69px + var(--sat));
- width:17px;
- height:19px;
- background:#ffff3a;
- border:1px solid #333;
- font:bold 12px/16px Arial;
- padding:0;
- cursor:pointer
-}
-
 #fs{
  right:calc(7px + var(--sar));
  top:calc(9px + var(--sat));
  width:29px;
  height:29px;
  background:#e8eef8cc
-}
-
-/* =========================================================
-   КООРДИНАТЫ
-   ========================================================= */
-
-#ll{
- right:var(--sar);
- bottom:calc(92px + var(--sab));
- background:rgba(122,122,122,.78);
- padding:3px 12px 3px 6px;
- font-size:16px;
- line-height:18px;
- white-space:nowrap;
- max-width:calc(100vw - 8px);
- overflow:hidden;
- text-overflow:ellipsis
 }
 
 /* =========================================================
@@ -270,13 +241,45 @@ html,body{
 }
 
 #bp .tt{
- height:18px;
+ min-height:18px;
  line-height:17px;
  background:#dcdcdc;
- padding-left:3px;
+ padding:0 4px;
  white-space:nowrap;
  overflow:hidden;
  font-weight:600
+}
+
+/* =========================================================
+   ИНФОРМАЦИЯ В НИЖНЕЙ ПАНЕЛИ
+   ========================================================= */
+
+#meta{
+ min-height:23px;
+ background:#c9c9c9;
+ border-top:1px solid #aaa;
+ border-bottom:1px solid #999;
+ display:flex;
+ align-items:center;
+ gap:10px;
+ padding:2px 5px;
+ overflow:hidden;
+ white-space:nowrap;
+ font-size:13px
+}
+
+#coords{
+ flex:0 0 auto;
+ white-space:nowrap
+}
+
+#dl{
+ flex:1 1 auto;
+ min-width:0;
+ white-space:nowrap;
+ overflow:visible;
+ font-size:13px;
+ text-align:right
 }
 
 #bp .st{
@@ -327,16 +330,6 @@ html,body{
  font-weight:bold;
  margin:0;
  flex:0 0 34px
-}
-
-#dl{
- letter-spacing:.1px;
- margin-right:3px;
- flex:1 1 auto;
- min-width:0;
- overflow:hidden;
- text-overflow:ellipsis;
- white-space:nowrap
 }
 
 #di{
@@ -586,13 +579,19 @@ html,body{
   bottom:var(--sab)
  }
 
+ #meta{
+  gap:5px;
+  font-size:11px
+ }
+
+ #coords,
+ #dl{
+  font-size:11px
+ }
+
  #hrs div,
  #hrs{
   font-size:10px
- }
-
- #dl{
-  font-size:11px
  }
 
  #di{
@@ -617,10 +616,6 @@ html,body{
  #sx{
   top:calc(58px + var(--sat));
   right:3px
- }
-
- #ll{
-  font-size:13px
  }
 
  #leg{
@@ -658,6 +653,7 @@ html,body{
   font-size:12px
  }
 
+ #coords,
  #dl{
   font-size:10px
  }
@@ -814,8 +810,6 @@ html,body{
  </div>
 </div>
 
-<button class="ov" id="hp">?</button>
-
 <button class="ov wb" id="fs">
  <svg width="16" height="16" viewBox="0 0 14 14">
   <path d="M2 12L12 2M6 2h6v6"
@@ -824,10 +818,6 @@ html,body{
    fill="none"/>
  </svg>
 </button>
-
-<div class="ov" id="ll">
- Шир: —  Дол: —
-</div>
 
 <div class="ov" id="msg"></div>
 
@@ -841,6 +831,11 @@ html,body{
   Метеоявления
  </div>
 
+ <div id="meta">
+  <span id="coords">Шир: —  Дол: —</span>
+  <span id="dl"></span>
+ </div>
+
  <div class="st">
   <button class="b red" data-m="S">S</button>
   <button class="b" data-m="R">R</button>
@@ -848,8 +843,6 @@ html,body{
  </div>
 
  <div class="dr">
-
-  <span id="dl"></span>
 
   <button class="b" id="n1">&lt;&lt;</button>
   <button class="b" id="n2">&lt;</button>
@@ -918,11 +911,6 @@ html,body{
    <input type="text"
           id="api"
           placeholder="https://your.server:8080">
-  </label>
-
-  <label>
-   URL спутниковых тайлов (Sat), {z}/{x}/{y}
-   <input type="text" id="sau">
   </label>
 
   <button id="ap">Применить</button>
@@ -1060,10 +1048,51 @@ const stp=d=>
 const dstr=d=>
  `${d.getUTCFullYear()}-${pad(d.getUTCMonth()+1)}-${pad(d.getUTCDate())}`;
 
+/* =========================================================
+   ПОСЛЕДНИЙ ДОСТУПНЫЙ РАДИОЛОКАЦИОННЫЙ СРОК
+   Только прошедшее время.
+   ========================================================= */
+
 const latest=()=>
- new Date(Math.floor(Date.now()/6e5)*6e5-6e5);
+ new Date(
+  Math.floor(Date.now()/6e5)*6e5-6e5
+ );
 
 S.T=latest();
+
+/* =========================================================
+   ОГРАНИЧЕНИЕ ВРЕМЕНИ
+   ========================================================= */
+
+function clampTime(d){
+
+ const n=new Date(d);
+
+ const nowLatest=latest();
+
+ /*
+    Для сегодняшнего дня нельзя выбрать время
+    позже последнего завершённого радиолокационного
+    кадра.
+ */
+
+ const today0=Date.UTC(
+  nowLatest.getUTCFullYear(),
+  nowLatest.getUTCMonth(),
+  nowLatest.getUTCDate()
+ );
+
+ const day0=Date.UTC(
+  n.getUTCFullYear(),
+  n.getUTCMonth(),
+  n.getUTCDate()
+ );
+
+ if(day0===today0 && n>nowLatest)
+  return new Date(nowLatest);
+
+ return n;
+}
 
 /* =========================================================
    НИЖНЯЯ ПАНЕЛЬ / ТАЙМЛАЙН
@@ -1076,6 +1105,8 @@ $('hrs').innerHTML=[
 ).join('');
 
 function ui(){
+
+ S.T=clampTime(S.T);
 
  const d=S.T;
 
@@ -1115,19 +1146,29 @@ function bar(){
   S.T.getUTCDate()
  );
 
- const nw=Date.now()-6e5;
+ const nw=latest();
 
  g.fillStyle='#d3d3d3';
  g.fillRect(0,0,w,20);
 
  for(let i=0;i<144;i++){
 
-  const t=d0+i*6e5;
+  const t=
+   new Date(
+    d0+i*6e5
+   );
 
   const x=Math.round(i*w/144);
   const x2=Math.round((i+1)*w/144);
 
-  const loaded=t<=nw;
+  /*
+     Прошедшие кадры — зелёные.
+     Будущие — вообще не являются доступными
+     для выбора и остаются пустыми.
+  */
+
+  const loaded=
+   t<=nw;
 
   g.fillStyle=
    loaded?'#268c26':'#d3d3d3';
@@ -1140,12 +1181,23 @@ function bar(){
   );
 
   g.fillStyle=
-   loaded?'#0d5a0d':'#fff';
+   loaded?'#0d5a0d':'#d3d3d3';
 
-  g.fillRect(x,0,1,20);
+  g.fillRect(
+   x,
+   0,
+   1,
+   20
+  );
  }
 
- const x=(S.T-d0)/864e5*w;
+ let x=
+  (S.T-d0)/864e5*w;
+
+ x=Math.max(
+  0,
+  Math.min(w-1,x)
+ );
 
  g.fillStyle='#f0ff20';
 
@@ -1165,26 +1217,58 @@ function bar(){
 }
 
 const setT=d=>{
- S.T=d;
+
+ const n=clampTime(d);
+
+ /*
+    Если пользователь уже находится на последнем
+    доступном кадре, дальше его не пускаем.
+ */
+
+ S.T=n;
+
  ui();
  show();
 
- if(S.vb)sect();
+ if(S.vb)
+  sect();
 
  lightning();
 };
 
 $('n1').onclick=()=>
- setT(new Date(S.T-36e5));
+ setT(
+  new Date(
+   S.T-36e5
+  )
+);
 
 $('n2').onclick=()=>
- setT(new Date(S.T-6e5));
+ setT(
+  new Date(
+   S.T-6e5
+  )
+);
 
 $('n4').onclick=()=>
- setT(new Date(+S.T+6e5));
+ setT(
+  new Date(
+   Math.min(
+    +S.T+6e5,
+    +latest()
+   )
+  )
+);
 
 $('n5').onclick=()=>
- setT(new Date(+S.T+36e5));
+ setT(
+  new Date(
+   Math.min(
+    +S.T+36e5,
+    +latest()
+   )
+  )
+);
 
 $('n3').onclick=()=>{
 
@@ -1201,14 +1285,25 @@ $('n3').onclick=()=>{
 
   S.tm=setInterval(()=>{
 
-   const n=
-    new Date(+S.T+6e5);
+   const lim=latest();
 
-   setT(
-    n>Date.now()?
-    new Date(+S.T-36e5):
-    n
-   );
+   const n=
+    new Date(
+     +S.T+6e5
+    );
+
+   if(n>lim){
+
+    S.play=0;
+
+    $('n3').classList.remove('on');
+
+    clearInterval(S.tm);
+
+    return;
+   }
+
+   setT(n);
 
   },800);
 };
@@ -1235,28 +1330,32 @@ $('hrs').onclick=e=>{
 
  const h=e.target.dataset.h;
 
- if(h!=null)
+ if(h!=null){
 
-  setT(
+  const d=
    new Date(Date.UTC(
     S.T.getUTCFullYear(),
     S.T.getUTCMonth(),
     S.T.getUTCDate(),
     +h
-   ))
-  );
+   ));
+
+  setT(d);
+ }
 };
 
 /* =========================================================
    ПЕРЕТАСКИВАНИЕ ИМЕННО ТАЙМЛАЙНА
    Панель #bp НЕ двигается.
+   Будущее полностью заблокировано.
    ========================================================= */
 
 let barDragging=false;
 
 function barTime(e){
 
- const r=$('bar').getBoundingClientRect();
+ const r=
+  $('bar').getBoundingClientRect();
 
  let f=
   (e.clientX-r.left)/r.width;
@@ -1272,10 +1371,19 @@ function barTime(e){
   S.T.getUTCDate()
  );
 
- return new Date(
-  d0+
-  Math.floor(f*144)*6e5
- );
+ let d=
+  new Date(
+   d0+
+   Math.floor(f*144)*6e5
+  );
+
+ /*
+    Нельзя выбрать будущий кадр.
+ */
+
+ d=clampTime(d);
+
+ return d;
 }
 
 $('bar').addEventListener(
@@ -1377,7 +1485,7 @@ async function init(){
  if(!S.api){
 
   msg(
-   'Укажите адрес сервера: кнопка «?»'
+   'Укажите адрес сервера в настройках'
   );
 
   return
@@ -1623,7 +1731,7 @@ map.on('moveend',()=>{
 });
 
 /* =========================================================
-   КООРДИНАТЫ
+   КООРДИНАТЫ — ТЕПЕРЬ В НИЖНЕЙ ПАНЕЛИ
    ========================================================= */
 
 const dms=v=>{
@@ -1645,11 +1753,11 @@ const dms=v=>{
   pad(s)+'"';
 };
 
-map.on('mousemove',e=>
+map.on('mousemove',e=>{
 
- $('ll').textContent=
- `Шир: ${dms(e.latlng.lat)} Дол: ${dms(e.latlng.lng)}`
-);
+ $('coords').textContent=
+  `Шир: ${dms(e.latlng.lat)}  Дол: ${dms(e.latlng.lng)}`;
+});
 
 /* =========================================================
    КНОПКИ
@@ -1682,13 +1790,11 @@ $('lb').onclick=()=>{
   v?'':'none';
 };
 
-$('hp').onclick=()=>{
-
- $('api').value=S.api;
- $('sau').value=S.sat;
-
- $('dlg').style.display='flex';
-};
+/*
+   Настройки теперь открываются не через ?.
+   Сервер можно задать программно через localStorage
+   или оставить уже сохранённый адрес.
+*/
 
 $('cl').onclick=()=>
  $('dlg').style.display='none';
@@ -1700,11 +1806,7 @@ $('ap').onclick=()=>{
    .trim()
    .replace(/\/$/,'');
 
- S.sat=
-  $('sau').value.trim();
-
  localStorage.api=S.api;
- localStorage.sat=S.sat;
 
  $('dlg').style.display='none';
 
@@ -1730,7 +1832,7 @@ $('sat').onclick=()=>{
  if(!S.sat){
 
   msg(
-   'Sat: укажите URL тайлов в «?»'
+   'Спутниковый слой не настроен'
   );
 
   return

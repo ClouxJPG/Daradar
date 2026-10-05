@@ -2,10 +2,9 @@
 <html lang="ru">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport"
-      content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
 
-<title>Daradar — Метеорадар</title>
+<title>Daradar — Радиолокационная карта России</title>
 
 <link
   rel="stylesheet"
@@ -14,52 +13,104 @@
 
 <style>
 /* =========================================================
-   DARADAR — FULL INTERFACE
-   Один index.html
-   Адаптация ПК + телефон
+   DARADAR — RADAR MAP
+   Один файл: HTML + CSS + JavaScript
    ========================================================= */
 
-:root {
-    --bg: #101216;
-    --panel: rgba(20, 23, 29, .96);
-    --panel2: rgba(28, 32, 40, .96);
-    --border: rgba(255,255,255,.09);
-    --text: #f4f5f7;
-    --muted: #9da4af;
-    --accent: #4d9cff;
-    --danger: #ff4d5f;
-    --radius: 14px;
-}
-
 * {
-    box-sizing: border-box;
+  box-sizing: border-box;
 }
 
 html,
 body {
-    margin: 0;
-    padding: 0;
-    width: 100%;
-    height: 100%;
-    overflow: hidden;
-    background: var(--bg);
-    color: var(--text);
-    font-family:
-        -apple-system,
-        BlinkMacSystemFont,
-        "SF Pro Display",
-        "Segoe UI",
-        sans-serif;
+  margin: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  font-family: Arial, Helvetica, sans-serif;
+  background: #080b10;
+  color: #fff;
 }
 
-button,
-select,
-input {
-    font: inherit;
+#app {
+  width: 100%;
+  height: 100%;
+  position: relative;
 }
 
-button {
-    color: inherit;
+/* =========================================================
+   HEADER
+   ========================================================= */
+
+#topbar {
+  position: absolute;
+  z-index: 1000;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 54px;
+
+  display: flex;
+  align-items: center;
+  gap: 18px;
+
+  padding: 0 16px;
+
+  background: rgba(10, 13, 19, .96);
+  border-bottom: 1px solid rgba(255,255,255,.1);
+  box-shadow: 0 2px 12px rgba(0,0,0,.45);
+}
+
+.logo {
+  font-size: 21px;
+  font-weight: 800;
+  letter-spacing: -.5px;
+  white-space: nowrap;
+}
+
+.logo span {
+  color: #4da3ff;
+}
+
+.status {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+
+  font-size: 12px;
+  color: #aeb7c4;
+}
+
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #43d17a;
+  box-shadow: 0 0 8px rgba(67,209,122,.7);
+}
+
+.top-buttons {
+  margin-left: auto;
+  display: flex;
+  gap: 6px;
+}
+
+.top-btn {
+  height: 34px;
+  padding: 0 11px;
+
+  border: 1px solid rgba(255,255,255,.1);
+  border-radius: 6px;
+
+  background: #151a22;
+  color: #d9e0e8;
+
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.top-btn:hover {
+  background: #202733;
 }
 
 /* =========================================================
@@ -67,370 +118,182 @@ button {
    ========================================================= */
 
 #map {
-    position: fixed;
-    inset: 0;
-    z-index: 1;
-    background: #101216;
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background: #10151d;
+}
+
+.leaflet-control-zoom {
+  margin-top: 65px !important;
 }
 
 .leaflet-control-attribution {
-    background: rgba(10,10,12,.72) !important;
-    color: #8c929c !important;
+  background: rgba(8,11,16,.75) !important;
+  color: #9aa5b3 !important;
 }
 
 .leaflet-control-attribution a {
-    color: #aeb8c7 !important;
-}
-
-/* =========================================================
-   TOP BAR
-   ========================================================= */
-
-#topbar {
-    position: fixed;
-    z-index: 1000;
-
-    top: max(12px, env(safe-area-inset-top));
-    left: 12px;
-    right: 12px;
-
-    height: 54px;
-
-    display: flex;
-    align-items: center;
-
-    padding: 0 10px;
-
-    background: var(--panel);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-
-    backdrop-filter: blur(18px);
-    -webkit-backdrop-filter: blur(18px);
-
-    box-shadow: 0 8px 30px rgba(0,0,0,.28);
-}
-
-.logo {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-
-    font-size: 19px;
-    font-weight: 800;
-    letter-spacing: -.4px;
-
-    padding: 0 10px;
-}
-
-.logo-mark {
-    width: 29px;
-    height: 29px;
-
-    display: grid;
-    place-items: center;
-
-    border-radius: 9px;
-    background: linear-gradient(135deg, #4d9cff, #2867d9);
-
-    font-size: 15px;
-    font-weight: 900;
-}
-
-.top-spacer {
-    flex: 1;
-}
-
-.top-button {
-    width: 40px;
-    height: 40px;
-
-    border: 0;
-    border-radius: 10px;
-
-    background: transparent;
-
-    display: grid;
-    place-items: center;
-
-    cursor: pointer;
-}
-
-.top-button:hover {
-    background: rgba(255,255,255,.07);
+  color: #7fbaff !important;
 }
 
 /* =========================================================
    LEFT PANEL
    ========================================================= */
 
-#side-panel {
-    position: fixed;
-    z-index: 1000;
+#leftPanel {
+  position: absolute;
+  z-index: 900;
 
-    top: 78px;
-    left: 12px;
-    bottom: 118px;
+  left: 12px;
+  top: 68px;
 
-    width: 310px;
+  width: 270px;
+  max-height: calc(100vh - 150px);
 
-    padding: 12px;
+  background: rgba(10,14,20,.94);
+  border: 1px solid rgba(255,255,255,.1);
+  border-radius: 9px;
 
-    overflow-y: auto;
+  box-shadow: 0 8px 30px rgba(0,0,0,.45);
 
-    background: var(--panel);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-
-    backdrop-filter: blur(18px);
-    -webkit-backdrop-filter: blur(18px);
-
-    box-shadow: 0 8px 30px rgba(0,0,0,.28);
-
-    scrollbar-width: thin;
-}
-
-.panel-section {
-    margin-bottom: 15px;
+  overflow: hidden;
 }
 
 .panel-title {
-    margin: 4px 5px 8px;
+  padding: 12px 14px;
 
-    color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
 
-    font-size: 11px;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: .7px;
+  border-bottom: 1px solid rgba(255,255,255,.08);
+  color: #dfe7f1;
 }
 
-.panel-row {
-    display: flex;
-    gap: 7px;
+.panel-section {
+  padding: 10px 12px;
+  border-bottom: 1px solid rgba(255,255,255,.06);
 }
 
-.panel-button {
-    width: 100%;
-    min-height: 43px;
+.section-label {
+  margin-bottom: 7px;
 
-    padding: 9px 11px;
-
-    border: 1px solid var(--border);
-    border-radius: 10px;
-
-    background: var(--panel2);
-
-    text-align: left;
-    cursor: pointer;
-
-    transition: background .15s, border-color .15s;
+  color: #8995a5;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: .5px;
 }
 
-.panel-button:hover {
-    background: rgba(255,255,255,.07);
+.select {
+  width: 100%;
+  height: 36px;
+
+  padding: 0 9px;
+
+  color: #e9eef5;
+  background: #171d26;
+
+  border: 1px solid rgba(255,255,255,.1);
+  border-radius: 5px;
+
+  outline: none;
 }
 
-.panel-button.active {
-    border-color: rgba(77,156,255,.55);
-    background: rgba(77,156,255,.13);
+.select:focus {
+  border-color: #3f91ef;
 }
 
-select {
-    width: 100%;
-    height: 43px;
+.option-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 
-    padding: 0 11px;
+  min-height: 30px;
 
-    border: 1px solid var(--border);
-    border-radius: 10px;
-
-    color: var(--text);
-    background: var(--panel2);
-
-    outline: none;
+  color: #cbd3de;
+  font-size: 13px;
 }
 
-/* =========================================================
-   RADAR LIST
-   ========================================================= */
-
-.radar-list {
-    display: flex;
-    flex-direction: column;
-    gap: 5px;
-}
-
-.radar-item {
-    display: flex;
-    align-items: center;
-    gap: 9px;
-
-    min-height: 40px;
-
-    padding: 7px 9px;
-
-    border-radius: 9px;
-
-    cursor: pointer;
-}
-
-.radar-item:hover {
-    background: rgba(255,255,255,.06);
-}
-
-.radar-dot {
-    width: 8px;
-    height: 8px;
-
-    border-radius: 50%;
-
-    background: #49a0ff;
-
-    box-shadow: 0 0 8px rgba(73,160,255,.7);
-}
-
-.radar-name {
-    flex: 1;
-
-    font-size: 13px;
-}
-
-.radar-state {
-    color: #7f8792;
-    font-size: 11px;
+.option-row input {
+  accent-color: #398ff0;
 }
 
 /* =========================================================
-   PRODUCT BUTTONS
-   ========================================================= */
-
-.products {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 6px;
-}
-
-.product {
-    min-height: 42px;
-
-    border: 1px solid var(--border);
-    border-radius: 9px;
-
-    background: var(--panel2);
-
-    cursor: pointer;
-
-    font-size: 12px;
-}
-
-.product.active {
-    border-color: rgba(77,156,255,.6);
-    background: rgba(77,156,255,.14);
-}
-
-/* =========================================================
-   MAP INFORMATION
-   ========================================================= */
-
-#point-info {
-    position: fixed;
-    z-index: 999;
-
-    right: 14px;
-    top: 78px;
-
-    min-width: 185px;
-
-    padding: 12px 14px;
-
-    background: var(--panel);
-    border: 1px solid var(--border);
-    border-radius: 12px;
-
-    backdrop-filter: blur(18px);
-    -webkit-backdrop-filter: blur(18px);
-
-    box-shadow: 0 8px 30px rgba(0,0,0,.25);
-
-    pointer-events: none;
-}
-
-.info-title {
-    font-size: 12px;
-    color: var(--muted);
-    margin-bottom: 5px;
-}
-
-.info-value {
-    font-size: 15px;
-    font-weight: 700;
-}
-
-/* =========================================================
-   LEGEND
+   RADAR LEGEND
    ========================================================= */
 
 #legend {
-    position: fixed;
-    z-index: 1000;
+  position: absolute;
+  z-index: 900;
 
-    right: 14px;
-    bottom: 118px;
+  right: 14px;
+  top: 68px;
 
-    width: 285px;
+  width: 285px;
 
-    padding: 11px 12px;
+  padding: 11px 12px;
 
-    background: var(--panel);
-    border: 1px solid var(--border);
-    border-radius: 12px;
+  background: rgba(10,14,20,.94);
+  border: 1px solid rgba(255,255,255,.1);
+  border-radius: 8px;
 
-    backdrop-filter: blur(18px);
-    -webkit-backdrop-filter: blur(18px);
-
-    box-shadow: 0 8px 30px rgba(0,0,0,.25);
+  box-shadow: 0 8px 30px rgba(0,0,0,.4);
 }
 
 .legend-title {
-    margin-bottom: 7px;
-
-    color: var(--muted);
-
-    font-size: 11px;
-    text-transform: uppercase;
-    letter-spacing: .5px;
+  font-size: 12px;
+  font-weight: 700;
+  margin-bottom: 8px;
 }
 
 .legend-bar {
-    width: 100%;
-    height: 14px;
+  width: 100%;
+  height: 14px;
+  border-radius: 3px;
 
-    border-radius: 4px;
-
-    background:
-        linear-gradient(
-            90deg,
-            #646464 0%,
-            #2447ff 12%,
-            #00aaff 25%,
-            #00e600 38%,
-            #ffff00 50%,
-            #ffb000 63%,
-            #ff5400 76%,
-            #ff0000 88%,
-            #ff00ff 100%
-        );
+  background:
+    linear-gradient(
+      to right,
+      #163cff 0%,
+      #00aaff 10%,
+      #00e6d0 20%,
+      #00c840 30%,
+      #72e600 40%,
+      #e7e600 50%,
+      #ffb000 60%,
+      #ff6500 70%,
+      #ff1800 80%,
+      #d00000 90%,
+      #ff00ff 100%
+    );
 }
 
-.legend-labels {
-    display: flex;
-    justify-content: space-between;
+.legend-values {
+  display: flex;
+  justify-content: space-between;
 
-    margin-top: 5px;
+  margin-top: 4px;
 
-    color: #b4bac4;
-    font-size: 10px;
+  color: #aeb7c3;
+  font-size: 10px;
+}
+
+/* =========================================================
+   STATIONS
+   ========================================================= */
+
+.radar-station {
+  width: 12px;
+  height: 12px;
+
+  border-radius: 50%;
+
+  background: #50a8ff;
+  border: 2px solid white;
+
+  box-shadow:
+    0 0 0 2px rgba(80,168,255,.3),
+    0 0 10px rgba(80,168,255,.8);
 }
 
 /* =========================================================
@@ -438,154 +301,122 @@ select {
    ========================================================= */
 
 #timeline {
-    position: fixed;
-    z-index: 1000;
+  position: absolute;
+  z-index: 950;
 
-    left: 12px;
-    right: 12px;
-    bottom: max(12px, env(safe-area-inset-bottom));
+  left: 50%;
+  bottom: 15px;
+  transform: translateX(-50%);
 
-    min-height: 91px;
+  width: min(850px, calc(100vw - 30px));
 
-    padding: 10px 13px;
+  padding: 11px 13px;
 
-    background: var(--panel);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
+  background: rgba(10,14,20,.95);
 
-    backdrop-filter: blur(18px);
-    -webkit-backdrop-filter: blur(18px);
+  border: 1px solid rgba(255,255,255,.1);
+  border-radius: 9px;
 
-    box-shadow: 0 8px 30px rgba(0,0,0,.3);
+  box-shadow: 0 8px 30px rgba(0,0,0,.5);
 }
 
 .timeline-top {
-    display: flex;
-    align-items: center;
-
-    margin-bottom: 5px;
+  display: flex;
+  align-items: center;
+  gap: 9px;
 }
 
-.timeline-time {
-    font-size: 12px;
-    font-weight: 700;
+#play {
+  width: 38px;
+  height: 32px;
+
+  border: 0;
+  border-radius: 5px;
+
+  color: white;
+  background: #267ee0;
+
+  cursor: pointer;
+  font-size: 15px;
 }
 
-.timeline-status {
-    margin-left: 8px;
-
-    color: var(--muted);
-    font-size: 11px;
+#play:hover {
+  background: #318dec;
 }
 
-.timeline-controls {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-
-    margin-left: auto;
+#range {
+  flex: 1;
+  accent-color: #3b92ed;
 }
 
-.time-button {
-    width: 33px;
-    height: 30px;
+#timeLabel {
+  min-width: 150px;
+  text-align: right;
 
-    border: 1px solid var(--border);
-    border-radius: 8px;
-
-    background: var(--panel2);
-
-    cursor: pointer;
+  color: #dbe4ef;
+  font-size: 12px;
 }
 
-.time-button:hover {
-    background: rgba(255,255,255,.08);
-}
+.timeline-bottom {
+  display: flex;
+  justify-content: space-between;
 
-#time-range {
-    width: 100%;
-    margin: 0;
+  margin-top: 6px;
 
-    accent-color: var(--accent);
-}
-
-.frame-labels {
-    display: flex;
-    justify-content: space-between;
-
-    color: var(--muted);
-    font-size: 9px;
-
-    margin-top: 2px;
+  color: #7f8b9b;
+  font-size: 10px;
 }
 
 /* =========================================================
-   MOBILE MENU BUTTON
+   COORDINATES
    ========================================================= */
 
-#mobile-menu {
-    display: none;
+#coords {
+  position: absolute;
+  z-index: 900;
+
+  left: 12px;
+  bottom: 88px;
+
+  padding: 7px 9px;
+
+  color: #c8d0dc;
+  background: rgba(10,14,20,.88);
+
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 5px;
+
+  font-family: monospace;
+  font-size: 11px;
 }
 
 /* =========================================================
-   SETTINGS DRAWER
+   LOADING
    ========================================================= */
 
-#settings {
-    position: fixed;
-    z-index: 1100;
+#loading {
+  position: absolute;
+  z-index: 2000;
 
-    top: 78px;
-    right: 12px;
+  left: 50%;
+  top: 50%;
 
-    width: 300px;
+  transform: translate(-50%,-50%);
 
-    padding: 15px;
+  padding: 12px 18px;
 
-    background: var(--panel);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
+  background: rgba(8,11,16,.94);
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: 7px;
 
-    backdrop-filter: blur(18px);
-    -webkit-backdrop-filter: blur(18px);
+  color: #dce5ef;
+  font-size: 13px;
 
-    box-shadow: 0 12px 40px rgba(0,0,0,.4);
-
-    display: none;
+  display: none;
 }
 
-#settings.open {
-    display: block;
-}
-
-.settings-title {
-    font-size: 16px;
-    font-weight: 800;
-
-    margin-bottom: 14px;
-}
-
-.setting {
-    margin-bottom: 14px;
-}
-
-.setting-name {
-    display: block;
-
-    margin-bottom: 6px;
-
-    color: var(--muted);
-    font-size: 12px;
-}
-
-.range-line {
-    display: flex;
-    align-items: center;
-    gap: 9px;
-}
-
-.range-line input {
-    flex: 1;
+#loading.show {
+  display: block;
 }
 
 /* =========================================================
@@ -594,576 +425,294 @@ select {
 
 @media (max-width: 700px) {
 
-    #topbar {
-        left: 8px;
-        right: 8px;
+  #topbar {
+    height: 48px;
+    padding: 0 10px;
+    gap: 10px;
+  }
 
-        top: max(8px, env(safe-area-inset-top));
+  .logo {
+    font-size: 18px;
+  }
 
-        height: 50px;
-    }
-
-    .logo {
-        padding: 0 5px;
-        font-size: 17px;
-    }
-
-    .logo-mark {
-        width: 27px;
-        height: 27px;
-    }
-
-    #mobile-menu {
-        display: grid;
-    }
-
-    #side-panel {
-        top: 66px;
-        left: 8px;
-
-        bottom: 112px;
-
-        width: min(320px, calc(100vw - 16px));
-
-        transform: translateX(-110%);
-        transition: transform .2s ease;
-
-        z-index: 1200;
-    }
-
-    #side-panel.open {
-        transform: translateX(0);
-    }
-
-    #point-info {
-        top: 66px;
-        right: 8px;
-
-        min-width: 150px;
-
-        padding: 9px 11px;
-    }
-
-    #legend {
-        left: 8px;
-        right: 8px;
-
-        bottom: 108px;
-
-        width: auto;
-
-        padding: 8px 10px;
-    }
-
-    #timeline {
-        left: 8px;
-        right: 8px;
-
-        bottom: max(8px, env(safe-area-inset-bottom));
-
-        min-height: 82px;
-
-        padding: 8px 10px;
-    }
-
-    .timeline-time {
-        font-size: 11px;
-    }
-
-    .time-button {
-        width: 36px;
-        height: 34px;
-    }
-
-    #settings {
-        top: 66px;
-        left: 8px;
-        right: 8px;
-
-        width: auto;
-    }
-
-    .leaflet-control-zoom {
-        margin-top: 62px !important;
-    }
-}
-
-/* =========================================================
-   VERY SMALL PHONES
-   ========================================================= */
-
-@media (max-width: 390px) {
-
-    .logo {
-        font-size: 15px;
-    }
-
-    #point-info {
-        display: none;
-    }
-
-    .legend-labels {
-        font-size: 8px;
-    }
-
-    .products {
-        grid-template-columns: 1fr;
-    }
-}
-
-/* =========================================================
-   DARK LEAFLET CONTROLS
-   ========================================================= */
-
-.leaflet-control-zoom a {
-    background: #1b1f26 !important;
-    color: white !important;
-    border-color: rgba(255,255,255,.08) !important;
-}
-
-.leaflet-control-zoom a:hover {
-    background: #272d36 !important;
-}
-
-/* =========================================================
-   RADAR PLACEHOLDER MESSAGE
-   ========================================================= */
-
-#radar-status {
-    position: fixed;
-    z-index: 998;
-
-    left: 50%;
-    top: 50%;
-
-    transform: translate(-50%, -50%);
-
-    padding: 13px 18px;
-
-    border: 1px solid rgba(255,255,255,.08);
-    border-radius: 12px;
-
-    background: rgba(15,17,21,.9);
-
-    color: #aab1bc;
-
-    font-size: 12px;
-
-    pointer-events: none;
-
-    backdrop-filter: blur(12px);
-}
-
-/* =========================================================
-   MOBILE OVERLAY
-   ========================================================= */
-
-#mobile-overlay {
-    position: fixed;
-    z-index: 1100;
-
-    inset: 0;
-
-    background: rgba(0,0,0,.45);
-
+  .status {
     display: none;
+  }
+
+  .top-btn {
+    padding: 0 8px;
+    font-size: 11px;
+  }
+
+  #leftPanel {
+    left: 8px;
+    top: 57px;
+    width: 220px;
+    max-height: 48vh;
+  }
+
+  #legend {
+    right: 8px;
+    top: auto;
+    bottom: 115px;
+    width: 190px;
+  }
+
+  #coords {
+    display: none;
+  }
+
+  #timeline {
+    bottom: 8px;
+    width: calc(100vw - 16px);
+  }
+
+  #timeLabel {
+    min-width: 105px;
+    font-size: 10px;
+  }
+
+  .leaflet-control-zoom {
+    margin-top: 58px !important;
+  }
 }
 
-#mobile-overlay.active {
-    display: block;
+/* =========================================================
+   HIDE LEAFLET DEFAULT BORDER
+   ========================================================= */
+
+.leaflet-bar {
+  border: 0 !important;
+  box-shadow: 0 2px 8px rgba(0,0,0,.4) !important;
 }
 
-@media (min-width: 701px) {
-    #mobile-overlay {
-        display: none !important;
-    }
+.leaflet-bar a {
+  background: #151b24 !important;
+  color: #dce5ef !important;
+  border-bottom-color: #2a323e !important;
+}
+
+.leaflet-bar a:hover {
+  background: #202833 !important;
 }
 </style>
 </head>
 
 <body>
 
-<!-- =======================================================
-     MAP
-     ======================================================= -->
+<div id="app">
 
-<div id="map"></div>
+  <!-- =====================================================
+       HEADER
+       ===================================================== -->
 
-
-<!-- =======================================================
-     TOP BAR
-     ======================================================= -->
-
-<header id="topbar">
-
-    <button
-        id="mobile-menu"
-        class="top-button"
-        aria-label="Меню">
-        ☰
-    </button>
+  <header id="topbar">
 
     <div class="logo">
-        <div class="logo-mark">D</div>
-        <span>Daradar</span>
+      Dara<span>dar</span>
     </div>
 
-    <div class="top-spacer"></div>
-
-    <button
-        id="settings-button"
-        class="top-button"
-        aria-label="Настройки">
-        ⚙
-    </button>
-
-</header>
-
-
-<!-- =======================================================
-     MOBILE OVERLAY
-     ======================================================= -->
-
-<div id="mobile-overlay"></div>
-
-
-<!-- =======================================================
-     SIDE PANEL
-     ======================================================= -->
-
-<aside id="side-panel">
-
-    <section class="panel-section">
-
-        <div class="panel-title">
-            Сеть радаров
-        </div>
-
-        <select id="radar-select">
-            <option value="network">
-                Общая сеть
-            </option>
-            <option value="moscow">
-                Москва
-            </option>
-            <option value="ufa">
-                Уфа
-            </option>
-            <option value="kazan">
-                Казань
-            </option>
-            <option value="novosibirsk">
-                Новосибирск
-            </option>
-        </select>
-
-    </section>
-
-
-    <section class="panel-section">
-
-        <div class="panel-title">
-            ДМРЛ
-        </div>
-
-        <div class="radar-list">
-
-            <div class="radar-item">
-                <span class="radar-dot"></span>
-                <span class="radar-name">
-                    Общая сеть
-                </span>
-                <span class="radar-state">
-                    —
-                </span>
-            </div>
-
-            <div class="radar-item">
-                <span class="radar-dot"></span>
-                <span class="radar-name">
-                    Москва
-                </span>
-                <span class="radar-state">
-                    —
-                </span>
-            </div>
-
-            <div class="radar-item">
-                <span class="radar-dot"></span>
-                <span class="radar-name">
-                    Уфа
-                </span>
-                <span class="radar-state">
-                    —
-                </span>
-            </div>
-
-            <div class="radar-item">
-                <span class="radar-dot"></span>
-                <span class="radar-name">
-                    Казань
-                </span>
-                <span class="radar-state">
-                    —
-                </span>
-            </div>
-
-            <div class="radar-item">
-                <span class="radar-dot"></span>
-                <span class="radar-name">
-                    Новосибирск
-                </span>
-                <span class="radar-state">
-                    —
-                </span>
-            </div>
-
-        </div>
-
-    </section>
-
-
-    <section class="panel-section">
-
-        <div class="panel-title">
-            Радиолокационный продукт
-        </div>
-
-        <div class="products">
-
-            <button class="product active">
-                Отражаемость
-            </button>
-
-            <button class="product">
-                Скорость
-            </button>
-
-            <button class="product">
-                Интенсивность
-            </button>
-
-            <button class="product">
-                Высота ВГО
-            </button>
-
-        </div>
-
-    </section>
-
-
-    <section class="panel-section">
-
-        <div class="panel-title">
-            Дополнительно
-        </div>
-
-        <button class="panel-button" id="stations-button">
-            ● Станции ДМРЛ
-        </button>
-
-        <button
-            class="panel-button"
-            id="coverage-button"
-            style="margin-top:6px">
-            ◯ Зоны обзора
-        </button>
-
-    </section>
-
-</aside>
-
-
-<!-- =======================================================
-     POINT INFO
-     ======================================================= -->
-
-<div id="point-info">
-
-    <div class="info-title">
-        Координаты
+    <div class="status">
+      <span class="status-dot"></span>
+      <span id="statusText">Система готова</span>
     </div>
 
-    <div
-        class="info-value"
-        id="coordinates">
-        —
+    <div class="top-buttons">
+      <button class="top-btn" id="homeBtn">Россия</button>
+      <button class="top-btn" id="locateBtn">⌖</button>
+      <button class="top-btn" id="fullscreenBtn">⛶</button>
     </div>
 
-    <div
-        class="info-title"
-        style="margin-top:9px">
-        Отражаемость
+  </header>
+
+
+  <!-- =====================================================
+       MAP
+       ===================================================== -->
+
+  <div id="map"></div>
+
+
+  <!-- =====================================================
+       LEFT CONTROL PANEL
+       ===================================================== -->
+
+  <aside id="leftPanel">
+
+    <div class="panel-title">
+      Радиолокационные данные
     </div>
 
-    <div
-        class="info-value"
-        id="dbz-value">
-        —
+    <div class="panel-section">
+
+      <div class="section-label">
+        Продукт
+      </div>
+
+      <select id="product" class="select">
+
+        <option value="reflectivity">
+          Отражаемость (dBZ)
+        </option>
+
+        <option value="precipitation">
+          Интенсивность осадков
+        </option>
+
+        <option value="velocity">
+          Радиальная скорость
+        </option>
+
+        <option value="echo-top">
+          Высота ВГО
+        </option>
+
+      </select>
+
     </div>
 
-</div>
+
+    <div class="panel-section">
+
+      <div class="section-label">
+        Слои
+      </div>
+
+      <label class="option-row">
+        <input type="checkbox" id="radarLayer" checked>
+        Радиолокационное поле
+      </label>
+
+      <label class="option-row">
+        <input type="checkbox" id="stationsLayer" checked>
+        ДМРЛ
+      </label>
+
+      <label class="option-row">
+        <input type="checkbox" id="coverageLayer">
+        Зоны действия
+      </label>
+
+    </div>
 
 
-<!-- =======================================================
-     RADAR STATUS
-     ======================================================= -->
+    <div class="panel-section">
 
-<div id="radar-status">
-    Радиолокационный источник не подключён
-</div>
+      <div class="section-label">
+        Режим
+      </div>
+
+      <label class="option-row">
+        <input type="checkbox" id="autoUpdate" checked>
+        Автообновление
+      </label>
+
+      <label class="option-row">
+        <input type="checkbox" id="animation">
+        Анимация кадров
+      </label>
+
+    </div>
 
 
-<!-- =======================================================
-     LEGEND
-     ======================================================= -->
+    <div class="panel-section">
 
-<div id="legend">
+      <div class="section-label">
+        Масштаб
+      </div>
+
+      <button
+        class="top-btn"
+        style="width:100%"
+        id="networkBtn"
+      >
+        Вся сеть ДМРЛ
+      </button>
+
+    </div>
+
+  </aside>
+
+
+  <!-- =====================================================
+       LEGEND
+       ===================================================== -->
+
+  <div id="legend">
 
     <div class="legend-title">
-        Отражаемость, dBZ
+      Отражаемость, dBZ
     </div>
 
     <div class="legend-bar"></div>
 
-    <div class="legend-labels">
-        <span>-30</span>
-        <span>-10</span>
-        <span>10</span>
-        <span>30</span>
-        <span>50</span>
-        <span>70+</span>
+    <div class="legend-values">
+      <span>-30</span>
+      <span>0</span>
+      <span>20</span>
+      <span>40</span>
+      <span>50</span>
+      <span>60+</span>
     </div>
 
-</div>
+  </div>
 
 
-<!-- =======================================================
-     TIMELINE
-     ======================================================= -->
+  <!-- =====================================================
+       COORDINATES
+       ===================================================== -->
 
-<div id="timeline">
+  <div id="coords">
+    55.7558° N&nbsp;&nbsp;37.6173° E
+  </div>
+
+
+  <!-- =====================================================
+       TIMELINE
+       ===================================================== -->
+
+  <div id="timeline">
 
     <div class="timeline-top">
 
-        <div>
-            <span
-                class="timeline-time"
-                id="time-label">
-                Сейчас
-            </span>
+      <button id="play">▶</button>
 
-            <span
-                class="timeline-status"
-                id="frame-status">
-                Нет данных
-            </span>
-        </div>
-
-        <div class="timeline-controls">
-
-            <button
-                class="time-button"
-                id="previous-frame">
-                ‹
-            </button>
-
-            <button
-                class="time-button"
-                id="play-button">
-                ▶
-            </button>
-
-            <button
-                class="time-button"
-                id="next-frame">
-                ›
-            </button>
-
-        </div>
-
-    </div>
-
-
-    <input
-        id="time-range"
+      <input
+        id="range"
         type="range"
         min="0"
-        max="0"
-        value="0"
-        step="1"
-    >
+        max="17"
+        value="17"
+      >
 
-    <div class="frame-labels">
-
-        <span>
-            Архив
-        </span>
-
-        <span>
-            Сейчас
-        </span>
+      <div id="timeLabel">
+        Последний кадр
+      </div>
 
     </div>
 
-</div>
+    <div class="timeline-bottom">
 
+      <span id="oldTime">
+        −3 ч
+      </span>
 
-<!-- =======================================================
-     SETTINGS
-     ======================================================= -->
+      <span id="frameInfo">
+        Кадр 18 / 18
+      </span>
 
-<div id="settings">
-
-    <div class="settings-title">
-        Настройки
-    </div>
-
-    <div class="setting">
-
-        <span class="setting-name">
-            Прозрачность радара
-        </span>
-
-        <div class="range-line">
-
-            <input
-                id="opacity-range"
-                type="range"
-                min="0"
-                max="100"
-                value="70"
-            >
-
-            <span id="opacity-value">
-                70%
-            </span>
-
-        </div>
+      <span id="newTime">
+        сейчас
+      </span>
 
     </div>
 
-
-    <div class="setting">
-
-        <button
-            class="panel-button"
-            id="dark-map-button">
-            🌙 Тёмная карта
-        </button>
-
-    </div>
+  </div>
 
 
-    <div class="setting">
-
-        <button
-            class="panel-button"
-            id="labels-button">
-            ● Метки ДМРЛ
-        </button>
-
-    </div>
+  <div id="loading">
+    Загрузка радиолокационных данных…
+  </div>
 
 </div>
 
@@ -1172,621 +721,515 @@ select {
 
 <script>
 /* =========================================================
-   DARADAR — CORE
+   DARADAR
+   Основной JavaScript
    ========================================================= */
 
-/* ---------------------------------------------------------
+
+/* =========================================================
    MAP
-   --------------------------------------------------------- */
+   ========================================================= */
 
 const map = L.map("map", {
-    zoomControl: true,
-    attributionControl: true,
-    preferCanvas: true
-}).setView([55.7558, 37.6173], 4);
+  zoomControl: true,
+  preferCanvas: true,
+  minZoom: 3,
+  maxZoom: 12
+}).setView([60, 90], 4);
 
 
-const baseLayer = L.tileLayer(
-    "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
-    {
-        maxZoom: 18,
-        attribution:
-            '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-    }
-).addTo(map);
+/* =========================================================
+   BASE MAP
+   ========================================================= */
 
-
-/* ---------------------------------------------------------
-   UI ELEMENTS
-   --------------------------------------------------------- */
-
-const sidePanel =
-    document.getElementById("side-panel");
-
-const mobileMenu =
-    document.getElementById("mobile-menu");
-
-const mobileOverlay =
-    document.getElementById("mobile-overlay");
-
-const settings =
-    document.getElementById("settings");
-
-const settingsButton =
-    document.getElementById("settings-button");
-
-
-/* ---------------------------------------------------------
-   MOBILE MENU
-   --------------------------------------------------------- */
-
-function openMobileMenu() {
-
-    sidePanel.classList.add("open");
-
-    mobileOverlay.classList.add("active");
-}
-
-function closeMobileMenu() {
-
-    sidePanel.classList.remove("open");
-
-    mobileOverlay.classList.remove("active");
-}
-
-mobileMenu.addEventListener(
-    "click",
-    openMobileMenu
+const baseMap = L.tileLayer(
+  "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+  {
+    maxZoom: 19,
+    attribution: "&copy; OpenStreetMap"
+  }
 );
 
-mobileOverlay.addEventListener(
-    "click",
-    closeMobileMenu
-);
+baseMap.addTo(map);
 
 
-/* ---------------------------------------------------------
-   SETTINGS
-   --------------------------------------------------------- */
+/* =========================================================
+   RUSSIA BOUNDS
+   ========================================================= */
 
-settingsButton.addEventListener(
-    "click",
-    () => {
-        settings.classList.toggle("open");
-    }
-);
-
-
-/* ---------------------------------------------------------
-   MAP COORDINATES
-   --------------------------------------------------------- */
-
-map.on("mousemove", event => {
-
-    const lat =
-        event.latlng.lat.toFixed(4);
-
-    const lon =
-        event.latlng.lng.toFixed(4);
-
-    document.getElementById(
-        "coordinates"
-    ).textContent =
-        `${lat}°, ${lon}°`;
-
-});
-
-
-map.on("click", event => {
-
-    const lat =
-        event.latlng.lat.toFixed(4);
-
-    const lon =
-        event.latlng.lng.toFixed(4);
-
-    document.getElementById(
-        "coordinates"
-    ).textContent =
-        `${lat}°, ${lon}°`;
-
-});
-
-
-/* ---------------------------------------------------------
-   OPACITY
-   --------------------------------------------------------- */
-
-const opacityRange =
-    document.getElementById("opacity-range");
-
-const opacityValue =
-    document.getElementById("opacity-value");
-
-opacityRange.addEventListener(
-    "input",
-    () => {
-
-        const value =
-            opacityRange.value;
-
-        opacityValue.textContent =
-            value + "%";
-
-        /*
-         * Здесь позже будет:
-         *
-         * radarLayer.setOpacity(value / 100);
-         */
-    }
-);
-
-
-/* ---------------------------------------------------------
-   PRODUCT SELECTION
-   --------------------------------------------------------- */
-
-document
-    .querySelectorAll(".product")
-    .forEach(button => {
-
-        button.addEventListener(
-            "click",
-            () => {
-
-                document
-                    .querySelectorAll(".product")
-                    .forEach(
-                        item =>
-                            item.classList.remove("active")
-                    );
-
-                button.classList.add("active");
-
-                /*
-                 * Здесь позже подключается:
-                 *
-                 * reflectivity
-                 * velocity
-                 * precipitation
-                 * echo top
-                 */
-            }
-        );
-
-    });
-
-
-/* ---------------------------------------------------------
-   RADAR SELECT
-   --------------------------------------------------------- */
-
-document
-    .getElementById("radar-select")
-    .addEventListener(
-        "change",
-        event => {
-
-            const radar =
-                event.target.value;
-
-            console.log(
-                "Выбран радар:",
-                radar
-            );
-
-        }
-    );
-
-
-/* ---------------------------------------------------------
-   TIMELINE
-   --------------------------------------------------------- */
-
-const timeRange =
-    document.getElementById("time-range");
-
-const timeLabel =
-    document.getElementById("time-label");
-
-const frameStatus =
-    document.getElementById("frame-status");
-
-const previousFrame =
-    document.getElementById("previous-frame");
-
-const nextFrame =
-    document.getElementById("next-frame");
-
-const playButton =
-    document.getElementById("play-button");
-
-
-let playing = false;
-
-let playTimer = null;
-
-
-/* Пока кадров нет */
-
-function updateTimeline() {
-
-    const value =
-        Number(timeRange.value);
-
-    const max =
-        Number(timeRange.max);
-
-    if (max === 0) {
-
-        timeLabel.textContent =
-            "Сейчас";
-
-        frameStatus.textContent =
-            "Нет данных";
-
-        return;
-    }
-
-    timeLabel.textContent =
-        `Кадр ${value + 1}`;
-
-    frameStatus.textContent =
-        `${value + 1} / ${max + 1}`;
-}
-
-
-timeRange.addEventListener(
-    "input",
-    updateTimeline
-);
-
-
-/* ---------------------------------------------------------
-   PREVIOUS FRAME
-   --------------------------------------------------------- */
-
-previousFrame.addEventListener(
-    "click",
-    () => {
-
-        let value =
-            Number(timeRange.value);
-
-        if (value > 0) {
-            value--;
-        }
-
-        timeRange.value =
-            value;
-
-        updateTimeline();
-
-    }
-);
-
-
-/* ---------------------------------------------------------
-   NEXT FRAME
-   --------------------------------------------------------- */
-
-nextFrame.addEventListener(
-    "click",
-    () => {
-
-        let value =
-            Number(timeRange.value);
-
-        const max =
-            Number(timeRange.max);
-
-        if (value < max) {
-            value++;
-        }
-
-        timeRange.value =
-            value;
-
-        updateTimeline();
-
-    }
-);
-
-
-/* ---------------------------------------------------------
-   PLAY
-   --------------------------------------------------------- */
-
-playButton.addEventListener(
-    "click",
-    () => {
-
-        if (playing) {
-
-            playing = false;
-
-            clearInterval(playTimer);
-
-            playButton.textContent =
-                "▶";
-
-            return;
-        }
-
-
-        playing = true;
-
-        playButton.textContent =
-            "Ⅱ";
-
-
-        playTimer =
-            setInterval(
-                () => {
-
-                    let value =
-                        Number(timeRange.value);
-
-                    const max =
-                        Number(timeRange.max);
-
-
-                    if (value >= max) {
-
-                        value = 0;
-
-                    } else {
-
-                        value++;
-
-                    }
-
-
-                    timeRange.value =
-                        value;
-
-                    updateTimeline();
-
-                },
-                700
-            );
-
-    }
-);
-
-
-/* ---------------------------------------------------------
-   STATIONS
-   --------------------------------------------------------- */
-
-let stationsVisible = true;
-
-const stationLayer =
-    L.layerGroup().addTo(map);
-
-
-/*
- * Пока показываем только несколько
- * тестовых точек интерфейса.
- *
- * Это НЕ радиолокационные данные.
- * Позже сюда подключается настоящий
- * список ДМРЛ.
- */
-
-const demoStations = [
-
-    {
-        name: "Москва",
-        lat: 55.75,
-        lon: 37.62
-    },
-
-    {
-        name: "Уфа",
-        lat: 54.74,
-        lon: 55.97
-    },
-
-    {
-        name: "Казань",
-        lat: 55.79,
-        lon: 49.12
-    },
-
-    {
-        name: "Новосибирск",
-        lat: 55.03,
-        lon: 82.92
-    }
-
+const RUSSIA_BOUNDS = [
+  [41, 19],
+  [82, 180]
 ];
 
 
-demoStations.forEach(
-    station => {
+/* =========================================================
+   HOME
+   ========================================================= */
 
-        const marker =
-            L.circleMarker(
-                [
-                    station.lat,
-                    station.lon
-                ],
-                {
-                    radius: 5,
-                    weight: 1,
-                    color: "#ffffff",
-                    fillColor: "#4d9cff",
-                    fillOpacity: .9
-                }
-            );
+function showRussia() {
 
-        marker.bindTooltip(
-            station.name
-        );
+  map.fitBounds(RUSSIA_BOUNDS, {
+    padding: [20, 20]
+  });
 
-        stationLayer.addLayer(
-            marker
-        );
-
-    }
-);
-
+}
 
 document
-    .getElementById("stations-button")
-    .addEventListener(
-        "click",
-        () => {
+  .getElementById("homeBtn")
+  .addEventListener("click", showRussia);
 
-            stationsVisible =
-                !stationsVisible;
-
-            if (stationsVisible) {
-
-                stationLayer.addTo(map);
-
-            } else {
-
-                map.removeLayer(
-                    stationLayer
-                );
-
-            }
-
-        }
-    );
+document
+  .getElementById("networkBtn")
+  .addEventListener("click", showRussia);
 
 
-/* ---------------------------------------------------------
+/* =========================================================
+   COORDINATES
+   ========================================================= */
+
+map.on("mousemove", function(e) {
+
+  const lat = e.latlng.lat.toFixed(4);
+  const lon = e.latlng.lng.toFixed(4);
+
+  document.getElementById("coords").textContent =
+    `${lat}° N    ${lon}° E`;
+
+});
+
+
+/* =========================================================
+   RADAR STATIONS
+   ========================================================= */
+
+/*
+   Это реальные географические точки ДМРЛ,
+   но список является только интерфейсным слоем.
+
+   Само наличие станции здесь НЕ означает,
+   что через неё уже получаются радиолокационные данные.
+
+   Когда будет настоящий feed, этот массив можно
+   заменить автоматической загрузкой станции из backend.
+*/
+
+const radarStations = [
+
+  ["Москва", 55.60, 37.30],
+  ["Санкт-Петербург", 59.95, 30.30],
+  ["Нижний Новгород", 56.25, 43.95],
+  ["Казань", 55.80, 49.10],
+  ["Самара", 53.20, 50.15],
+  ["Уфа", 54.75, 56.00],
+  ["Екатеринбург", 56.85, 60.60],
+  ["Челябинск", 55.15, 61.40],
+  ["Омск", 54.95, 73.40],
+  ["Новосибирск", 55.05, 82.90],
+  ["Красноярск", 56.00, 92.90],
+  ["Иркутск", 52.30, 104.30],
+  ["Владивосток", 43.10, 131.90],
+  ["Ростов-на-Дону", 47.25, 39.70],
+  ["Волгоград", 48.70, 44.50],
+  ["Сочи", 43.60, 39.70]
+];
+
+
+const stationLayer = L.layerGroup();
+
+
+radarStations.forEach(station => {
+
+  const name = station[0];
+  const lat = station[1];
+  const lon = station[2];
+
+  const icon = L.divIcon({
+    className: "",
+    html: `<div class="radar-station"></div>`,
+    iconSize: [12,12],
+    iconAnchor: [6,6]
+  });
+
+  const marker = L.marker(
+    [lat, lon],
+    { icon }
+  );
+
+  marker.bindPopup(`
+    <b>${name}</b><br>
+    ДМРЛ<br>
+    Координаты: ${lat.toFixed(2)}, ${lon.toFixed(2)}
+  `);
+
+  marker.addTo(stationLayer);
+
+});
+
+
+stationLayer.addTo(map);
+
+
+/* =========================================================
    COVERAGE
-   --------------------------------------------------------- */
+   ========================================================= */
 
-let coverageVisible = false;
-
-const coverageLayer =
-    L.layerGroup();
+const coverageLayer = L.layerGroup();
 
 
-demoStations.forEach(
-    station => {
+radarStations.forEach(station => {
 
-        L.circle(
-            [
-                station.lat,
-                station.lon
-            ],
-            {
-                radius: 250000,
-                color: "#4d9cff",
-                weight: 1,
-                fillOpacity: .025
-            }
-        )
-        .bindTooltip(
-            `Зона обзора: ${station.name}`
-        )
-        .addTo(coverageLayer);
-
+  L.circle(
+    [station[1], station[2]],
+    {
+      radius: 120000,
+      color: "#3e9cff",
+      weight: 1,
+      opacity: .16,
+      fillColor: "#3e9cff",
+      fillOpacity: .035
     }
+  ).addTo(coverageLayer);
+
+});
+
+
+/* =========================================================
+   RADAR DATA LAYER
+   ========================================================= */
+
+/*
+   ВАЖНО:
+
+   Здесь НЕ используется фальшивый radar tile.
+
+   Когда будет настоящий источник, функция ниже должна
+   возвращать реальный radar product.
+
+   Возможные варианты backend:
+
+   /api/radar/tiles/{z}/{x}/{y}
+   /api/radar/wms
+   /api/radar/bufr
+   /api/radar/baltrad
+
+   Сам URL намеренно не выдумываем.
+*/
+
+let radarLayer = null;
+
+
+/* =========================================================
+   REAL RADAR CONNECTOR
+   ========================================================= */
+
+async function loadRealRadar() {
+
+  /*
+     Здесь будет подключение реального источника.
+
+     Пример архитектуры:
+
+     const response = await fetch(
+       "/api/radar/latest"
+     );
+
+     const data = await response.json();
+
+     renderRadar(data);
+
+     Но пока реального разрешённого endpoint
+     у Daradar нет.
+  */
+
+  document.getElementById("statusText").textContent =
+    "Ожидание источника радиолокационных данных";
+
+}
+
+
+/* =========================================================
+   TIMELINE
+   ========================================================= */
+
+const range = document.getElementById("range");
+const play = document.getElementById("play");
+const timeLabel = document.getElementById("timeLabel");
+const frameInfo = document.getElementById("frameInfo");
+
+let playing = false;
+let timer = null;
+
+const FRAME_COUNT = 18;
+
+
+function updateTimeline() {
+
+  const frame = Number(range.value);
+
+  frameInfo.textContent =
+    `Кадр ${frame + 1} / ${FRAME_COUNT}`;
+
+  if (frame === FRAME_COUNT - 1) {
+
+    timeLabel.textContent = "Последний кадр";
+
+  } else {
+
+    const minutesAgo =
+      (FRAME_COUNT - 1 - frame) * 10;
+
+    timeLabel.textContent =
+      `${minutesAgo} мин назад`;
+
+  }
+
+  /*
+     Здесь при наличии backend вызывается:
+
+     loadRadarFrame(frame);
+  */
+
+}
+
+
+range.addEventListener(
+  "input",
+  updateTimeline
 );
 
 
-document
-    .getElementById("coverage-button")
-    .addEventListener(
-        "click",
-        () => {
+function startAnimation() {
 
-            coverageVisible =
-                !coverageVisible;
+  if (playing) return;
 
-            if (coverageVisible) {
+  playing = true;
+  play.textContent = "Ⅱ";
 
-                coverageLayer.addTo(map);
+  timer = setInterval(() => {
 
-            } else {
+    let next = Number(range.value) + 1;
 
-                map.removeLayer(
-                    coverageLayer
-                );
+    if (next >= FRAME_COUNT) {
+      next = 0;
+    }
 
-            }
+    range.value = next;
 
-        }
-    );
+    updateTimeline();
 
+  }, 700);
 
-/* ---------------------------------------------------------
-   DARK MAP
-   --------------------------------------------------------- */
-
-let darkMap = true;
-
-document
-    .getElementById("dark-map-button")
-    .addEventListener(
-        "click",
-        () => {
-
-            darkMap =
-                !darkMap;
-
-            /*
-             * Позже сюда можно поставить
-             * отдельный тёмный tile provider.
-             *
-             * Сейчас не подключаем стороннюю
-             * карту без необходимости.
-             */
-
-        }
-    );
+}
 
 
-/* ---------------------------------------------------------
-   LABELS
-   --------------------------------------------------------- */
+function stopAnimation() {
+
+  playing = false;
+  play.textContent = "▶";
+
+  if (timer) {
+    clearInterval(timer);
+    timer = null;
+  }
+
+}
+
+
+play.addEventListener("click", () => {
+
+  if (playing) {
+    stopAnimation();
+  } else {
+    startAnimation();
+  }
+
+});
+
+
+/* =========================================================
+   LAYER CONTROLS
+   ========================================================= */
 
 document
-    .getElementById("labels-button")
-    .addEventListener(
-        "click",
-        () => {
+  .getElementById("stationsLayer")
+  .addEventListener("change", function() {
 
-            stationsVisible =
-                !stationsVisible;
+    if (this.checked) {
+      stationLayer.addTo(map);
+    } else {
+      map.removeLayer(stationLayer);
+    }
 
-            if (stationsVisible) {
+  });
 
-                stationLayer.addTo(map);
 
-            } else {
+document
+  .getElementById("coverageLayer")
+  .addEventListener("change", function() {
 
-                map.removeLayer(
-                    stationLayer
-                );
+    if (this.checked) {
+      coverageLayer.addTo(map);
+    } else {
+      map.removeLayer(coverageLayer);
+    }
 
-            }
+  });
 
-        }
+
+document
+  .getElementById("radarLayer")
+  .addEventListener("change", function() {
+
+    if (!radarLayer) return;
+
+    if (this.checked) {
+      radarLayer.addTo(map);
+    } else {
+      map.removeLayer(radarLayer);
+    }
+
+  });
+
+
+/* =========================================================
+   PRODUCT
+   ========================================================= */
+
+document
+  .getElementById("product")
+  .addEventListener("change", function() {
+
+    const product = this.value;
+
+    console.log(
+      "Выбран продукт:",
+      product
     );
 
+    /*
+       Здесь переключается настоящий продукт:
 
-/* ---------------------------------------------------------
-   INITIAL STATE
-   --------------------------------------------------------- */
+       reflectivity
+       precipitation
+       velocity
+       echo-top
+    */
+
+  });
+
+
+/* =========================================================
+   AUTO UPDATE
+   ========================================================= */
+
+let updateTimer = null;
+
+
+function startAutoUpdate() {
+
+  if (updateTimer) {
+    clearInterval(updateTimer);
+  }
+
+  updateTimer = setInterval(() => {
+
+    loadRealRadar();
+
+  }, 60000);
+
+}
+
+
+document
+  .getElementById("autoUpdate")
+  .addEventListener("change", function() {
+
+    if (this.checked) {
+
+      startAutoUpdate();
+
+    } else {
+
+      clearInterval(updateTimer);
+      updateTimer = null;
+
+    }
+
+  });
+
+
+/* =========================================================
+   FULLSCREEN
+   ========================================================= */
+
+document
+  .getElementById("fullscreenBtn")
+  .addEventListener("click", function() {
+
+    if (!document.fullscreenElement) {
+
+      document.documentElement.requestFullscreen()
+        .catch(() => {});
+
+    } else {
+
+      document.exitFullscreen()
+        .catch(() => {});
+
+    }
+
+  });
+
+
+/* =========================================================
+   GEOLOCATION
+   ========================================================= */
+
+document
+  .getElementById("locateBtn")
+  .addEventListener("click", function() {
+
+    if (!navigator.geolocation) {
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      position => {
+
+        const lat =
+          position.coords.latitude;
+
+        const lon =
+          position.coords.longitude;
+
+        map.setView(
+          [lat, lon],
+          8
+        );
+
+      }
+    );
+
+  });
+
+
+/* =========================================================
+   INITIALIZATION
+   ========================================================= */
+
+showRussia();
 
 updateTimeline();
 
+loadRealRadar();
 
-console.log(
-    "Daradar interface initialized."
-);
+startAutoUpdate();
 
-console.log(
-    "Radar data source: not connected."
-);
+
+/* =========================================================
+   END
+   ========================================================= */
 </script>
 
 </body>

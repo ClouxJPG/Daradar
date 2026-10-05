@@ -210,7 +210,7 @@ html,body{
 }
 
 /* =========================================================
-   ПРАВЫЕ КНОПКИ
+   ПРАВАЯ КНОПКА
    ========================================================= */
 
 #fs{
@@ -251,35 +251,39 @@ html,body{
 }
 
 /* =========================================================
-   ИНФОРМАЦИЯ В НИЖНЕЙ ПАНЕЛИ
+   ИНФОРМАЦИЯ
    ========================================================= */
 
 #meta{
- min-height:23px;
+ min-height:34px;
  background:#c9c9c9;
  border-top:1px solid #aaa;
  border-bottom:1px solid #999;
+
  display:flex;
- align-items:center;
- gap:10px;
+ flex-direction:column;
+ justify-content:center;
+ align-items:flex-start;
+
+ gap:1px;
  padding:2px 5px;
+
  overflow:hidden;
  white-space:nowrap;
- font-size:13px
+
+ font-size:12px;
+ line-height:14px
 }
 
 #coords{
- flex:0 0 auto;
- white-space:nowrap
+ white-space:nowrap;
+ overflow:visible
 }
 
 #dl{
- flex:1 1 auto;
- min-width:0;
  white-space:nowrap;
  overflow:visible;
- font-size:13px;
- text-align:right
+ font-size:12px
 }
 
 #bp .st{
@@ -351,20 +355,27 @@ html,body{
  flex:0 0 17px
 }
 
+/* =========================================================
+   ЧАСЫ ТАЙМЛАЙНА
+   ========================================================= */
+
 #hrs{
  display:flex;
  height:18px;
- border-top:1px solid #555
+ border-top:1px solid #555;
+ overflow:hidden
 }
 
 #hrs div{
  flex:1;
+ min-width:0;
  text-align:center;
  border-left:1px solid #555;
  line-height:17px;
  cursor:pointer;
  background:#e2e2e2;
- font-size:13px
+ font-size:10px;
+ overflow:hidden
 }
 
 #hrs div:first-child{
@@ -372,8 +383,13 @@ html,body{
 }
 
 #hrs div.c{
- background:#cfe4ff
+ background:#cfe4ff;
+ font-weight:bold
 }
+
+/* =========================================================
+   ГЛАВНЫЙ ТАЙМЛАЙН
+   ========================================================= */
 
 #bar{
  display:block;
@@ -511,44 +527,6 @@ html,body{
 }
 
 /* =========================================================
-   НАСТРОЙКИ
-   ========================================================= */
-
-#dlg{
- position:fixed;
- inset:0;
- background:#0007;
- display:none;
- align-items:center;
- justify-content:center;
- z-index:9999
-}
-
-#dlg>div{
- background:#f0f0f0;
- border:1px solid #555;
- padding:12px;
- width:330px;
- max-width:92vw
-}
-
-#dlg label{
- display:block;
- margin:7px 0
-}
-
-#dlg input[type=text]{
- width:100%;
- margin-top:3px
-}
-
-#dlg button{
- width:100%;
- margin-top:6px;
- height:28px
-}
-
-/* =========================================================
    СООБЩЕНИЯ
    ========================================================= */
 
@@ -580,18 +558,18 @@ html,body{
  }
 
  #meta{
-  gap:5px;
-  font-size:11px
+  font-size:10px;
+  line-height:12px
  }
 
  #coords,
  #dl{
-  font-size:11px
+  font-size:10px
  }
 
  #hrs div,
  #hrs{
-  font-size:10px
+  font-size:9px
  }
 
  #di{
@@ -655,7 +633,7 @@ html,body{
 
  #coords,
  #dl{
-  font-size:10px
+  font-size:9px
  }
 
  #logo{
@@ -706,14 +684,12 @@ html,body{
  </button>
 
  <div id="li"></div>
-
- <button class="wb" id="sat">Sat</button>
 </div>
 
 <div class="ov" id="leg"></div>
 
 <!-- =========================================================
-     ПРОФЕССИОНАЛЬНЫЙ ЛОГОТИП QUANTUM METEO
+     QUANTUM METEO
      ========================================================= -->
 
 <div class="ov" id="logo">
@@ -896,34 +872,43 @@ html,body{
 
 </div>
 
-<!-- =========================================================
-     НАСТРОЙКИ
-     ========================================================= -->
-
-<div id="dlg">
-
- <div>
-
-  <b>Настройки</b>
-
-  <label>
-   Адрес сервера
-   <input type="text"
-          id="api"
-          placeholder="https://your.server:8080">
-  </label>
-
-  <button id="ap">Применить</button>
-  <button id="cl">Закрыть</button>
-
- </div>
-</div>
-
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 
 <script>
 const $=i=>document.getElementById(i),
       pad=n=>String(n).padStart(2,'0');
+
+/* =========================================================
+   НАСТРОЙКИ ВРЕМЕНИ
+   ========================================================= */
+
+const MSK_OFFSET=3*60*60*1000;
+
+/*
+   Сколько прошлого показываем на таймлайне.
+   72 часа = 3 суток.
+*/
+const ARCHIVE_HOURS=72;
+const STEP_MS=6e5;
+const ARCHIVE_STEPS=ARCHIVE_HOURS*6;
+
+/*
+   Все внутренние timestamps остаются UTC.
+   МСК используется только для интерфейса
+   и календаря пользователя.
+*/
+
+function toMSK(d){
+ return new Date(+d+MSK_OFFSET);
+}
+
+function fromMSK(d){
+ return new Date(+d-MSК_OFFSET);
+}
+
+/* =========================================================
+   ПАЛИТРА
+   ========================================================= */
 
 const L2=[
  ['Обл. в. ср. яр.','#9caab1'],
@@ -975,6 +960,10 @@ $('zl').innerHTML=
   `<div><i style="background:${ZC[i]}"></i>&gt;${t<0?'-'+(-t):t}</div>`
  ).join('');
 
+/* =========================================================
+   СЛОИ
+   ========================================================= */
+
 const TTL={
  S:'Метеоявления',
  R:'Радиолокационная отражаемость',
@@ -990,7 +979,6 @@ const LG={
 
 const S={
  api:localStorage.api||'',
- sat:localStorage.sat||'',
  m:'S',
  T:null,
  play:0,
@@ -1009,6 +997,10 @@ $('li').innerHTML=Object.keys(LG).map(k=>
   <i style="color:${LG[k][1]}">+</i>${LG[k][0]}
  </div>`
 ).join('');
+
+/* =========================================================
+   КАРТА
+   ========================================================= */
 
 const map=L.map('map',{
  zoomControl:false,
@@ -1042,90 +1034,182 @@ const mn=[
  'июл','авг','сен','окт','ноя','дек'
 ];
 
+/* =========================================================
+   UTC TIMESTAMP ДЛЯ API
+   ========================================================= */
+
 const stp=d=>
  `${d.getUTCFullYear()}${pad(d.getUTCMonth()+1)}${pad(d.getUTCDate())}_${pad(d.getUTCHours())}${pad(d.getUTCMinutes())}00`;
 
-const dstr=d=>
- `${d.getUTCFullYear()}-${pad(d.getUTCMonth()+1)}-${pad(d.getUTCDate())}`;
+/* =========================================================
+   ДАТА ДЛЯ INPUT DATE — ИМЕННО МСК
+   ========================================================= */
+
+const dstr=d=>{
+
+ const m=toMSK(d);
+
+ return `${m.getUTCFullYear()}-${pad(m.getUTCMonth()+1)}-${pad(m.getUTCDate())}`;
+};
 
 /* =========================================================
-   ПОСЛЕДНИЙ ДОСТУПНЫЙ РАДИОЛОКАЦИОННЫЙ СРОК
-   Только прошедшее время.
+   ПОСЛЕДНИЙ ЗАВЕРШЁННЫЙ РАДАРНЫЙ КАДР
+   ВНУТРЕННЕ UTC
    ========================================================= */
 
 const latest=()=>
  new Date(
-  Math.floor(Date.now()/6e5)*6e5-6e5
+  Math.floor(Date.now()/STEP_MS)*STEP_MS-STEP_MS
  );
 
 S.T=latest();
 
 /* =========================================================
-   ОГРАНИЧЕНИЕ ВРЕМЕНИ
+   ПРЕДЕЛЫ ТАЙМЛАЙНА
    ========================================================= */
+
+function timelineStart(){
+ return new Date(
+  +latest()-(ARCHIVE_STEPS-1)*STEP_MS
+ );
+}
 
 function clampTime(d){
 
- const n=new Date(d);
+ let n=new Date(d);
 
- const nowLatest=latest();
+ const mx=latest();
+ const mn0=timelineStart();
+
+ if(+n<+mn0)
+  n=mn0;
+
+ if(+n>+mx)
+  n=mx;
 
  /*
-    Для сегодняшнего дня нельзя выбрать время
-    позже последнего завершённого радиолокационного
-    кадра.
+    Всегда оставляем время кратным 10 минутам.
  */
-
- const today0=Date.UTC(
-  nowLatest.getUTCFullYear(),
-  nowLatest.getUTCMonth(),
-  nowLatest.getUTCDate()
+ n=new Date(
+  Math.floor(+n/STEP_MS)*STEP_MS
  );
 
- const day0=Date.UTC(
-  n.getUTCFullYear(),
-  n.getUTCMonth(),
-  n.getUTCDate()
- );
+ if(+n>+mx)
+  n=mx;
 
- if(day0===today0 && n>nowLatest)
-  return new Date(nowLatest);
+ if(+n<+mn0)
+  n=mn0;
 
  return n;
 }
 
 /* =========================================================
-   НИЖНЯЯ ПАНЕЛЬ / ТАЙМЛАЙН
+   ТАЙМЛАЙН: ЧАСОВЫЕ ПОДПИСИ
+   Показываем весь 72-часовой диапазон.
+   Подписи идут через 6 часов.
+   Время — МСК.
    ========================================================= */
 
-$('hrs').innerHTML=[
- ...Array(24)
-].map((_,i)=>
- `<div data-h="${i}">${i}</div>`
-).join('');
+function renderHours(){
+
+ const hrs=$('hrs');
+
+ const start=timelineStart();
+ const end=latest();
+
+ const total=end-start;
+
+ const arr=[];
+
+ /*
+    Деления каждые 6 часов.
+    Первый и последний кадр всегда входят.
+ */
+
+ const first=new Date(
+  Math.ceil(+start/(6*60*60*1000))*
+  6*60*60*1000
+ );
+
+ for(
+  let t=+first;
+  t<=+end;
+  t+=6*60*60*1000
+ ){
+
+  const d=new Date(t);
+  const m=toMSK(d);
+
+  const label=
+   `${pad(m.getUTCHours())}`;
+
+  arr.push({
+   t:d,
+   label
+  });
+ }
+
+ if(!arr.length)
+  return;
+
+ /*
+    HTML делится пропорционально всему диапазону.
+ */
+
+ hrs.innerHTML='';
+
+ arr.forEach(item=>{
+
+  const x=document.createElement('div');
+
+  x.textContent=item.label;
+
+  x.dataset.t=String(+item.t);
+
+  if(
+   Math.abs(+item.t-+S.T)<STEP_MS
+  )
+   x.classList.add('c');
+
+  hrs.appendChild(x);
+ });
+}
+
+/* =========================================================
+   ИНФОРМАЦИЯ ПАНЕЛИ
+   ========================================================= */
 
 function ui(){
 
  S.T=clampTime(S.T);
 
  const d=S.T;
+ const m=toMSK(d);
 
  $('dl').textContent=
- `${wd[d.getUTCDay()]}, ${d.getUTCDate()} ${mn[d.getUTCMonth()]} ${d.getUTCFullYear()} г., ${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())} UTC`;
+  `${wd[m.getUTCDay()]}, ${m.getUTCDate()} ${mn[m.getUTCMonth()]} ${m.getUTCFullYear()} г., ${pad(m.getUTCHours())}:${pad(m.getUTCMinutes())} МСК`;
 
  $('di').value=dstr(d);
 
  $('tt').textContent=TTL[S.m];
 
  document.querySelectorAll('.st .b').forEach(b=>
-  b.classList.toggle('red',b.dataset.m==S.m)
+  b.classList.toggle(
+   'red',
+   b.dataset.m==S.m
+  )
  );
 
  $('leg').style.display=
   S.m=='S'?'block':'none';
 
+ renderHours();
  bar();
 }
+
+/* =========================================================
+   РИСОВАНИЕ 72-ЧАСОВОГО ТАЙМЛАЙНА
+   ========================================================= */
 
 function bar(){
 
@@ -1140,48 +1224,70 @@ function bar(){
 
  const g=c.getContext('2d');
 
- const d0=Date.UTC(
-  S.T.getUTCFullYear(),
-  S.T.getUTCMonth(),
-  S.T.getUTCDate()
+ const start=timelineStart();
+ const end=latest();
+
+ const total=+end-+start;
+
+ /*
+    Фон.
+ */
+ g.clearRect(
+  0,
+  0,
+  w,
+  20
  );
 
- const nw=latest();
-
  g.fillStyle='#d3d3d3';
- g.fillRect(0,0,w,20);
 
- for(let i=0;i<144;i++){
+ g.fillRect(
+  0,
+  0,
+  w,
+  20
+ );
+
+ /*
+    Каждый 10-минутный кадр.
+    Все кадры в диапазоне — прошлое.
+    Будущих ячеек здесь физически нет.
+ */
+
+ for(let i=0;i<ARCHIVE_STEPS;i++){
 
   const t=
    new Date(
-    d0+i*6e5
+    +start+i*STEP_MS
    );
 
-  const x=Math.round(i*w/144);
-  const x2=Math.round((i+1)*w/144);
+  if(+t>+end)
+   break;
 
-  /*
-     Прошедшие кадры — зелёные.
-     Будущие — вообще не являются доступными
-     для выбора и остаются пустыми.
-  */
+  const x=
+   Math.round(
+    ((+t-+start)/total)*w
+   );
 
-  const loaded=
-   t<=nw;
+  const x2=
+   Math.round(
+    ((+t-+start+STEP_MS)/total)*w
+   );
 
-  g.fillStyle=
-   loaded?'#268c26':'#d3d3d3';
+  g.fillStyle='#268c26';
 
   g.fillRect(
    x,
    0,
-   x2-x,
+   Math.max(1,x2-x),
    20
   );
 
-  g.fillStyle=
-   loaded?'#0d5a0d':'#d3d3d3';
+  /*
+     Тонкая граница между кадрами.
+  */
+
+  g.fillStyle='#0d5a0d';
 
   g.fillRect(
    x,
@@ -1191,12 +1297,42 @@ function bar(){
   );
  }
 
+ /*
+    Вертикальные отметки каждые 6 часов.
+ */
+
+ for(
+  let t=+start;
+  t<=+end;
+  t+=6*60*60*1000
+ ){
+
+  const x=
+   ((t-+start)/total)*w;
+
+  g.fillStyle='#064d06';
+
+  g.fillRect(
+   Math.round(x),
+   0,
+   1,
+   20
+  );
+ }
+
+ /*
+    Текущий выбранный кадр.
+ */
+
  let x=
-  (S.T-d0)/864e5*w;
+  ((+S.T-+start)/total)*w;
 
  x=Math.max(
   0,
-  Math.min(w-1,x)
+  Math.min(
+   w-1,
+   x
+  )
  );
 
  g.fillStyle='#f0ff20';
@@ -1208,22 +1344,28 @@ function bar(){
   20
  );
 
- document.querySelectorAll('#hrs div').forEach(e=>
+ /*
+    Подсветка ближайшего часа.
+ */
+
+ document.querySelectorAll('#hrs div').forEach(e=>{
+
+  const t=Number(e.dataset.t);
+
   e.classList.toggle(
    'c',
-   +e.dataset.h==S.T.getUTCHours()
-  )
- );
+   Math.abs(t-+S.T)<3*60*60*1000
+  );
+ });
 }
+
+/* =========================================================
+   УСТАНОВКА ВРЕМЕНИ
+   ========================================================= */
 
 const setT=d=>{
 
  const n=clampTime(d);
-
- /*
-    Если пользователь уже находится на последнем
-    доступном кадре, дальше его не пускаем.
- */
 
  S.T=n;
 
@@ -1236,39 +1378,41 @@ const setT=d=>{
  lightning();
 };
 
+/* =========================================================
+   КНОПКИ ПЕРЕМЕЩЕНИЯ
+   ========================================================= */
+
 $('n1').onclick=()=>
  setT(
   new Date(
-   S.T-36e5
+   +S.T-36e5
   )
 );
 
 $('n2').onclick=()=>
  setT(
   new Date(
-   S.T-6e5
+   +S.T-STEP_MS
   )
 );
 
 $('n4').onclick=()=>
  setT(
   new Date(
-   Math.min(
-    +S.T+6e5,
-    +latest()
-   )
+   +S.T+STEP_MS
   )
 );
 
 $('n5').onclick=()=>
  setT(
   new Date(
-   Math.min(
-    +S.T+36e5,
-    +latest()
-   )
+   +S.T+36e5
   )
 );
+
+/* =========================================================
+   АНИМАЦИЯ
+   ========================================================= */
 
 $('n3').onclick=()=>{
 
@@ -1289,14 +1433,21 @@ $('n3').onclick=()=>{
 
    const n=
     new Date(
-     +S.T+6e5
+     +S.T+STEP_MS
     );
+
+   /*
+      Дошли до настоящего —
+      останавливаемся.
+   */
 
    if(n>lim){
 
     S.play=0;
 
-    $('n3').classList.remove('on');
+    $('n3').classList.remove(
+     'on'
+    );
 
     clearInterval(S.tm);
 
@@ -1308,46 +1459,72 @@ $('n3').onclick=()=>{
   },800);
 };
 
+/* =========================================================
+   КАЛЕНДАРЬ
+   ДАТА ВВОДИТСЯ В МСК
+   ========================================================= */
+
 $('di').onchange=e=>{
 
  const [y,m,d]=
-  e.target.value.split('-').map(Number);
+  e.target.value
+   .split('-')
+   .map(Number);
 
- if(y)
+ if(!y)
+  return;
 
-  setT(
-   new Date(Date.UTC(
-    y,
-    m-1,
-    d,
-    S.T.getUTCHours(),
-    S.T.getUTCMinutes()
-   ))
+ /*
+    Берём выбранный календарный день МСК
+    и сохраняем текущие часы/минуты МСК.
+ */
+
+ const cur=toMSK(S.T);
+
+ const msk=
+  new Date(Date.UTC(
+   y,
+   m-1,
+   d,
+   cur.getUTCHours(),
+   cur.getUTCMinutes()
+  ));
+
+ /*
+    Переводим обратно в UTC instant.
+ */
+
+ const utc=
+  new Date(
+   +msk-MSК_OFFSET
   );
+
+ setT(utc);
 };
+
+/* =========================================================
+   КЛИК ПО ЧАСОВЫМ ОТМЕТКАМ
+   ========================================================= */
 
 $('hrs').onclick=e=>{
 
- const h=e.target.dataset.h;
+ const el=e.target.closest('div');
 
- if(h!=null){
+ if(!el)
+  return;
 
-  const d=
-   new Date(Date.UTC(
-    S.T.getUTCFullYear(),
-    S.T.getUTCMonth(),
-    S.T.getUTCDate(),
-    +h
-   ));
+ const t=Number(el.dataset.t);
 
-  setT(d);
- }
+ if(!Number.isFinite(t))
+  return;
+
+ setT(
+  new Date(t)
+ );
 };
 
 /* =========================================================
    ПЕРЕТАСКИВАНИЕ ИМЕННО ТАЙМЛАЙНА
-   Панель #bp НЕ двигается.
-   Будущее полностью заблокировано.
    ========================================================= */
 
 let barDragging=false;
@@ -1365,21 +1542,16 @@ function barTime(e){
   Math.min(1,f)
  );
 
- const d0=Date.UTC(
-  S.T.getUTCFullYear(),
-  S.T.getUTCMonth(),
-  S.T.getUTCDate()
- );
+ const start=timelineStart();
+ const end=latest();
 
  let d=
   new Date(
-   d0+
-   Math.floor(f*144)*6e5
+   +start+
+   Math.floor(
+    f*((+end-+start)/STEP_MS)
+   )*STEP_MS
   );
-
- /*
-    Нельзя выбрать будущий кадр.
- */
 
  d=clampTime(d);
 
@@ -1444,6 +1616,10 @@ $('bar').addEventListener(
  }
 );
 
+/* =========================================================
+   АВТООБНОВЛЕНИЕ
+   ========================================================= */
+
 $('ck').onchange=e=>{
 
  S.auto=+e.target.checked;
@@ -1462,6 +1638,10 @@ setInterval(()=>{
   show();
  }
 },60000);
+
+/* =========================================================
+   РЕЖИМЫ
+   ========================================================= */
 
 document.querySelectorAll('.st .b').forEach(b=>
 
@@ -1482,14 +1662,15 @@ let RD=[],OV={},RG=[],C={};
 
 async function init(){
 
- if(!S.api){
+ /*
+    ВАЖНО:
+    Если API не задан, теперь НИКАКОГО сообщения
+    «Укажите адрес сервера в настройках» нет.
+    Просто ждём существующий localStorage.api.
+ */
 
-  msg(
-   'Укажите адрес сервера в настройках'
-  );
-
-  return
- }
+ if(!S.api)
+  return;
 
  try{
 
@@ -1497,7 +1678,9 @@ async function init(){
 
   msg('');
 
-  RG.forEach(x=>x.remove());
+  RG.forEach(
+   x=>x.remove()
+  );
 
   RG=RD.map(r=>
 
@@ -1518,11 +1701,23 @@ async function init(){
 
  }catch(e){
 
+  /*
+     Только реальная ошибка сервера.
+     Сообщения про отсутствие настройки API нет.
+  */
+
   msg(
-   'сервер недоступен: '+S.api
-  )
- }
+   S.api?
+   'сервер недоступен: '+S.api:
+   ''
+  );
 }
+
+}
+
+/* =========================================================
+   ЗАГРУЗКА РАДАРНОГО КАДРА
+   ========================================================= */
 
 async function frame(r,ts){
 
@@ -1551,7 +1746,11 @@ async function frame(r,ts){
 
  const g=c.getContext('2d');
 
- g.drawImage(im,0,0);
+ g.drawImage(
+  im,
+  0,
+  0
+ );
 
  const d=
   g.getImageData(
@@ -1601,6 +1800,10 @@ async function frame(r,ts){
  };
 }
 
+/* =========================================================
+   ПЕРЕКРАСКА РАДАРА
+   ========================================================= */
+
 function url(f){
 
  const c=document.createElement('canvas');
@@ -1631,19 +1834,32 @@ function url(f){
   d[p*4+3]=255;
  }
 
- g.putImageData(im,0,0);
+ g.putImageData(
+  im,
+  0,
+  0
+ );
 
  return c.toDataURL();
 }
 
+/* =========================================================
+   ОТРИСОВКА РАДАРА
+   ========================================================= */
+
 async function show(){
 
- if(!RD.length)
+ if(!RD.length||!S.api)
   return;
 
  const z=map.getZoom();
  const b=map.getBounds();
  const tk=++S.tk;
+
+ /*
+    API получает настоящий UTC timestamp.
+ */
+
  const ts=stp(S.T);
 
  const bb=r=>[
@@ -1677,7 +1893,12 @@ async function show(){
 
     const src=
      S.m=='S'?
-     url(await frame(r,ts)):
+     url(
+      await frame(
+       r,
+       ts
+      )
+     ):
      `${S.api}/api/img/${r.id}/${ts}?p=4&m=${S.m}`;
 
     if(tk!=S.tk)
@@ -1713,7 +1934,12 @@ async function show(){
   })
  );
 
- if(tk==S.tk)
+ if(tk==S.tk){
+
+  /*
+     В сообщениях API-время оставляем UTC,
+     чтобы серверный timestamp был однозначен.
+  */
 
   msg(
    vis.length&&bad==vis.length?
@@ -1722,6 +1948,7 @@ async function show(){
    'приблизьте карту (zoom ≥ 5)':
    ''
   );
+ }
 }
 
 map.on('moveend',()=>{
@@ -1731,7 +1958,7 @@ map.on('moveend',()=>{
 });
 
 /* =========================================================
-   КООРДИНАТЫ — ТЕПЕРЬ В НИЖНЕЙ ПАНЕЛИ
+   КООРДИНАТЫ
    ========================================================= */
 
 const dms=v=>{
@@ -1785,66 +2012,6 @@ $('lb').onclick=()=>{
 
  $('li').style.display=
   v?'':'none';
-
- $('sat').style.display=
-  v?'':'none';
-};
-
-/*
-   Настройки теперь открываются не через ?.
-   Сервер можно задать программно через localStorage
-   или оставить уже сохранённый адрес.
-*/
-
-$('cl').onclick=()=>
- $('dlg').style.display='none';
-
-$('ap').onclick=()=>{
-
- S.api=
-  $('api').value
-   .trim()
-   .replace(/\/$/,'');
-
- localStorage.api=S.api;
-
- $('dlg').style.display='none';
-
- C={};
-
- init();
-};
-
-let satL=null;
-
-$('sat').onclick=()=>{
-
- if(satL){
-
-  satL.remove();
-  satL=null;
-
-  $('sat').classList.remove('on');
-
-  return
- }
-
- if(!S.sat){
-
-  msg(
-   'Спутниковый слой не настроен'
-  );
-
-  return
- }
-
- satL=
-  L.tileLayer(
-   S.sat,
-   {zIndex:100}
-  ).addTo(map);
-
- $('sat').classList.add('on');
 };
 
 /* =========================================================
@@ -1855,6 +2022,9 @@ const LL={};
 
 async function lightning(){
 
+ if(!S.api)
+  return;
+
  for(const k in LG){
 
   if(LL[k]){
@@ -1863,7 +2033,7 @@ async function lightning(){
    delete LL[k]
   }
 
-  if(!S.lg[k]||!S.api)
+  if(!S.lg[k])
    continue;
 
   try{
@@ -1873,7 +2043,7 @@ async function lightning(){
 
    const t1=
     new Date(
-     +S.T+6e5
+     +S.T+STEP_MS
     ).toISOString();
 
    const t0=
@@ -1913,7 +2083,7 @@ async function lightning(){
 
    msg(
     'молнии '+LG[k][0]+': нет данных'
-   )
+   );
   }
  }
 }
@@ -1969,7 +2139,9 @@ $('rl').onclick=()=>{
 
   S.vc=0;
 
-  $('vc').classList.remove('on');
+  $('vc').classList.remove(
+   'on'
+  );
  }
 };
 
@@ -1992,7 +2164,9 @@ $('vc').onclick=()=>{
 
   S.rl=0;
 
-  $('rl').classList.remove('on');
+  $('rl').classList.remove(
+   'on'
+  );
 
   vclear();
 
@@ -2272,6 +2446,10 @@ map.on('click',e=>{
  }
 });
 
+/* =========================================================
+   ШКАЛА ВЫСОТЫ
+   ========================================================= */
+
 for(let k=1;k<=15;k++){
 
  const d=
@@ -2303,7 +2481,10 @@ async function sect(){
  g.fillStyle='#b8b8b8';
 
  g.fillRect(
-  0,0,440,222
+  0,
+  0,
+  440,
+  222
  );
 
  $('sst').textContent=
@@ -2521,12 +2702,8 @@ addEventListener(
  'resize',
  ()=>{
 
+  renderHours();
   bar();
-
-  /*
-     Нижняя панель всегда остаётся
-     приклеенной к нижнему правому краю.
-  */
 
   const bp=$('bp');
 
@@ -2539,7 +2716,6 @@ addEventListener(
    $('sx').style.display!='none'
   )
    fitSX();
-
  }
 );
 

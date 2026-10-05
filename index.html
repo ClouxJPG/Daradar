@@ -266,7 +266,6 @@ html,body{
  font-size:14px;
  overflow:hidden;
 
- touch-action:none;
  z-index:1100
 }
 
@@ -277,13 +276,7 @@ html,body{
  padding-left:3px;
  white-space:nowrap;
  overflow:hidden;
- cursor:grab;
- touch-action:none;
  font-weight:600
-}
-
-#bp .tt:active{
- cursor:grabbing
 }
 
 #bp .st{
@@ -589,7 +582,8 @@ html,body{
  #bp{
   width:calc(100vw - var(--sal) - var(--sar));
   max-width:calc(100vw - var(--sal) - var(--sar));
-  right:var(--sar)
+  right:var(--sar);
+  bottom:var(--sab)
  }
 
  #hrs div,
@@ -755,14 +749,12 @@ html,body{
          stroke="#174f87"
          stroke-width="3"/>
 
-   <!-- радарный круг -->
    <circle cx="53" cy="54"
            r="34"
            fill="#edf6ff"
            stroke="url(#qmBlue)"
            stroke-width="4"/>
 
-   <!-- радиолокационные дуги -->
    <path d="M27 54a26 26 0 0 0 52 0"
          fill="none"
          stroke="#2d88d3"
@@ -773,36 +765,30 @@ html,body{
          stroke="#2d88d3"
          stroke-width="3"/>
 
-   <!-- радарный сектор -->
    <path d="M53 54L79 36A34 34 0 0 0 53 20Z"
          fill="#2d88d3"
          opacity=".28"/>
 
-   <!-- луч -->
    <path d="M53 54L81 35"
          stroke="#155ca8"
          stroke-width="4"
          stroke-linecap="round"/>
 
-   <!-- центр радара -->
    <circle cx="53"
            cy="54"
            r="5"
            fill="url(#qmOrange)"/>
 
-   <!-- орбитальная дуга -->
    <path d="M25 31C35 8 70 8 82 31"
          fill="none"
          stroke="url(#qmOrange)"
          stroke-width="3"
          stroke-linecap="round"/>
 
-   <!-- маленькая точка -->
    <circle cx="82" cy="31"
            r="3.5"
            fill="#ef9c17"/>
 
-   <!-- название -->
    <text x="98"
          y="49"
          font-family="Arial,Helvetica,sans-serif"
@@ -1262,148 +1248,23 @@ $('hrs').onclick=e=>{
 };
 
 /* =========================================================
-   ПЕРЕТАСКИВАНИЕ НИЖНЕЙ ПАНЕЛИ
+   ПЕРЕТАСКИВАНИЕ ИМЕННО ТАЙМЛАЙНА
+   Панель #bp НЕ двигается.
    ========================================================= */
 
-let bpDrag=null;
-let bpDragMoved=false;
+let barDragging=false;
 
-function beginBPDrag(e){
+function barTime(e){
 
- if(e.pointerType==='mouse' && e.button!==0)
-  return;
+ const r=$('bar').getBoundingClientRect();
 
- const el=$('bp');
- const r=el.getBoundingClientRect();
-
- el.style.left=r.left+'px';
- el.style.top=r.top+'px';
- el.style.right='auto';
- el.style.bottom='auto';
-
- bpDrag={
-  id:e.pointerId,
-  ox:e.clientX-r.left,
-  oy:e.clientY-r.top,
-  startX:e.clientX,
-  startY:e.clientY,
-  moved:false
- };
-
- try{
-  e.currentTarget.setPointerCapture(e.pointerId);
- }catch(_){}
-
- e.preventDefault();
-}
-
-function moveBPDrag(e){
-
- if(!bpDrag)return;
-
- const el=$('bp');
- const r=el.getBoundingClientRect();
-
- let left=
-  e.clientX-bpDrag.ox;
-
- let top=
-  e.clientY-bpDrag.oy;
-
- const w=r.width;
- const h=r.height;
-
- left=Math.max(
-  0,
-  Math.min(left,innerWidth-w)
- );
-
- top=Math.max(
-  0,
-  Math.min(top,innerHeight-h)
- );
-
- if(
-  Math.abs(e.clientX-bpDrag.startX)>5 ||
-  Math.abs(e.clientY-bpDrag.startY)>5
- ){
-  bpDrag.moved=true;
-  bpDragMoved=true;
- }
-
- el.style.left=left+'px';
- el.style.top=top+'px';
-}
-
-function endBPDrag(){
-
- if(!bpDrag)return;
-
- bpDrag=null;
-}
-
-/*
-   Можно двигать именно зелёный таймлайн.
-   Также можно двигать панель за её верхнюю строку.
-*/
-
-$('bar').addEventListener(
- 'pointerdown',
- beginBPDrag
-);
-
-$('bar').addEventListener(
- 'pointermove',
- moveBPDrag
-);
-
-$('bar').addEventListener(
- 'pointerup',
- endBPDrag
-);
-
-$('bar').addEventListener(
- 'pointercancel',
- endBPDrag
-);
-
-$('tt').addEventListener(
- 'pointerdown',
- beginBPDrag
-);
-
-$('tt').addEventListener(
- 'pointermove',
- moveBPDrag
-);
-
-$('tt').addEventListener(
- 'pointerup',
- endBPDrag
-);
-
-$('tt').addEventListener(
- 'pointercancel',
- endBPDrag
-);
-
-/*
-   Клик по зелёному таймлайну всё ещё выбирает время.
-   Если пользователь реально двигал панель —
-   случайного переключения времени не происходит.
-*/
-
-$('bar').addEventListener('click',e=>{
-
- if(bpDragMoved){
-  bpDragMoved=false;
-  return;
- }
-
- const r=e.target.getBoundingClientRect();
-
- const f=
+ let f=
   (e.clientX-r.left)/r.width;
+
+ f=Math.max(
+  0,
+  Math.min(1,f)
+ );
 
  const d0=Date.UTC(
   S.T.getUTCFullYear(),
@@ -1411,13 +1272,69 @@ $('bar').addEventListener('click',e=>{
   S.T.getUTCDate()
  );
 
- setT(
-  new Date(
-   d0+
-   Math.floor(f*144)*6e5
-  )
+ return new Date(
+  d0+
+  Math.floor(f*144)*6e5
  );
-});
+}
+
+$('bar').addEventListener(
+ 'pointerdown',
+ e=>{
+
+  if(
+   e.pointerType==='mouse' &&
+   e.button!==0
+  )
+   return;
+
+  barDragging=true;
+
+  try{
+   $('bar').setPointerCapture(
+    e.pointerId
+   );
+  }catch(_){}
+
+  setT(barTime(e));
+
+  e.preventDefault();
+ }
+);
+
+$('bar').addEventListener(
+ 'pointermove',
+ e=>{
+
+  if(!barDragging)
+   return;
+
+  setT(barTime(e));
+
+  e.preventDefault();
+ }
+);
+
+$('bar').addEventListener(
+ 'pointerup',
+ e=>{
+
+  barDragging=false;
+
+  try{
+   $('bar').releasePointerCapture(
+    e.pointerId
+   );
+  }catch(_){}
+ }
+);
+
+$('bar').addEventListener(
+ 'pointercancel',
+ ()=>{
+  barDragging=false;
+ }
+);
 
 $('ck').onchange=e=>{
 
@@ -2176,12 +2093,6 @@ map.on('click',e=>{
  if(!S.vc)
   return;
 
- /*
-    Если старое сечение уже завершено,
-    новый клик начинает новое A.
-    Сам VC при этом остаётся включённым.
- */
-
  if(S.va&&S.vb){
 
   if(vl)
@@ -2254,10 +2165,6 @@ map.on('click',e=>{
     }
    ).addTo(map)
   );
-
-  /*
-     VC специально НЕ выключаем.
-  */
 
   sect();
  }
@@ -2402,25 +2309,12 @@ async function sect(){
    КРЕСТИК СЕЧЕНИЯ
    ========================================================= */
 
-/*
-   ВАЖНО:
-   крестик НЕ выключает VC.
-
-   Он только:
-   - убирает линию;
-   - убирает точки A/B;
-   - очищает координаты;
-   - закрывает панель.
-
-   Кнопка VC остаётся активной.
-*/
-
 $('sc').onclick=()=>{
 
  vclear();
 
  /*
-    S.vc намеренно НЕ меняем.
+    VC остаётся включённым.
  */
 };
 
@@ -2528,48 +2422,16 @@ addEventListener(
   bar();
 
   /*
-     Если нижняя панель уже была перемещена,
-     удерживаем её внутри нового viewport.
+     Нижняя панель всегда остаётся
+     приклеенной к нижнему правому краю.
   */
 
   const bp=$('bp');
 
-  if(
-   bp.style.left||
-   bp.style.top
-  ){
-
-   const r=
-    bp.getBoundingClientRect();
-
-   let left=
-    Math.max(
-     0,
-     Math.min(
-      r.left,
-      innerWidth-r.width
-     )
-    );
-
-   let top=
-    Math.max(
-     0,
-     Math.min(
-      r.top,
-      innerHeight-r.height
-     )
-    );
-
-   bp.style.left=
-    left+'px';
-
-   bp.style.top=
-    top+'px';
-
-   bp.style.right='auto';
-   bp.style.bottom='auto';
-
-  }
+  bp.style.left='';
+  bp.style.top='';
+  bp.style.right='var(--sar)';
+  bp.style.bottom='var(--sab)';
 
   if(
    $('sx').style.display!='none'

@@ -2,117 +2,113 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>АСУ-ДМРЛ ВОИ — Оригинальный кадр ДМРЛ</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>АСУ-ДМРЛ ВОИ — Метеоявления</title>
   <style>
-    :root {
-      --win-bg: #d4d0c8;
-      --win-panel: #ece9d8;
-      --win-border-dark: #716f64;
-      --win-border-shadow: #808080;
-      --win-border-light: #ffffff;
-      --win-blue: #000080;
-    }
-
     * {
       box-sizing: border-box;
       margin: 0;
       padding: 0;
-      font-family: "Tahoma", "Segoe UI", Geneva, sans-serif;
+      font-family: "Tahoma", "Segoe UI", sans-serif;
       font-size: 11px;
       user-select: none;
     }
 
     body {
-      background-color: var(--win-bg);
+      background-color: #d4d0c8;
       color: #000;
       display: flex;
       flex-direction: column;
       height: 100vh;
+      width: 100vw;
       overflow: hidden;
     }
 
-    /* Верхняя панель */
-    .top-bar {
+    /* === ВЕРХНЯЯ ПАНЕЛЬ === */
+    .top-toolbar {
       display: flex;
       align-items: center;
-      background: var(--win-panel);
-      border-bottom: 2px solid var(--win-border-dark);
-      padding: 2px 4px;
-      gap: 6px;
-      height: 28px;
+      background: #ece9d8;
+      border-bottom: 1px solid #808080;
+      padding: 1px 2px;
+      height: 24px;
       flex-shrink: 0;
-      overflow-x: auto;
+      gap: 12px;
       white-space: nowrap;
+      overflow-x: auto;
     }
 
-    .toolbar-grid-nums {
+    .grid-scale {
       display: flex;
-      border: 1px solid var(--win-border-shadow);
+      border: 1px solid #808080;
       background: #fff;
     }
 
-    .toolbar-grid-nums span {
-      padding: 1px 3px;
+    .grid-scale span {
+      padding: 0 3px;
       border-right: 1px solid #d4d0c8;
-      font-size: 10px;
+      font-size: 9px;
+      line-height: 14px;
     }
 
-    .menu-title { font-weight: bold; font-size: 11px; }
+    .top-title {
+      font-weight: bold;
+      font-size: 11px;
+    }
 
-    .btn-win {
-      background: var(--win-panel);
-      border: 1px solid #000;
-      box-shadow: inset 1px 1px var(--win-border-light), inset -1px -1px var(--win-border-shadow);
-      padding: 2px 6px;
+    .btn-win-classic {
+      background: #ece9d8;
+      border: 1px solid #716f64;
+      box-shadow: inset 1px 1px #ffffff, inset -1px -1px #808080;
+      padding: 1px 6px;
       cursor: pointer;
       font-size: 11px;
-      white-space: nowrap;
-    }
-    .btn-win:active, .btn-win.active {
-      box-shadow: inset 1px 1px var(--win-border-shadow), inset -1px -1px var(--win-border-light);
-      background: #c0c0c0;
     }
 
-    .status-badge {
-      background: #008080;
-      color: #fff;
-      padding: 2px 6px;
+    .btn-win-classic:active {
+      box-shadow: inset 1px 1px #808080, inset -1px -1px #ffffff;
+    }
+
+    .speed-banner {
+      background: #00e4e4;
+      color: #000;
+      border: 1px solid #008080;
+      padding: 0 4px;
+      margin-left: auto;
       font-weight: bold;
       font-family: monospace;
       font-size: 11px;
-      margin-left: auto;
+      display: flex;
+      align-items: center;
+      gap: 8px;
     }
 
-    /* Главный контейнер */
-    .main-container {
+    /* === ГЛАВНЫЙ КОНТЕЙНЕР === */
+    .main-viewport {
       display: flex;
       flex: 1;
       overflow: hidden;
       position: relative;
     }
 
-    /* Область карты с оригинальным снимком */
-    .map-container {
+    /* Левая часть: Карта */
+    .map-frame {
       flex: 1;
       position: relative;
       background: #c0c0c0;
-      border: 2px inset var(--win-border-light);
+      border: 2px inset #ffffff;
       overflow: hidden;
-      display: flex;
-      align-items: center;
-      justify-content: center;
       cursor: crosshair;
     }
 
-    #radarImage {
-      max-width: 100%;
-      max-height: 100%;
-      object-fit: contain;
+    .map-img {
+      width: 100%;
+      height: 100%;
+      object-fit: fill;
       display: block;
     }
 
-    #overlayCanvas {
+    #crosshairCanvas {
       position: absolute;
       top: 0;
       left: 0;
@@ -122,237 +118,322 @@
     }
 
     /* Правая панель управления */
-    .sidebar {
-      width: 220px;
-      background: var(--win-panel);
-      border-left: 2px solid var(--win-border-light);
-      box-shadow: -1px 0 var(--win-border-dark);
+    .control-sidebar {
+      width: 205px;
+      background: #ece9d8;
+      border-left: 2px solid #ffffff;
+      box-shadow: -1px 0 #808080;
       display: flex;
       flex-direction: column;
       padding: 4px;
-      gap: 5px;
+      gap: 4px;
       overflow-y: auto;
       flex-shrink: 0;
     }
 
-    .info-box {
-      border: 1px solid var(--win-border-shadow);
-      background: #fff;
-      padding: 4px;
-      font-family: monospace;
+    /* Блок значений */
+    .info-panel {
+      padding: 2px 4px;
+      font-family: Tahoma, sans-serif;
       font-size: 11px;
-      line-height: 1.3;
-      box-shadow: inset 1px 1px var(--win-border-shadow);
+      line-height: 1.25;
     }
 
-    .controls-row {
+    .info-panel .val {
+      font-family: monospace;
+    }
+
+    /* Кнопки плеера */
+    .player-row {
       display: flex;
       align-items: center;
       gap: 4px;
+      margin-top: 2px;
     }
 
-    .file-list {
-      border: 1px solid var(--win-border-shadow);
-      background: #fff;
-      height: 140px;
-      overflow-y: scroll;
-      font-family: monospace;
-      font-size: 10px;
-      box-shadow: inset 1px 1px var(--win-border-shadow);
-    }
-
-    .file-item {
-      padding: 1px 3px;
+    .btn-icon {
+      width: 20px;
+      height: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #ece9d8;
+      border: 1px solid #716f64;
+      box-shadow: inset 1px 1px #fff, inset -1px -1px #808080;
       cursor: pointer;
-      white-space: nowrap;
-    }
-    .file-item:hover { background: #e0e0ff; }
-    .file-item.active {
-      background: var(--win-blue);
-      color: #fff;
+      font-size: 10px;
     }
 
-    .header-tag {
+    .date-display {
+      margin-left: auto;
+      font-weight: bold;
+      font-size: 11px;
+    }
+
+    .time-display {
+      text-align: right;
+      font-weight: bold;
+      font-family: Tahoma, sans-serif;
+      font-size: 11px;
+      margin-bottom: 2px;
+    }
+
+    .dmrl-header {
       display: flex;
       justify-content: space-between;
       font-weight: bold;
-      border-bottom: 1px solid var(--win-border-shadow);
-      padding-bottom: 1px;
+      font-size: 12px;
+      padding: 0 4px;
     }
 
-    /* Легенда цветов */
-    .legend-box {
-      border: 1px solid var(--win-border-shadow);
+    /* Список .Inr файлов */
+    .file-tree {
+      border: 1px inset #fff;
       background: #fff;
-      flex: 1;
-      min-height: 160px;
-      overflow-y: auto;
-      padding: 2px;
-      box-shadow: inset 1px 1px var(--win-border-shadow);
+      height: 175px;
+      overflow-y: scroll;
+      font-family: monospace;
+      font-size: 10px;
+      box-shadow: inset 1px 1px #808080;
     }
 
-    .legend-title {
+    .file-row {
+      padding: 0 2px;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    .file-row.active {
+      background: #ff9900;
+      color: #000;
       font-weight: bold;
-      background: var(--win-bg);
-      padding: 1px 3px;
-      margin-bottom: 2px;
-      border: 1px solid var(--win-border-shadow);
-      text-align: center;
     }
 
-    .legend-item {
+    /* Таблица легенды */
+    .legend-table-box {
+      border: 1px inset #fff;
+      background: #e0e0e0;
+      flex: 1;
+      min-height: 210px;
+      overflow-y: auto;
+      box-shadow: inset 1px 1px #808080;
+    }
+
+    .legend-table-header {
+      background: #d4d0c8;
+      font-size: 10px;
+      padding: 1px 2px;
+      border-bottom: 1px solid #808080;
+    }
+
+    .legend-row {
       display: flex;
       align-items: center;
-      gap: 5px;
-      font-size: 10px;
-      height: 13px;
+      gap: 3px;
+      font-size: 9px;
+      height: 12px;
+      line-height: 12px;
+      padding-left: 1px;
     }
 
-    .color-swatch {
+    .color-box {
       width: 12px;
       height: 10px;
       border: 1px solid #000;
       flex-shrink: 0;
     }
 
+    /* Мобильная адаптация */
     @media (max-width: 768px) {
-      .main-container { flex-direction: column; }
-      .map-container { height: 60vh; flex: none; }
-      .sidebar { width: 100%; height: 40vh; border-left: none; border-top: 2px solid var(--win-border-light); }
+      .main-viewport {
+        flex-direction: column;
+      }
+      .map-frame {
+        height: 60vh;
+        flex: none;
+      }
+      .control-sidebar {
+        width: 100%;
+        height: 40vh;
+        border-left: none;
+        border-top: 2px solid #ffffff;
+      }
     }
   </style>
 </head>
 <body>
 
-  <!-- Верхнее меню -->
-  <div class="top-bar">
-    <div class="toolbar-grid-nums">
+  <!-- Верхняя панель -->
+  <div class="top-toolbar">
+    <div class="grid-scale">
       <span>3</span><span>4</span><span>5</span><span>6</span><span>7</span><span>8</span>
       <span>9</span><span>10</span><span>11</span><span>12</span><span>13</span><span>14</span><span>15</span>
     </div>
-    <div class="menu-title">Метеоявления</div>
-    <div>ПГ: теплый</div>
-    <button class="btn-win">Опасные явления</button>
-    <div class="status-badge">V=14.79 м/с az=29 СВ</div>
+
+    <div class="top-title">Метеоявления</div>
+    <div style="font-size:11px;">ПГ: теплый</div>
+    <button class="btn-win-classic">Опасные явления</button>
+
+    <div class="speed-banner">
+      <span style="font-size:9px; color:#555;">Динамик</span>
+      <span>Скор. и направл. перемещен</span>
+      <span style="color:#000; background:#00e4e4; padding:0 2px;">v=14.79 м/с az=29 СВ</span>
+    </div>
   </div>
 
-  <!-- Главное окно -->
-  <div class="main-container">
+  <!-- Главная область -->
+  <div class="main-viewport">
     
-    <!-- Карта с оригинальным эхо-снимком ДМРЛ -->
-    <div class="map-container" id="mapBox">
-      <img src="https://i.postimg.co/Jz5T5X5b/radar-map.jpg" id="radarImage" alt="Карта ДМРЛ">
-      <canvas id="overlayCanvas"></canvas>
+    <!-- Картографическая подложка -->
+    <div class="map-frame" id="mapContainer">
+      <img src="https://i.postimg.co/Jz5T5X5b/radar-map.jpg" class="map-img" id="radarBg" alt="ДМРЛ Карта">
+      <canvas id="crosshairCanvas"></canvas>
     </div>
 
-    <!-- Правая панель АСУ-ДМРЛ -->
-    <div class="sidebar">
+    <!-- Правая панель -->
+    <div class="control-sidebar">
       
-      <div class="info-box">
-        <div>Az: <span id="valAz">307.48</span>°</div>
-        <div>R:  <span id="valR">127.54</span> км</div>
-        <div style="color: #808080;">Значение:</div>
-        <div id="valPhenomenon" style="font-weight: bold; color: #a00000;">Гроза (R)</div>
+      <!-- Координаты -->
+      <div class="info-panel">
+        <div>Az <span class="val" id="azVal">307.48</span></div>
+        <div>R <span class="val" id="rVal">127.54</span></div>
+        <div style="color:#444;">Значение</div>
+        <div class="val">Н/Д</div>
       </div>
 
-      <div class="controls-row">
-        <button class="btn-win" id="btnLoop">🎦</button>
-        <button class="btn-win" id="btnPlay">▶</button>
-        <strong style="margin-left: auto;">15.06.2022</strong>
+      <!-- Управление временем -->
+      <div class="player-row">
+        <button class="btn-icon" id="btnWindow">🗔</button>
+        <button class="btn-icon" id="btnPlay" style="color:green;">▶</button>
+        <div class="date-display">15.06.2022</div>
       </div>
 
-      <div style="text-align: right; font-weight: bold; font-family: monospace; font-size: 12px;" id="currentTime">
-        10:30:00
-      </div>
+      <div class="time-display" id="timeBox">10:30:00</div>
 
-      <div class="header-tag">
+      <div class="dmrl-header">
         <span>ДМРЛ</span>
         <span>nr</span>
       </div>
 
-      <div class="file-list" id="fileList"></div>
+      <!-- Список кадров .Inr -->
+      <div class="file-tree" id="fileTree"></div>
 
-      <div class="legend-box" id="legendBox"></div>
+      <!-- Легенда явления -->
+      <div class="legend-table-box" id="legendContainer"></div>
 
     </div>
   </div>
 
   <script>
-    const mapBox = document.getElementById('mapBox');
-    const canvas = document.getElementById('overlayCanvas');
+    const mapContainer = document.getElementById('mapContainer');
+    const canvas = document.getElementById('crosshairCanvas');
     const ctx = canvas.getContext('2d');
 
-    let cursorX = 0;
-    let cursorY = 0;
+    // Позиция визира по умолчанию со скриншота
+    let crosshairX = 0;
+    let crosshairY = 0;
+    let isInitialized = false;
 
     function resizeCanvas() {
-      canvas.width = mapBox.clientWidth;
-      canvas.height = mapBox.clientHeight;
-      drawCrosshair();
+      canvas.width = mapContainer.clientWidth;
+      canvas.height = mapContainer.clientHeight;
+      
+      if (!isInitialized) {
+        // Установка стандартной позиции квадрата визира как на скриншоте
+        crosshairX = canvas.width * 0.395;
+        crosshairY = canvas.height * 0.468;
+        isInitialized = true;
+      }
+      drawOverlay();
     }
 
-    function drawCrosshair() {
+    // Отрисовка визира (двойной квадрат + визирный луч)
+    function drawOverlay() {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
-      if (cursorX === 0 && cursorY === 0) return;
 
-      ctx.strokeStyle = "#000";
+      ctx.strokeStyle = "#000000";
       ctx.lineWidth = 1;
 
-      // Рамка визира
-      ctx.strokeRect(cursorX - 12, cursorY - 12, 24, 24);
-      ctx.strokeRect(cursorX - 22, cursorY - 22, 44, 44);
+      // Внутренний квадрат
+      ctx.strokeRect(crosshairX - 10, crosshairY - 10, 20, 20);
+      // Внешний квадрат
+      ctx.strokeRect(crosshairX - 18, crosshairY - 18, 36, 36);
 
-      // Вектор скорости
+      // Вектор азимута перемещения (черная линия вверх-вправо)
       ctx.beginPath();
-      ctx.moveTo(cursorX, cursorY);
-      ctx.lineTo(cursorX + 70, cursorY - 110);
+      ctx.moveTo(crosshairX, crosshairY);
+      ctx.lineTo(crosshairX + 68, crosshairY - 110);
       ctx.stroke();
     }
 
-    mapBox.addEventListener('click', function(e) {
+    // Клик по карте перемещает визир и считает координаты
+    mapContainer.addEventListener('click', function(e) {
       const rect = canvas.getBoundingClientRect();
-      cursorX = e.clientX - rect.left;
-      cursorY = e.clientY - rect.top;
+      crosshairX = e.clientX - rect.left;
+      crosshairY = e.clientY - rect.top;
 
-      // Расчет относительных координат
-      const az = ((cursorX / canvas.width) * 360).toFixed(2);
-      const r = ((cursorY / canvas.height) * 250).toFixed(2);
+      const az = ((crosshairX / canvas.width) * 360).toFixed(2);
+      const r = ((crosshairY / canvas.height) * 300).toFixed(2);
 
-      document.getElementById('valAz').innerText = az;
-      document.getElementById('valR').innerText = r;
+      document.getElementById('azVal').innerText = az;
+      document.getElementById('rVal').innerText = r;
 
-      drawCrosshair();
+      drawOverlay();
     });
 
-    // Список файлов снимков
-    const fileList = document.getElementById('fileList');
-    const times = ["09:40","09:50","10:00","10:10","10:20","10:30","10:40","10:50","11:00","11:10","11:20","11:30"];
+    // Генерация файлов снимков
+    const fileTree = document.getElementById('fileTree');
+    const times = ["094000","095000","100000","101000","102000","103000","104000","105000","110000","111000","112000","113000"];
     
     times.forEach(t => {
-      const div = document.createElement('div');
-      div.className = 'file-item' + (t === "10:30" ? ' active' : '');
-      div.innerText = `20220615_${t.replace(':','')}_1.Inr`;
-      div.onclick = () => {
-        document.querySelectorAll('.file-item').forEach(i => i.classList.remove('active'));
-        div.classList.add('active');
-        document.getElementById('currentTime').innerText = t + ":00";
+      const row = document.createElement('div');
+      const isTarget = (t === "103000");
+      row.className = 'file-row' + (isTarget ? ' active' : '');
+      row.innerText = `20220615_${t}_1.Inr`;
+      
+      row.onclick = () => {
+        document.querySelectorAll('.file-row').forEach(r => r.classList.remove('active'));
+        row.classList.add('active');
+        const formattedTime = `${t.substr(0,2)}:${t.substr(2,2)}:${t.substr(4,2)}`;
+        document.getElementById('timeBox').innerText = formattedTime;
       };
-      fileList.appendChild(div);
+
+      fileTree.appendChild(row);
     });
 
-    // Отрисовка легенды
+    // Воспроизведение кадров
+    let isPlaying = false;
+    let playTimer = null;
+
+    document.getElementById('btnPlay').onclick = function() {
+      isPlaying = !isPlaying;
+      this.style.color = isPlaying ? "red" : "green";
+      
+      if (isPlaying) {
+        const rows = document.querySelectorAll('.file-row');
+        let idx = 0;
+        playTimer = setInterval(() => {
+          rows[idx].click();
+          idx = (idx + 1) % rows.length;
+        }, 600);
+      } else {
+        clearInterval(playTimer);
+      }
+    };
+
+    // Точная палитра метеоявлений ДМРЛ
     function renderLegend() {
-      const legendBox = document.getElementById('legendBox');
+      const container = document.getElementById('legendContainer');
       const items = [
-        { name: "Обл.в.ср.ярус", color: "#00c0c0" },
+        { name: "Обл.в.ср.ярус.", color: "#00c0c0" },
         { name: "Сп.образн.", color: "#00a000" },
         { name: "Осадки слабы", color: "#00e000" },
-        { name: "Осадки умерен", color: "#00ff00" },
+        { name: "Осадки умере", color: "#00ff00" },
         { name: "Осадки сильн", color: "#ffff00" },
         { name: "Кучевая обл.", color: "#ff8000" },
         { name: "Ливень слабы", color: "#0000ff" },
-        { name: "Ливень умерен", color: "#0000a0" },
-        { name: "Ливень сильн", color: "#808080" },
+        { name: "Ливень умере", color: "#0000a0" },
+        { name: "Ливень сильн", color: "#800080" },
         { name: "Гроза (R)", color: "#ff0000" },
         { name: "Гроза R)", color: "#a00000" },
         { name: "Гроза R", color: "#ff8080" },
@@ -361,24 +442,25 @@
         { name: "Град сильный", color: "#400000" },
         { name: "Шквал слабый", color: "#808080" },
         { name: "Шквал умерен", color: "#404040" },
-        { name: "Шквал сильный", color: "#000000" }
+        { name: "Шквал сильны", color: "#000000" },
+        { name: "Снег", color: "#e0e0e0" }
       ];
 
-      let html = `<div class="legend-title">Метеоявления</div>`;
+      let html = `<div class="legend-table-header">Метеоявления</div>`;
       items.forEach(item => {
         html += `
-          <div class="legend-item">
-            <div class="color-swatch" style="background:${item.color};"></div>
+          <div class="legend-row">
+            <div class="color-box" style="background:${item.color};"></div>
             <span>${item.name}</span>
           </div>
         `;
       });
-      legendBox.innerHTML = html;
+      container.innerHTML = html;
     }
 
     window.addEventListener('resize', resizeCanvas);
     renderLegend();
-    setTimeout(resizeCanvas, 100);
+    setTimeout(resizeCanvas, 150);
   </script>
 </body>
 </html>

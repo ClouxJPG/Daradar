@@ -97,14 +97,14 @@ html,body{
 
 #rl{
  left:54px;
- top:calc(17px + var(--sat));
+ top:17px;
  width:37px;
  height:33px
 }
 
 #vc{
  left:99px;
- top:calc(17px + var(--sat));
+ top:17px;
  width:38px;
  height:33px;
  font-size:15px;
@@ -112,24 +112,24 @@ html,body{
 }
 
 /* =========================================================
-   ПАНЕЛЬ СЛОЁВ
+   ПАНЕЛЬ СЛОЁВ — УМЕНЬШЕНА
    ========================================================= */
 
 #lp{
  left:0;
  top:calc(84px + var(--sat));
- width:180px;
+ width:145px;
  background:rgba(224,224,224,.82);
- padding:4px 2px 5px;
- line-height:25px;
- font-size:16px
+ padding:3px 2px 4px;
+ line-height:20px;
+ font-size:12px
 }
 
 #lp .wb{
- height:25px;
- line-height:23px;
- padding:0 4px;
- border-radius:4px;
+ height:21px;
+ line-height:19px;
+ padding:0 3px;
+ border-radius:3px;
  margin:0 2px
 }
 
@@ -137,18 +137,23 @@ html,body{
  cursor:pointer;
  display:flex;
  align-items:center;
- height:28px;
- padding-left:4px;
+ height:23px;
+ padding-left:3px;
  white-space:nowrap
 }
 
 #lp .it i{
- font:bold 25px/11px Arial;
+ font:bold 17px/11px Arial;
  font-style:normal;
- width:20px;
- margin-right:5px;
+ width:17px;
+ margin-right:3px;
  display:inline-block;
  text-align:center
+}
+
+#lp .it span{
+ overflow:hidden;
+ text-overflow:ellipsis
 }
 
 #lp .it.off{
@@ -613,7 +618,17 @@ html,body{
  }
 
  #lp{
-  width:165px
+  width:135px
+ }
+
+ #lp .it{
+  height:21px;
+  font-size:11px
+ }
+
+ #lp .it i{
+  font-size:16px;
+  width:16px
  }
 }
 
@@ -647,7 +662,11 @@ html,body{
  }
 
  #lp{
-  width:155px
+  width:130px
+ }
+
+ #lp .it{
+  font-size:10px
  }
 }
 
@@ -1017,10 +1036,6 @@ const TTL={
  H:'Высота верхней границы облачности'
 };
 
-/*
-   ОСТАВЛЕН ТОЛЬКО LIGHTNING (LI)
-*/
-
 const LG={
  li:['Lightning (LI)','#e6e600']
 };
@@ -1035,7 +1050,6 @@ const S={
  vc:0,
  rl:0,
  lg:{},
- rc:0,
  tk:0,
  va:null,
  vb:null
@@ -1702,281 +1716,6 @@ document
 let RD=[];
 let OV={};
 
-/*
-   RC = отдельный слой:
-   РЛС + круги покрытия + кольца + маска
-*/
-
-let RC=null;
-let RG=[];
-let RR=[];
-let RM=null;
-
-/* =========================================================
-   ПОКРЫТИЕ РЛС
-   ========================================================= */
-
-const RADAR_RANGE=250000;
-
-/*
-   Делаем круг приблизительно из географических точек.
-   Это используется только для маски непокрытых областей.
-*/
-
-function circlePoints(lat,lon,radius,count=96){
-
- const pts=[];
- const R=6371000;
-
- const lat1=
-  lat*Math.PI/180;
-
- const lon1=
-  lon*Math.PI/180;
-
- const d=
-  radius/R;
-
- for(let i=0;i<count;i++){
-
-  const br=
-   2*Math.PI*i/count;
-
-  const lat2=
-   Math.asin(
-    Math.sin(lat1)*Math.cos(d)+
-    Math.cos(lat1)*Math.sin(d)*Math.cos(br)
-   );
-
-  const lon2=
-   lon1+
-   Math.atan2(
-    Math.sin(br)*Math.sin(d)*Math.cos(lat1),
-    Math.cos(d)-Math.sin(lat1)*Math.sin(lat2)
-   );
-
-  pts.push([
-   lat2*180/Math.PI,
-   lon2*180/Math.PI
-  ]);
- }
-
- return pts;
-}
-
-/* =========================================================
-   ОЧИСТКА ПОКРЫТИЯ
-   ========================================================= */
-
-function clearCoverage(){
-
- if(RC){
-
-  RC.clearLayers();
-
-  RC.remove();
-
-  RC=null;
- }
-
- RG.forEach(
-  x=>x.remove()
- );
-
- RR.forEach(
-  x=>x.remove()
- );
-
- RG=[];
- RR=[];
-
- if(RM){
-
-  RM.remove();
-
-  RM=null;
- }
-}
-
-/* =========================================================
-   РИСОВАНИЕ РЛС И ПОКРЫТИЯ
-   ========================================================= */
-
-function renderRadarCoverage(){
-
- clearCoverage();
-
- if(!S.rc||!RD.length)
-  return;
-
- RC=
-  L.layerGroup()
-   .addTo(map);
-
- /*
-    Непокрытая территория.
-
-    Внешняя область затемняется очень слабо.
-    Круги покрытия являются "дырками" в маске.
-
-    Это НОМИНАЛЬНОЕ покрытие 250 км,
-    а не реальный terrain beam blockage.
- */
-
- const outer=[
-  [-84,-179.999],
-  [84,-179.999],
-  [84,179.999],
-  [-84,179.999]
- ];
-
- const holes=
-  RD.map(r=>
-   circlePoints(
-    Number(r.lat),
-    Number(r.lon),
-    RADAR_RANGE,
-    72
-   )
-  );
-
- if(holes.length){
-
-  RM=
-   L.polygon(
-    [outer,...holes],
-    {
-     stroke:false,
-     fillColor:'#26384a',
-     fillOpacity:.055,
-     interactive:false,
-     smoothFactor:0
-    }
-   ).addTo(RC);
- }
-
- RD.forEach(r=>{
-
-  const lat=Number(r.lat);
-  const lon=Number(r.lon);
-
-  if(
-   !Number.isFinite(lat)||
-   !Number.isFinite(lon)
-  )
-   return;
-
-  /*
-     Главный круг 250 км
-  */
-
-  const c=
-   L.circle(
-    [lat,lon],
-    {
-     radius:RADAR_RANGE,
-     color:'#2674b8',
-     weight:1.5,
-     opacity:.45,
-     fillColor:'#4c9bd4',
-     fillOpacity:.035,
-     interactive:false
-    }
-   ).addTo(RC);
-
-  RR.push(c);
-
-  /*
-     Кольца 50 / 100 / 150 / 200 км
-  */
-
-  [50000,100000,150000,200000].forEach(dist=>{
-
-   const ring=
-    L.circle(
-     [lat,lon],
-     {
-      radius:dist,
-      color:'#2674b8',
-      weight:1,
-      opacity:.25,
-      dashArray:'5 5',
-      fill:false,
-      interactive:false
-     }
-    ).addTo(RC);
-
-   RR.push(ring);
-  });
-
-  /*
-     Точка РЛС
-  */
-
-  const p=
-   L.circleMarker(
-    [lat,lon],
-    {
-     radius:6,
-     color:'#174f87',
-     weight:2,
-     fillColor:'#ffad24',
-     fillOpacity:1
-    }
-   ).addTo(RC);
-
-  const name=
-   r.name||
-   r.id||
-   'РЛС';
-
-  p.bindPopup(`
-   <div style="
-    font:14px Arial;
-    min-width:170px;
-   ">
-    <b>${name}</b>
-    <hr style="border:0;border-top:1px solid #ccc">
-    <div>
-     Координаты:
-     ${lat.toFixed(3)},
-     ${lon.toFixed(3)}
-    </div>
-    <div>
-     Номинальный радиус:
-     <b>250 км</b>
-    </div>
-    <div style="
-     margin-top:5px;
-     color:#555;
-     font-size:11px;
-    ">
-     Область вне круга —
-     номинально непокрытая зона.
-    </div>
-   </div>
-  `);
-
-  RG.push(p);
-
-  /*
-     Подпись радара появляется на zoom >= 6
-  */
-
-  p.bindTooltip(
-   name,
-   {
-    permanent:map.getZoom()>=6,
-    direction:'right',
-    offset:[8,0],
-    className:'radar-name'
-   }
-  );
-
- });
-
-}
-
 /* =========================================================
    ЗАГРУЗКА РАДАРОВ
    ========================================================= */
@@ -1993,9 +1732,14 @@ async function init(){
 
   msg('');
 
-  renderRadarCoverage();
-
   show();
+
+  if(
+   window.RadarPoints &&
+   typeof window.RadarPoints.setRadars==='function'
+  ){
+   window.RadarPoints.setRadars(RD);
+  }
 
  }catch(e){
 
@@ -2300,10 +2044,13 @@ map.on(
 
   updateCoords();
 
-  if(S.rc)
-   renderRadarCoverage();
- }
-);
+  if(
+   window.RadarPoints &&
+   typeof window.RadarPoints.update==='function'
+  ){
+   window.RadarPoints.update();
+  }
+ });
 
 /* =========================================================
    КООРДИНАТЫ
@@ -2394,10 +2141,6 @@ async function lightning(){
 
  if(!S.api)
   return;
-
- /*
-    Удаляем старый слой LI
- */
 
  if(LL.li){
 
@@ -2499,20 +2242,10 @@ $('li').onclick=e=>{
   return;
  }
 
- if(k=='coverage'){
-
-  S.rc=
-   !S.rc;
-
-  item.classList.toggle(
-   'off',
-   !S.rc
-  );
-
-  renderRadarCoverage();
-
-  return;
- }
+ /*
+    РЛС теперь полностью находятся
+    в отдельном radar-points.js
+ */
 };
 
 /* =========================================================
@@ -3171,10 +2904,13 @@ addEventListener(
   )
    fitSX();
 
-  if(S.rc)
-   renderRadarCoverage();
- }
-);
+  if(
+   window.RadarPoints &&
+   typeof window.RadarPoints.update==='function'
+  ){
+   window.RadarPoints.update();
+  }
+ });
 
 /* =========================================================
    ЗАПУСК
@@ -3185,6 +2921,13 @@ ui();
 init();
 
 </script>
+
+<!-- =========================================================
+     РЛС / ТОЧКИ / ЛУЧИ
+     ВЕСЬ КОД ВЫНEСЕН ИЗ index.html
+     ========================================================= -->
+
+<script src="./radars.js"></script>
 
 </body>
 </html>

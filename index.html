@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover">
 <title>Quantum Meteo — Радиолокационная информация</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+
 <style>
 *{box-sizing:border-box}
 :root{
@@ -17,7 +18,7 @@ html,body{
  margin:0;
  height:100%;
  overflow:hidden;
- font:14px Arial,Helvetica,sans-serif;
+ font:16px Arial,Helvetica,sans-serif;
  color:#000;
  background:#b1b1b1;
  -webkit-user-select:none;
@@ -35,7 +36,7 @@ html,body{
  image-rendering:pixelated
 }
 .leaflet-container{
- font:13px Arial
+ font:15px Arial
 }
 .ov{
  position:absolute;
@@ -44,178 +45,196 @@ html,body{
 .wb{
  background:#f2f2f2;
  border:1px solid #aaa;
- border-radius:4px;
+ border-radius:5px;
  box-shadow:0 1px 3px #0004;
  cursor:pointer;
  padding:0;
- font:13px Arial;
+ font:15px Arial;
  color:#000
 }
 .wb.on{
  background:#9fc3e8;
  border-color:#4a76a8
 }
+
 /* =========================================================
    ЛЕВЫЕ КНОПКИ
    ========================================================= */
+
 #zc{
- left:8px;
- top:calc(8px + var(--sat));
- width:26px;
- height:50px;
+ left:10px;
+ top:calc(10px + var(--sat));
+ width:34px;
+ height:66px;
  background:#6b7da1;
- border-radius:4px;
+ border-radius:5px;
  border:2px solid #ffffff55;
  display:flex;
  flex-direction:column;
  color:#fff;
- font:bold 22px/23px Arial;
+ font:bold 28px/30px Arial;
  text-align:center
 }
 #zc div{
  flex:1;
- cursor:pointer
+ cursor:pointer;
+ display:flex;
+ align-items:center;
+ justify-content:center
 }
 #rl{
- left:44px;
+ left:54px;
  top:calc(17px + var(--sat));
- width:29px;
- height:25px
+ width:37px;
+ height:33px
 }
 #vc{
- left:80px;
+ left:99px;
  top:calc(17px + var(--sat));
- width:23px;
- height:25px;
- font-size:12px;
+ width:38px;
+ height:33px;
+ font-size:15px;
  font-weight:600
 }
+
 /* =========================================================
    ПАНЕЛЬ СЛОЁВ
    ========================================================= */
+
 #lp{
  left:0;
- top:calc(70px + var(--sat));
- width:69px;
+ top:calc(84px + var(--sat));
+ width:92px;
  background:rgba(224,224,224,.82);
- padding:3px 1px 4px;
- line-height:20px;
- font-size:14px
+ padding:4px 2px 5px;
+ line-height:25px;
+ font-size:16px
 }
 #lp .wb{
- height:20px;
- line-height:18px;
- padding:0 3px;
- border-radius:3px;
- margin:0 1px
+ height:25px;
+ line-height:23px;
+ padding:0 4px;
+ border-radius:4px;
+ margin:0 2px
 }
 #lp .it{
  cursor:pointer;
  display:flex;
  align-items:center;
- height:20px;
- padding-left:1px
+ height:25px;
+ padding-left:2px
 }
 #lp .it i{
- font:bold 22px/10px Arial;
+ font:bold 25px/11px Arial;
  font-style:normal;
- width:12px;
- margin-right:2px;
+ width:15px;
+ margin-right:3px;
  display:inline-block
 }
 #lp .it.off{
  opacity:.35
 }
+
 /* =========================================================
    ЛЕГЕНДА
    ========================================================= */
+
 #leg{
  left:var(--sal);
  bottom:var(--sab);
- width:114px;
- max-height:calc(100vh - 8px - var(--sat) - var(--sab));
+ width:145px;
+ max-height:calc(100vh - 10px - var(--sat) - var(--sab));
  overflow:auto;
  background:rgba(200,200,200,.68);
- padding:3px 2px 2px 3px;
- font-size:12px
+ padding:4px 3px 3px 4px;
+ font-size:14px
 }
 #leg div{
- height:17px;
+ height:20px;
  display:flex;
  align-items:center;
  white-space:nowrap
 }
 #leg i{
- width:14px;
- height:14px;
- margin-right:3px;
+ width:17px;
+ height:17px;
+ margin-right:4px;
  border:1px solid #333;
  flex:none
 }
+
 /* =========================================================
    QUANTUM METEO
    ========================================================= */
+
 #logo{
- right:calc(8px + var(--sar));
+ right:calc(9px + var(--sar));
  top:calc(6px + var(--sat));
- width:154px;
- height:58px;
+ width:174px;
+ height:66px;
  display:flex;
  align-items:center;
  justify-content:center;
  pointer-events:none
 }
 #qm-mark{
- width:150px;
- height:54px;
+ width:170px;
+ height:62px;
  display:flex;
  align-items:center;
  justify-content:flex-end
 }
 #qm-svg{
- width:150px;
- height:54px;
+ width:170px;
+ height:62px;
  display:block;
  filter:drop-shadow(0 1px 2px #0003)
 }
+
 /* =========================================================
    ПРАВАЯ КНОПКА
    ========================================================= */
+
 #fs{
- right:calc(7px + var(--sar));
+ right:calc(8px + var(--sar));
  top:calc(9px + var(--sat));
- width:29px;
- height:29px;
+ width:35px;
+ height:35px;
  background:#e8eef8cc
 }
+
 /* =========================================================
    НИЖНЯЯ ПАНЕЛЬ / ТАЙМЛАЙН
    ========================================================= */
+
 #bp{
  right:var(--sar);
  bottom:var(--sab);
- width:min(500px,calc(100vw - var(--sal) - var(--sar)));
+ width:min(570px,calc(100vw - var(--sal) - var(--sar)));
  max-width:calc(100vw - var(--sal) - var(--sar));
  border:1px solid #444;
  background:#e2e2e2;
- font-size:14px;
+ font-size:16px;
  overflow:hidden;
  z-index:1100
 }
 #bp .tt{
- min-height:18px;
- line-height:17px;
+ min-height:22px;
+ line-height:21px;
  background:#dcdcdc;
- padding:0 4px;
+ padding:0 5px;
  white-space:nowrap;
  overflow:hidden;
- font-weight:600
+ font-weight:600;
+ font-size:16px
 }
+
 /* =========================================================
    ИНФОРМАЦИЯ
    ========================================================= */
+
 #meta{
- min-height:34px;
+ min-height:42px;
  background:#c9c9c9;
  border-top:1px solid #aaa;
  border-bottom:1px solid #999;
@@ -224,11 +243,11 @@ html,body{
  justify-content:center;
  align-items:flex-start;
  gap:1px;
- padding:2px 5px;
+ padding:3px 6px;
  overflow:hidden;
  white-space:nowrap;
- font-size:12px;
- line-height:14px
+ font-size:14px;
+ line-height:17px
 }
 #coords{
  white-space:nowrap;
@@ -237,23 +256,23 @@ html,body{
 #dl{
  white-space:nowrap;
  overflow:visible;
- font-size:12px
+ font-size:14px
 }
 #bp .st{
- height:17px;
+ height:23px;
  background:#808080;
  display:flex;
  align-items:center;
- padding-left:2px;
- gap:6px
+ padding-left:3px;
+ gap:7px
 }
 .b{
- height:19px;
- min-width:29px;
+ height:24px;
+ min-width:38px;
  border:1px solid #4a8fa5;
  background:#a9dbea;
- font:14px/14px Arial;
- padding:0 4px;
+ font:16px/18px Arial;
+ padding:0 5px;
  cursor:pointer;
  color:#000
 }
@@ -262,50 +281,52 @@ html,body{
  border-color:#a05050
 }
 .st .b{
- height:16px;
- width:29px
+ height:21px;
+ width:38px
 }
 #bp .dr{
- height:25px;
+ height:31px;
  display:flex;
  align-items:center;
- padding-left:2px;
- gap:3px;
+ padding-left:3px;
+ gap:4px;
  white-space:nowrap;
- font-size:14px;
+ font-size:16px;
  min-width:0;
  overflow:hidden
 }
 #bp .dr .b{
- height:21px;
- width:34px;
+ height:25px;
+ width:40px;
  font-weight:bold;
  margin:0;
- flex:0 0 34px
+ flex:0 0 40px
 }
 #di{
- height:21px;
- width:134px;
- min-width:80px;
+ height:25px;
+ width:145px;
+ min-width:85px;
  border:1px solid #888;
  background:#fff;
- font:14px Arial;
- padding:0 3px;
- margin-left:5px;
- flex:0 1 134px
+ font:15px Arial;
+ padding:0 4px;
+ margin-left:6px;
+ flex:0 1 145px
 }
 #ck{
- width:17px;
- height:17px;
- margin:0 4px 0 0;
- flex:0 0 17px
+ width:20px;
+ height:20px;
+ margin:0 5px 0 0;
+ flex:0 0 20px
 }
+
 /* =========================================================
    ЧАСЫ ТАЙМЛАЙНА
    ========================================================= */
+
 #hrs{
  display:flex;
- height:18px;
+ height:22px;
  border-top:1px solid #555;
  overflow:hidden
 }
@@ -314,10 +335,10 @@ html,body{
  min-width:0;
  text-align:center;
  border-left:1px solid #555;
- line-height:17px;
+ line-height:21px;
  cursor:pointer;
  background:#e2e2e2;
- font-size:10px;
+ font-size:12px;
  overflow:hidden
 }
 #hrs div:first-child{
@@ -327,13 +348,15 @@ html,body{
  background:#cfe4ff;
  font-weight:bold
 }
+
 /* =========================================================
    ГЛАВНЫЙ ТАЙМЛАЙН
    ========================================================= */
+
 #bar{
  display:block;
  width:100%;
- height:20px;
+ height:25px;
  border-top:1px solid #555;
  cursor:grab;
  touch-action:none
@@ -341,9 +364,12 @@ html,body{
 #bar:active{
  cursor:grabbing
 }
+
 /* =========================================================
    ВЕРТИКАЛЬНОЕ СЕЧЕНИЕ
+   ОСТАВЛЕНО БЕЗ ИЗМЕНЕНИЙ
    ========================================================= */
+
 #sx{
  display:none;
  right:calc(37px + var(--sar));
@@ -450,100 +476,123 @@ html,body{
  margin-right:3px;
  flex:none
 }
+
 /* =========================================================
    СООБЩЕНИЯ
    ========================================================= */
+
 #msg{
- left:70px;
- bottom:calc(100px + var(--sab));
- font-size:12px;
+ left:95px;
+ bottom:calc(120px + var(--sab));
+ font-size:14px;
  color:#a00;
  background:#fffd;
- padding:0 4px;
+ padding:2px 5px;
  pointer-events:none;
- max-width:calc(100vw - 80px);
+ max-width:calc(100vw - 105px);
  overflow:hidden;
  text-overflow:ellipsis;
  white-space:nowrap
 }
+
 /* =========================================================
    МОБИЛЬНАЯ АДАПТАЦИЯ
    ========================================================= */
+
 @media(max-width:700px){
+
  #bp{
   width:calc(100vw - var(--sal) - var(--sar));
   max-width:calc(100vw - var(--sal) - var(--sar));
   right:var(--sar);
   bottom:var(--sab)
  }
+
  #meta{
-  font-size:10px;
-  line-height:12px
+  font-size:12px;
+  line-height:15px;
+  min-height:39px
  }
+
  #coords,
  #dl{
-  font-size:10px
- }
- #hrs div,
- #hrs{
-  font-size:9px
- }
- #di{
-  width:86px;
-  min-width:70px;
-  flex-basis:86px
- }
- #bp .dr .b{
-  width:27px;
-  min-width:27px;
-  flex-basis:27px;
   font-size:12px
  }
+
+ #hrs div,
+ #hrs{
+  font-size:10px
+ }
+
+ #di{
+  width:96px;
+  min-width:72px;
+  flex-basis:96px
+ }
+
+ #bp .dr .b{
+  width:32px;
+  min-width:32px;
+  flex-basis:32px;
+  font-size:13px
+ }
+
  #logo{
   transform:scale(.82);
   transform-origin:top right;
   right:3px
  }
+
  #sx{
   top:calc(58px + var(--sat));
   right:3px
  }
+
  #leg{
-  width:114px;
-  font-size:11px
+  width:135px;
+  font-size:12px
  }
+
  #leg div{
+  height:19px
+ }
+
+ #leg i{
+  width:16px;
   height:16px
  }
- #leg i{
-  width:13px;
-  height:13px
- }
 }
+
 @media(max-width:390px){
+
  #bp .dr{
   gap:2px
  }
+
  #bp .dr .b{
-  width:24px;
-  min-width:24px;
-  flex-basis:24px;
+  width:27px;
+  min-width:27px;
+  flex-basis:27px;
   padding:0 2px
  }
+
  #di{
-  width:72px;
-  min-width:64px;
-  flex-basis:72px;
+  width:78px;
+  min-width:65px;
+  flex-basis:78px;
   font-size:12px
  }
+
  #coords,
  #dl{
-  font-size:9px
+  font-size:10px
  }
+
  #logo{
   transform:scale(.7)
  }
 }
+
 @media(max-height:520px){
  #sx{
   top:4px
@@ -551,6 +600,7 @@ html,body{
 }
 </style>
 </head>
+
 <body>
 
 <div id="map"></div>
@@ -561,7 +611,7 @@ html,body{
 </div>
 
 <button class="ov wb" id="rl">
- <svg width="20" height="16" viewBox="0 0 18 14">
+ <svg width="23" height="18" viewBox="0 0 18 14">
   <rect x="1" y="5" width="16" height="6"
    transform="rotate(-30 9 8)"
    fill="#e8e8e8"
@@ -575,7 +625,7 @@ html,body{
 
 <div class="ov" id="lp">
  <button class="wb" id="lb">
-  <svg width="10" height="10" viewBox="0 0 10 10" style="vertical-align:-1px">
+  <svg width="12" height="12" viewBox="0 0 10 10" style="vertical-align:-1px">
    <path d="M1 1h4M1 1v4M1 1l7 7"
     stroke="#000"
     fill="none"/>
@@ -590,17 +640,20 @@ html,body{
 <!-- =========================================================
      QUANTUM METEO
      ========================================================= -->
+
 <div class="ov" id="logo">
  <div id="qm-mark">
   <svg id="qm-svg"
        viewBox="0 0 300 108"
        xmlns="http://www.w3.org/2000/svg"
        aria-label="Quantum Meteo">
+
    <defs>
     <linearGradient id="qmBlue" x1="0" y1="0" x2="1" y2="1">
      <stop offset="0" stop-color="#1d82d0"/>
      <stop offset="1" stop-color="#124d91"/>
     </linearGradient>
+
     <linearGradient id="qmOrange" x1="0" y1="0" x2="1" y2="1">
      <stop offset="0" stop-color="#ffbd43"/>
      <stop offset="1" stop-color="#df7810"/>
@@ -674,12 +727,13 @@ html,body{
          fill="#df8615">
     METEO
    </text>
+
   </svg>
  </div>
 </div>
 
 <button class="ov wb" id="fs">
- <svg width="16" height="16" viewBox="0 0 14 14">
+ <svg width="19" height="19" viewBox="0 0 14 14">
   <path d="M2 12L12 2M6 2h6v6"
    stroke="#4a76a8"
    stroke-width="2"
@@ -692,6 +746,7 @@ html,body{
 <!-- =========================================================
      ТАЙМЛАЙН
      ========================================================= -->
+
 <div class="ov" id="bp">
 
  <div class="tt" id="tt">
@@ -725,12 +780,13 @@ html,body{
 
  <div id="hrs"></div>
 
- <canvas id="bar" height="20"></canvas>
+ <canvas id="bar" height="25"></canvas>
 </div>
 
 <!-- =========================================================
      ВЕРТИКАЛЬНОЕ СЕЧЕНИЕ
      ========================================================= -->
+
 <div class="ov" id="sx">
 
  <div id="sh">
@@ -770,24 +826,16 @@ const $=i=>document.getElementById(i),
 
 const MSK_OFFSET=3*60*60*1000;
 
-/*
-   Показываем только последние 12 часов.
-   12 часов × 6 кадров в час = 72 кадра.
-*/
 const ARCHIVE_HOURS=12;
 const STEP_MS=6e5;
 const ARCHIVE_STEPS=ARCHIVE_HOURS*6;
 
-/*
-   Все timestamps внутри приложения — UTC.
-   МСК используется только для интерфейса.
-*/
 function toMSK(d){
  return new Date(+d+MSK_OFFSET);
 }
 
 function fromMSK(d){
- return new Date(+d-MSК_OFFSET);
+ return new Date(+d-MSK_OFFSET);
 }
 
 /* =========================================================
@@ -961,9 +1009,6 @@ function clampTime(d){
 
  let n=new Date(d);
 
- /*
-    Сначала округляем к 10 минутам.
- */
  n=new Date(
   Math.floor(+n/STEP_MS)*STEP_MS
  );
@@ -971,15 +1016,9 @@ function clampTime(d){
  const mx=latest();
  const mn0=timelineStart();
 
- /*
-    Нельзя выбрать будущее.
- */
  if(+n>+mx)
   n=mx;
 
- /*
-    Нельзя уйти дальше 12 часов назад.
- */
  if(+n<+mn0)
   n=mn0;
 
@@ -997,10 +1036,6 @@ function renderHours(){
  const start=timelineStart();
  const end=latest();
 
- /*
-    Теперь подписи идут каждый час:
-    05 06 07 08 09 10 11...
- */
  const interval=60*60*1000;
 
  const first=
@@ -1034,10 +1069,6 @@ function renderHours(){
   hrs.appendChild(x);
  }
 
- /*
-    Если по какой-либо причине отметок нет —
-    оставляем текущий кадр.
- */
  if(!hrs.children.length){
 
   const d=new Date(S.T);
@@ -1072,9 +1103,6 @@ function ui(){
 
  $('di').value=dstr(d);
 
- /*
-    Календарь ограничен только тем же 12-часовым архивом.
- */
  $('di').min=dstr(timelineStart());
  $('di').max=dstr(latest());
 
@@ -1123,13 +1151,9 @@ function bar(){
   0,
   0,
   w,
-  20
+  25
  );
 
- /*
-    Никакого будущего участка.
-    Вся шкала — только реальные прошлые кадры.
- */
  for(let i=0;i<ARCHIVE_STEPS;i++){
 
   const t=
@@ -1156,7 +1180,7 @@ function bar(){
    x,
    0,
    Math.max(1,x2-x),
-   20
+   25
   );
 
   g.fillStyle='#0d5a0d';
@@ -1165,13 +1189,10 @@ function bar(){
    x,
    0,
    1,
-   20
+   25
   );
  }
 
- /*
-    Отметки теперь каждые 1 час.
- */
  const interval=60*60*1000;
 
  const first=
@@ -1194,13 +1215,10 @@ function bar(){
    Math.round(x),
    0,
    1,
-   20
+   25
   );
  }
 
- /*
-    Выбранный кадр.
- */
  let x=
   ((+S.T-+start)/total)*w;
 
@@ -1218,7 +1236,7 @@ function bar(){
   Math.round(x)-1,
   0,
   3,
-  20
+  25
  );
 
  document.querySelectorAll('#hrs div').forEach(e=>{
@@ -1354,11 +1372,6 @@ $('di').onchange=e=>{
    cur.getUTCMinutes()
   ));
 
- /*
-    Перевод МСК обратно в UTC.
-    Используется латинское K:
-    MSK_OFFSET
- */
  const utc=
   new Date(
    +msk-MSК_OFFSET
@@ -1806,10 +1819,6 @@ map.on('moveend',()=>{
 
  lightning();
 
- /*
-    Координаты центра также обновляются
-    при завершении перемещения карты.
- */
  updateCoords();
 });
 
@@ -1831,9 +1840,6 @@ const dms=v=>{
   ((a-d)*60-m)*60
  );
 
- /*
-    Защита от ситуации 59'60".
- */
  if(s>=60){
 
   s=0;
@@ -1866,12 +1872,6 @@ function updateCoords(){
  $('coords').textContent=
   `Шир: ${dms(c.lat)} ${latNS}  Дол: ${dms(c.lng)} ${lonEW}`;
 }
-
-/*
-   ВАЖНО:
-   Здесь больше НЕТ map.on('mousemove').
-   Координаты не следуют за курсором.
-*/
 
 /* =========================================================
    КНОПКИ
@@ -1957,7 +1957,7 @@ async function lightning(){
         icon:L.divIcon({
          className:'',
          html:
-          `<b style="color:${LG[k][1]};font:bold 16px/10px Arial;position:absolute;left:-5px;top:-5px">+</b>`,
+          `<b style="color:${LG[k][1]};font:bold 18px/11px Arial;position:absolute;left:-5px;top:-5px">+</b>`,
          iconSize:[0,0]
         })
        }
@@ -2195,10 +2195,6 @@ function fitSX(){
 
 map.on('click',e=>{
 
- /* =====================================================
-    ЛИНЕЙКА
-    ===================================================== */
-
  if(S.rl){
 
   rp.push(e.latlng);
@@ -2247,10 +2243,6 @@ map.on('click',e=>{
 
   return;
  }
-
- /* =====================================================
-    ВЕРТИКАЛЬНОЕ СЕЧЕНИЕ
-    ===================================================== */
 
  if(!S.vc)
   return;

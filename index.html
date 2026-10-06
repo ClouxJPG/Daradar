@@ -4,16 +4,20 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover">
 <title>Quantum Meteo — Радиолокационная информация</title>
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+
+<link rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
 
 <style>
 *{box-sizing:border-box}
+
 :root{
  --sat:env(safe-area-inset-top,0px);
  --sar:env(safe-area-inset-right,0px);
  --sab:env(safe-area-inset-bottom,0px);
  --sal:env(safe-area-inset-left,0px)
 }
+
 html,body{
  margin:0;
  height:100%;
@@ -24,24 +28,30 @@ html,body{
  -webkit-user-select:none;
  user-select:none
 }
+
 #map{
  position:absolute;
  inset:0;
  background:#b1b1b1
 }
+
 .leaflet-tile-pane{
  filter:saturate(.3) brightness(.94) contrast(.92)
 }
+
 .leaflet-image-layer{
  image-rendering:pixelated
 }
+
 .leaflet-container{
  font:15px Arial
 }
+
 .ov{
  position:absolute;
  z-index:1000
 }
+
 .wb{
  background:#f2f2f2;
  border:1px solid #aaa;
@@ -52,6 +62,7 @@ html,body{
  font:15px Arial;
  color:#000
 }
+
 .wb.on{
  background:#9fc3e8;
  border-color:#4a76a8
@@ -75,6 +86,7 @@ html,body{
  font:bold 28px/30px Arial;
  text-align:center
 }
+
 #zc div{
  flex:1;
  cursor:pointer;
@@ -82,12 +94,14 @@ html,body{
  align-items:center;
  justify-content:center
 }
+
 #rl{
  left:54px;
  top:calc(17px + var(--sat));
  width:37px;
  height:33px
 }
+
 #vc{
  left:99px;
  top:calc(17px + var(--sat));
@@ -104,12 +118,13 @@ html,body{
 #lp{
  left:0;
  top:calc(84px + var(--sat));
- width:92px;
+ width:180px;
  background:rgba(224,224,224,.82);
  padding:4px 2px 5px;
  line-height:25px;
  font-size:16px
 }
+
 #lp .wb{
  height:25px;
  line-height:23px;
@@ -117,20 +132,25 @@ html,body{
  border-radius:4px;
  margin:0 2px
 }
+
 #lp .it{
  cursor:pointer;
  display:flex;
  align-items:center;
- height:25px;
- padding-left:2px
+ height:28px;
+ padding-left:4px;
+ white-space:nowrap
 }
+
 #lp .it i{
  font:bold 25px/11px Arial;
  font-style:normal;
- width:15px;
- margin-right:3px;
- display:inline-block
+ width:20px;
+ margin-right:5px;
+ display:inline-block;
+ text-align:center
 }
+
 #lp .it.off{
  opacity:.35
 }
@@ -149,12 +169,14 @@ html,body{
  padding:4px 3px 3px 4px;
  font-size:14px
 }
+
 #leg div{
  height:20px;
  display:flex;
  align-items:center;
  white-space:nowrap
 }
+
 #leg i{
  width:17px;
  height:17px;
@@ -177,6 +199,7 @@ html,body{
  justify-content:center;
  pointer-events:none
 }
+
 #qm-mark{
  width:170px;
  height:62px;
@@ -184,6 +207,7 @@ html,body{
  align-items:center;
  justify-content:flex-end
 }
+
 #qm-svg{
  width:170px;
  height:62px;
@@ -218,6 +242,7 @@ html,body{
  overflow:hidden;
  z-index:1100
 }
+
 #bp .tt{
  min-height:22px;
  line-height:21px;
@@ -249,15 +274,18 @@ html,body{
  font-size:14px;
  line-height:17px
 }
+
 #coords{
  white-space:nowrap;
  overflow:visible
 }
+
 #dl{
  white-space:nowrap;
  overflow:visible;
  font-size:14px
 }
+
 #bp .st{
  height:23px;
  background:#808080;
@@ -266,6 +294,7 @@ html,body{
  padding-left:3px;
  gap:7px
 }
+
 .b{
  height:24px;
  min-width:38px;
@@ -276,14 +305,17 @@ html,body{
  cursor:pointer;
  color:#000
 }
+
 .b.red{
  background:#f08080;
  border-color:#a05050
 }
+
 .st .b{
  height:21px;
  width:38px
 }
+
 #bp .dr{
  height:31px;
  display:flex;
@@ -295,6 +327,7 @@ html,body{
  min-width:0;
  overflow:hidden
 }
+
 #bp .dr .b{
  height:25px;
  width:40px;
@@ -302,6 +335,7 @@ html,body{
  margin:0;
  flex:0 0 40px
 }
+
 #di{
  height:25px;
  width:145px;
@@ -313,6 +347,7 @@ html,body{
  margin-left:6px;
  flex:0 1 145px
 }
+
 #ck{
  width:20px;
  height:20px;
@@ -330,6 +365,7 @@ html,body{
  border-top:1px solid #555;
  overflow:hidden
 }
+
 #hrs div{
  flex:1;
  min-width:0;
@@ -341,9 +377,11 @@ html,body{
  font-size:12px;
  overflow:hidden
 }
+
 #hrs div:first-child{
  border-left:0
 }
+
 #hrs div.c{
  background:#cfe4ff;
  font-weight:bold
@@ -361,6 +399,7 @@ html,body{
  cursor:grab;
  touch-action:none
 }
+
 #bar:active{
  cursor:grabbing
 }
@@ -384,6 +423,7 @@ html,body{
  transform-origin:top right;
  z-index:1200
 }
+
 #sh{
  margin:4px 4px 0;
  height:30px;
@@ -396,6 +436,7 @@ html,body{
  cursor:move;
  touch-action:none
 }
+
 #sc{
  position:absolute;
  right:9px;
@@ -410,6 +451,7 @@ html,body{
  cursor:pointer;
  text-shadow:none
 }
+
 #sx .yl{
  position:absolute;
  left:6px;
@@ -417,12 +459,14 @@ html,body{
  line-height:10px;
  font-size:10px
 }
+
 #sst{
  position:absolute;
  left:49px;
  top:45px;
  font:10px "Courier New",monospace
 }
+
 #sx canvas{
  position:absolute;
  left:42px;
@@ -431,6 +475,7 @@ html,body{
  border-left:1px solid #666;
  border-bottom:1px solid #666
 }
+
 #sx .yt{
  position:absolute;
  left:22px;
@@ -439,6 +484,7 @@ html,body{
  font-size:10px;
  line-height:10px
 }
+
 #sx .xl{
  position:absolute;
  left:0;
@@ -446,6 +492,7 @@ html,body{
  bottom:12px;
  text-align:center
 }
+
 #zl{
  position:absolute;
  left:484px;
@@ -456,6 +503,7 @@ html,body{
  font-size:11px;
  padding:0 0 1px 1px
 }
+
 #zl b{
  display:block;
  font-size:12px;
@@ -463,12 +511,14 @@ html,body{
  text-align:center;
  margin-bottom:1px
 }
+
 #zl div{
  height:11px;
  display:flex;
  align-items:center;
  font-size:11px
 }
+
 #zl i{
  width:14px;
  height:10px;
@@ -561,6 +611,10 @@ html,body{
   width:16px;
   height:16px
  }
+
+ #lp{
+  width:165px
+ }
 }
 
 @media(max-width:390px){
@@ -590,6 +644,10 @@ html,body{
 
  #logo{
   transform:scale(.7)
+ }
+
+ #lp{
+  width:155px
  }
 }
 
@@ -623,7 +681,12 @@ html,body{
 
 <button class="ov wb" id="vc">VC</button>
 
+<!-- =========================================================
+     СЛОИ
+     ========================================================= -->
+
 <div class="ov" id="lp">
+
  <button class="wb" id="lb">
   <svg width="12" height="12" viewBox="0 0 10 10" style="vertical-align:-1px">
    <path d="M1 1h4M1 1v4M1 1l7 7"
@@ -632,7 +695,9 @@ html,body{
    <path d="M5 5l4 1-1 3z"/>
   </svg>
  </button>
+
  <div id="li"></div>
+
 </div>
 
 <div class="ov" id="leg"></div>
@@ -642,25 +707,42 @@ html,body{
      ========================================================= -->
 
 <div class="ov" id="logo">
+
  <div id="qm-mark">
+
   <svg id="qm-svg"
        viewBox="0 0 300 108"
        xmlns="http://www.w3.org/2000/svg"
        aria-label="Quantum Meteo">
 
    <defs>
-    <linearGradient id="qmBlue" x1="0" y1="0" x2="1" y2="1">
+
+    <linearGradient id="qmBlue"
+                    x1="0"
+                    y1="0"
+                    x2="1"
+                    y2="1">
+
      <stop offset="0" stop-color="#1d82d0"/>
      <stop offset="1" stop-color="#124d91"/>
+
     </linearGradient>
 
-    <linearGradient id="qmOrange" x1="0" y1="0" x2="1" y2="1">
+    <linearGradient id="qmOrange"
+                    x1="0"
+                    y1="0"
+                    x2="1"
+                    y2="1">
+
      <stop offset="0" stop-color="#ffbd43"/>
      <stop offset="1" stop-color="#df7810"/>
+
     </linearGradient>
+
    </defs>
 
-   <rect x="3" y="3"
+   <rect x="3"
+         y="3"
          width="294"
          height="102"
          rx="18"
@@ -668,7 +750,8 @@ html,body{
          stroke="#174f87"
          stroke-width="3"/>
 
-   <circle cx="53" cy="54"
+   <circle cx="53"
+           cy="54"
            r="34"
            fill="#edf6ff"
            stroke="url(#qmBlue)"
@@ -704,7 +787,8 @@ html,body{
          stroke-width="3"
          stroke-linecap="round"/>
 
-   <circle cx="82" cy="31"
+   <circle cx="82"
+           cy="31"
            r="3.5"
            fill="#ef9c17"/>
 
@@ -729,16 +813,24 @@ html,body{
    </text>
 
   </svg>
+
  </div>
+
 </div>
 
 <button class="ov wb" id="fs">
- <svg width="19" height="19" viewBox="0 0 14 14">
+
+ <svg width="19"
+      height="19"
+      viewBox="0 0 14 14">
+
   <path d="M2 12L12 2M6 2h6v6"
-   stroke="#4a76a8"
-   stroke-width="2"
-   fill="none"/>
+        stroke="#4a76a8"
+        stroke-width="2"
+        fill="none"/>
+
  </svg>
+
 </button>
 
 <div class="ov" id="msg"></div>
@@ -754,33 +846,45 @@ html,body{
  </div>
 
  <div id="meta">
-  <span id="coords">Шир: —  Дол: —</span>
+
+  <span id="coords">
+   Шир: —  Дол: —
+  </span>
+
   <span id="dl"></span>
+
  </div>
 
  <div class="st">
+
   <button class="b red" data-m="S">S</button>
   <button class="b" data-m="R">R</button>
   <button class="b" data-m="H">H</button>
+
  </div>
 
  <div class="dr">
+
   <button class="b" id="n1">&lt;&lt;</button>
   <button class="b" id="n2">&lt;</button>
   <button class="b" id="n3">|&gt;</button>
   <button class="b" id="n4">&gt;</button>
   <button class="b" id="n5">&gt;&gt;</button>
 
-  <input id="di" type="date">
+  <input id="di"
+         type="date">
 
   <input id="ck"
          type="checkbox"
          title="Автообновление">
+
  </div>
 
  <div id="hrs"></div>
 
- <canvas id="bar" height="25"></canvas>
+ <canvas id="bar"
+         height="25"></canvas>
+
 </div>
 
 <!-- =========================================================
@@ -812,11 +916,13 @@ html,body{
  </div>
 
  <div id="zl"></div>
+
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 
 <script>
+
 const $=i=>document.getElementById(i),
       pad=n=>String(n).padStart(2,'0');
 
@@ -865,7 +971,9 @@ const L2=[
 ];
 
 const P=L2.map(l=>
- [1,3,5].map(i=>parseInt(l[1].substr(i,2),16))
+ [1,3,5].map(i=>
+  parseInt(l[1].substr(i,2),16)
+ )
 );
 
 const TOL=48;
@@ -883,14 +991,20 @@ const ZC=[
  '#a405f5','#710100'
 ];
 
-$('leg').innerHTML=L2.map(l=>
- `<div><i style="background:${l[1]}"></i>${l[0]}</div>`
-).join('');
+$('leg').innerHTML=
+ L2.map(l=>
+  `<div>
+   <i style="background:${l[1]}"></i>${l[0]}
+  </div>`
+ ).join('');
 
 $('zl').innerHTML=
  '<b>Z,dbZ</b>'+
  ZT.map((t,i)=>
-  `<div><i style="background:${ZC[i]}"></i>&gt;${t<0?'-'+(-t):t}</div>`
+  `<div>
+   <i style="background:${ZC[i]}"></i>
+   &gt;${t<0?'-'+(-t):t}
+  </div>`
  ).join('');
 
 /* =========================================================
@@ -903,11 +1017,12 @@ const TTL={
  H:'Высота верхней границы облачности'
 };
 
+/*
+   ОСТАВЛЕН ТОЛЬКО LIGHTNING (LI)
+*/
+
 const LG={
- wwlln:['WWLLN','#e6e600'],
- planeta:['Планета','#000'],
- vgi:['ВГИ','#e22'],
- alves:['Алвес','#f80']
+ li:['Lightning (LI)','#e6e600']
 };
 
 const S={
@@ -920,16 +1035,25 @@ const S={
  vc:0,
  rl:0,
  lg:{},
+ rc:0,
  tk:0,
  va:null,
  vb:null
 };
 
-$('li').innerHTML=Object.keys(LG).map(k=>
- `<div class="it off" data-k="${k}">
-  <i style="color:${LG[k][1]}">+</i>${LG[k][0]}
- </div>`
-).join('');
+$('li').innerHTML=`
+
+ <div class="it off" data-k="li">
+  <i style="color:#e6e600">+</i>
+  <span>Lightning (LI)</span>
+ </div>
+
+ <div class="it off" data-k="coverage">
+  <i style="color:#2674b8">◉</i>
+  <span>РЛС и покрытие</span>
+ </div>
+
+`;
 
 /* =========================================================
    КАРТА
@@ -950,12 +1074,20 @@ L.tileLayer(
  }
 ).addTo(map);
 
-const msg=t=>$('msg').textContent=t||'';
+const msg=t=>
+ $('msg').textContent=t||'';
 
 const jf=async p=>{
- const r=await fetch(S.api+p);
- if(!r.ok)throw 0;
- return r.json()
+
+ const r=
+  await fetch(
+   S.api+p
+  );
+
+ if(!r.ok)
+  throw 0;
+
+ return r.json();
 };
 
 const wd=[
@@ -979,6 +1111,7 @@ const stp=d=>
    ========================================================= */
 
 const dstr=d=>{
+
  const m=toMSK(d);
 
  return `${m.getUTCFullYear()}-${pad(m.getUTCMonth()+1)}-${pad(m.getUTCDate())}`;
@@ -990,7 +1123,9 @@ const dstr=d=>{
 
 const latest=()=>
  new Date(
-  Math.floor(Date.now()/STEP_MS)*STEP_MS-STEP_MS
+  Math.floor(
+   Date.now()/STEP_MS
+  )*STEP_MS-STEP_MS
  );
 
 S.T=latest();
@@ -1000,8 +1135,10 @@ S.T=latest();
    ========================================================= */
 
 function timelineStart(){
+
  return new Date(
-  +latest()-(ARCHIVE_STEPS-1)*STEP_MS
+  +latest()-
+  (ARCHIVE_STEPS-1)*STEP_MS
  );
 }
 
@@ -1026,7 +1163,7 @@ function clampTime(d){
 }
 
 /* =========================================================
-   ТАЙМЛАЙН: ПОДПИСИ КАЖДЫЙ ЧАС
+   ТАЙМЛАЙН
    ========================================================= */
 
 function renderHours(){
@@ -1054,7 +1191,8 @@ function renderHours(){
   const d=new Date(t);
   const m=toMSK(d);
 
-  const x=document.createElement('div');
+  const x=
+   document.createElement('div');
 
   x.textContent=
    pad(m.getUTCHours());
@@ -1074,7 +1212,8 @@ function renderHours(){
   const d=new Date(S.T);
   const m=toMSK(d);
 
-  const x=document.createElement('div');
+  const x=
+   document.createElement('div');
 
   x.textContent=
    pad(m.getUTCHours());
@@ -1088,7 +1227,7 @@ function renderHours(){
 }
 
 /* =========================================================
-   ИНФОРМАЦИЯ ПАНЕЛИ
+   ИНФОРМАЦИЯ
    ========================================================= */
 
 function ui(){
@@ -1103,17 +1242,23 @@ function ui(){
 
  $('di').value=dstr(d);
 
- $('di').min=dstr(timelineStart());
- $('di').max=dstr(latest());
+ $('di').min=
+  dstr(timelineStart());
 
- $('tt').textContent=TTL[S.m];
+ $('di').max=
+  dstr(latest());
 
- document.querySelectorAll('.st .b').forEach(b=>
-  b.classList.toggle(
-   'red',
-   b.dataset.m==S.m
-  )
- );
+ $('tt').textContent=
+  TTL[S.m];
+
+ document
+  .querySelectorAll('.st .b')
+  .forEach(b=>
+   b.classList.toggle(
+    'red',
+    b.dataset.m==S.m
+   )
+  );
 
  $('leg').style.display=
   S.m=='S'?'block':'none';
@@ -1126,7 +1271,7 @@ function ui(){
 }
 
 /* =========================================================
-   РИСОВАНИЕ 12-ЧАСОВОГО ТАЙМЛАЙНА
+   ТАЙМЛАЙН
    ========================================================= */
 
 function bar(){
@@ -1154,7 +1299,11 @@ function bar(){
   25
  );
 
- for(let i=0;i<ARCHIVE_STEPS;i++){
+ for(
+  let i=0;
+  i<ARCHIVE_STEPS;
+  i++
+ ){
 
   const t=
    new Date(
@@ -1239,16 +1388,19 @@ function bar(){
   25
  );
 
- document.querySelectorAll('#hrs div').forEach(e=>{
+ document
+  .querySelectorAll('#hrs div')
+  .forEach(e=>{
 
-  const t=Number(e.dataset.t);
+   const t=
+    Number(e.dataset.t);
 
-  e.classList.toggle(
-   'c',
-   Math.abs(t-+S.T)<STEP_MS
-  );
+   e.classList.toggle(
+    'c',
+    Math.abs(t-+S.T)<STEP_MS
+   );
 
- });
+  });
 }
 
 /* =========================================================
@@ -1272,7 +1424,7 @@ const setT=d=>{
 };
 
 /* =========================================================
-   КНОПКИ ПЕРЕМЕЩЕНИЯ
+   КНОПКИ
    ========================================================= */
 
 $('n1').onclick=()=>
@@ -1320,35 +1472,36 @@ $('n3').onclick=()=>{
 
  if(S.play)
 
-  S.tm=setInterval(()=>{
+  S.tm=
+   setInterval(()=>{
 
-   const lim=latest();
+    const lim=latest();
 
-   const n=
-    new Date(
-     +S.T+STEP_MS
-    );
+    const n=
+     new Date(
+      +S.T+STEP_MS
+     );
 
-   if(n>lim){
+    if(n>lim){
 
-    S.play=0;
+     S.play=0;
 
-    $('n3').classList.remove(
-     'on'
-    );
+     $('n3').classList.remove(
+      'on'
+     );
 
-    clearInterval(S.tm);
+     clearInterval(S.tm);
 
-    return;
-   }
+     return;
+    }
 
-   setT(n);
+    setT(n);
 
-  },800);
+   },800);
 };
 
 /* =========================================================
-   КАЛЕНДАРЬ — МСК
+   КАЛЕНДАРЬ
    ========================================================= */
 
 $('di').onchange=e=>{
@@ -1364,34 +1517,38 @@ $('di').onchange=e=>{
  const cur=toMSK(S.T);
 
  const msk=
-  new Date(Date.UTC(
-   y,
-   m-1,
-   d,
-   cur.getUTCHours(),
-   cur.getUTCMinutes()
-  ));
+  new Date(
+   Date.UTC(
+    y,
+    m-1,
+    d,
+    cur.getUTCHours(),
+    cur.getUTCMinutes()
+   )
+  );
 
  const utc=
   new Date(
-   +msk-MSК_OFFSET
+   +msk-MSK_OFFSET
   );
 
  setT(utc);
 };
 
 /* =========================================================
-   КЛИК ПО ЧАСОВЫМ ОТМЕТКАМ
+   ЧАСОВЫЕ ОТМЕТКИ
    ========================================================= */
 
 $('hrs').onclick=e=>{
 
- const el=e.target.closest('div');
+ const el=
+  e.target.closest('div');
 
  if(!el)
   return;
 
- const t=Number(el.dataset.t);
+ const t=
+  Number(el.dataset.t);
 
  if(!Number.isFinite(t))
   return;
@@ -1417,7 +1574,10 @@ function barTime(e){
 
  f=Math.max(
   0,
-  Math.min(1,f)
+  Math.min(
+   1,
+   f
+  )
  );
 
  const start=timelineStart();
@@ -1518,27 +1678,308 @@ setInterval(()=>{
 },60000);
 
 /* =========================================================
-   РЕЖИМЫ
+   РЕЖИМЫ S / R / H
    ========================================================= */
 
-document.querySelectorAll('.st .b').forEach(b=>
+document
+ .querySelectorAll('.st .b')
+ .forEach(b=>
 
- b.onclick=()=>{
+  b.onclick=()=>{
 
-  S.m=b.dataset.m;
+   S.m=b.dataset.m;
 
-  ui();
+   ui();
 
-  show();
- }
-
-);
+   show();
+  }
+ );
 
 /* =========================================================
-   РАДАРЫ И КАДРЫ
+   РАДАРЫ
    ========================================================= */
 
-let RD=[],OV={},RG=[],C={};
+let RD=[];
+let OV={};
+
+/*
+   RC = отдельный слой:
+   РЛС + круги покрытия + кольца + маска
+*/
+
+let RC=null;
+let RG=[];
+let RR=[];
+let RM=null;
+
+/* =========================================================
+   ПОКРЫТИЕ РЛС
+   ========================================================= */
+
+const RADAR_RANGE=250000;
+
+/*
+   Делаем круг приблизительно из географических точек.
+   Это используется только для маски непокрытых областей.
+*/
+
+function circlePoints(lat,lon,radius,count=96){
+
+ const pts=[];
+ const R=6371000;
+
+ const lat1=
+  lat*Math.PI/180;
+
+ const lon1=
+  lon*Math.PI/180;
+
+ const d=
+  radius/R;
+
+ for(let i=0;i<count;i++){
+
+  const br=
+   2*Math.PI*i/count;
+
+  const lat2=
+   Math.asin(
+    Math.sin(lat1)*Math.cos(d)+
+    Math.cos(lat1)*Math.sin(d)*Math.cos(br)
+   );
+
+  const lon2=
+   lon1+
+   Math.atan2(
+    Math.sin(br)*Math.sin(d)*Math.cos(lat1),
+    Math.cos(d)-Math.sin(lat1)*Math.sin(lat2)
+   );
+
+  pts.push([
+   lat2*180/Math.PI,
+   lon2*180/Math.PI
+  ]);
+ }
+
+ return pts;
+}
+
+/* =========================================================
+   ОЧИСТКА ПОКРЫТИЯ
+   ========================================================= */
+
+function clearCoverage(){
+
+ if(RC){
+
+  RC.clearLayers();
+
+  RC.remove();
+
+  RC=null;
+ }
+
+ RG.forEach(
+  x=>x.remove()
+ );
+
+ RR.forEach(
+  x=>x.remove()
+ );
+
+ RG=[];
+ RR=[];
+
+ if(RM){
+
+  RM.remove();
+
+  RM=null;
+ }
+}
+
+/* =========================================================
+   РИСОВАНИЕ РЛС И ПОКРЫТИЯ
+   ========================================================= */
+
+function renderRadarCoverage(){
+
+ clearCoverage();
+
+ if(!S.rc||!RD.length)
+  return;
+
+ RC=
+  L.layerGroup()
+   .addTo(map);
+
+ /*
+    Непокрытая территория.
+
+    Внешняя область затемняется очень слабо.
+    Круги покрытия являются "дырками" в маске.
+
+    Это НОМИНАЛЬНОЕ покрытие 250 км,
+    а не реальный terrain beam blockage.
+ */
+
+ const outer=[
+  [-84,-179.999],
+  [84,-179.999],
+  [84,179.999],
+  [-84,179.999]
+ ];
+
+ const holes=
+  RD.map(r=>
+   circlePoints(
+    Number(r.lat),
+    Number(r.lon),
+    RADAR_RANGE,
+    72
+   )
+  );
+
+ if(holes.length){
+
+  RM=
+   L.polygon(
+    [outer,...holes],
+    {
+     stroke:false,
+     fillColor:'#26384a',
+     fillOpacity:.055,
+     interactive:false,
+     smoothFactor:0
+    }
+   ).addTo(RC);
+ }
+
+ RD.forEach(r=>{
+
+  const lat=Number(r.lat);
+  const lon=Number(r.lon);
+
+  if(
+   !Number.isFinite(lat)||
+   !Number.isFinite(lon)
+  )
+   return;
+
+  /*
+     Главный круг 250 км
+  */
+
+  const c=
+   L.circle(
+    [lat,lon],
+    {
+     radius:RADAR_RANGE,
+     color:'#2674b8',
+     weight:1.5,
+     opacity:.45,
+     fillColor:'#4c9bd4',
+     fillOpacity:.035,
+     interactive:false
+    }
+   ).addTo(RC);
+
+  RR.push(c);
+
+  /*
+     Кольца 50 / 100 / 150 / 200 км
+  */
+
+  [50000,100000,150000,200000].forEach(dist=>{
+
+   const ring=
+    L.circle(
+     [lat,lon],
+     {
+      radius:dist,
+      color:'#2674b8',
+      weight:1,
+      opacity:.25,
+      dashArray:'5 5',
+      fill:false,
+      interactive:false
+     }
+    ).addTo(RC);
+
+   RR.push(ring);
+  });
+
+  /*
+     Точка РЛС
+  */
+
+  const p=
+   L.circleMarker(
+    [lat,lon],
+    {
+     radius:6,
+     color:'#174f87',
+     weight:2,
+     fillColor:'#ffad24',
+     fillOpacity:1
+    }
+   ).addTo(RC);
+
+  const name=
+   r.name||
+   r.id||
+   'РЛС';
+
+  p.bindPopup(`
+   <div style="
+    font:14px Arial;
+    min-width:170px;
+   ">
+    <b>${name}</b>
+    <hr style="border:0;border-top:1px solid #ccc">
+    <div>
+     Координаты:
+     ${lat.toFixed(3)},
+     ${lon.toFixed(3)}
+    </div>
+    <div>
+     Номинальный радиус:
+     <b>250 км</b>
+    </div>
+    <div style="
+     margin-top:5px;
+     color:#555;
+     font-size:11px;
+    ">
+     Область вне круга —
+     номинально непокрытая зона.
+    </div>
+   </div>
+  `);
+
+  RG.push(p);
+
+  /*
+     Подпись радара появляется на zoom >= 6
+  */
+
+  p.bindTooltip(
+   name,
+   {
+    permanent:map.getZoom()>=6,
+    direction:'right',
+    offset:[8,0],
+    className:'radar-name'
+   }
+  );
+
+ });
+
+}
+
+/* =========================================================
+   ЗАГРУЗКА РАДАРОВ
+   ========================================================= */
 
 async function init(){
 
@@ -1547,29 +1988,12 @@ async function init(){
 
  try{
 
-  RD=await jf('/api/radars');
+  RD=
+   await jf('/api/radars');
 
   msg('');
 
-  RG.forEach(
-   x=>x.remove()
-  );
-
-  RG=RD.map(r=>
-
-   L.circleMarker(
-    [r.lat,r.lon],
-    {
-     radius:3,
-     color:'#2a8a2a',
-     weight:1,
-     fillOpacity:0
-    }
-   )
-   .addTo(map)
-   .bindTooltip(r.name)
-
-  );
+  renderRadarCoverage();
 
   show();
 
@@ -1587,33 +2011,41 @@ async function init(){
    ЗАГРУЗКА РАДАРНОГО КАДРА
    ========================================================= */
 
+let C={};
+
 async function frame(r,ts){
 
- const k=r.id+ts;
+ const k=
+  r.id+ts;
 
  if(C[k])
   return C[k];
 
- const im=new Image();
+ const im=
+  new Image();
 
  im.crossOrigin='anonymous';
 
- await new Promise((ok,no)=>{
+ await new Promise(
+  (ok,no)=>{
 
-  im.onload=ok;
+   im.onload=ok;
 
-  im.onerror=no;
+   im.onerror=no;
 
-  im.src=
-   `${S.api}/api/img/${r.id}/${ts}?p=4&m=S`;
- });
+   im.src=
+    `${S.api}/api/img/${r.id}/${ts}?p=4&m=S`;
+  }
+ );
 
- const c=document.createElement('canvas');
+ const c=
+  document.createElement('canvas');
 
  c.width=im.width;
  c.height=im.height;
 
- const g=c.getContext('2d');
+ const g=
+  c.getContext('2d');
 
  g.drawImage(
   im,
@@ -1638,13 +2070,19 @@ async function frame(r,ts){
 
   a[p]=-1;
 
-  if(d[p*4+3]<128)
+  if(
+   d[p*4+3]<128
+  )
    continue;
 
-  let m=1e9,
-      q0=-1;
+  let m=1e9;
+  let q0=-1;
 
-  for(let q=0;q<19;q++){
+  for(
+   let q=0;
+   q<19;
+   q++
+  ){
 
    const e=
     (d[p*4]-P[q][0])**2+
@@ -1654,11 +2092,13 @@ async function frame(r,ts){
    if(e<m){
 
     m=e;
-    q0=q
+    q0=q;
    }
   }
 
-  if(m<=TOL*TOL)
+  if(
+   m<=TOL*TOL
+  )
    a[p]=q0;
  }
 
@@ -1670,17 +2110,19 @@ async function frame(r,ts){
 }
 
 /* =========================================================
-   ПЕРЕКРАСКА РАДАРА
+   ПЕРЕКРАСКА
    ========================================================= */
 
 function url(f){
 
- const c=document.createElement('canvas');
+ const c=
+  document.createElement('canvas');
 
  c.width=f.w;
  c.height=f.h;
 
- const g=c.getContext('2d');
+ const g=
+  c.getContext('2d');
 
  const im=
   g.createImageData(
@@ -1690,7 +2132,11 @@ function url(f){
 
  const d=im.data;
 
- for(let p=0;p<f.a.length;p++){
+ for(
+  let p=0;
+  p<f.a.length;
+  p++
+ ){
 
   const q=f.a[p];
 
@@ -1718,15 +2164,22 @@ function url(f){
 
 async function show(){
 
- if(!RD.length||!S.api)
+ if(
+  !RD.length||
+  !S.api
+ )
   return;
 
- const z=map.getZoom();
- const b=map.getBounds();
+ const z=
+  map.getZoom();
+
+ const b=
+  map.getBounds();
 
  const tk=++S.tk;
 
- const ts=stp(S.T);
+ const ts=
+  stp(S.T);
 
  const bb=r=>[
   [r.bounds[0],r.bounds[1]],
@@ -1736,17 +2189,25 @@ async function show(){
  const vis=
   z>=5?
   RD
-   .filter(r=>b.intersects(bb(r)))
+   .filter(r=>
+    b.intersects(
+     bb(r)
+    )
+   )
    .slice(0,10):
   [];
 
  Object.keys(OV).forEach(id=>{
 
-  if(!vis.find(r=>r.id==id)){
+  if(
+   !vis.find(
+    r=>r.id==id
+   )
+  ){
 
    OV[id].remove();
 
-   delete OV[id]
+   delete OV[id];
   }
  });
 
@@ -1754,57 +2215,69 @@ async function show(){
 
  await Promise.all(
 
-  vis.map(async r=>{
+  vis.map(
+   async r=>{
 
-   try{
+    try{
 
-    const src=
-     S.m=='S'?
-     url(
-      await frame(
-       r,
-       ts
-      )
-     ):
-     `${S.api}/api/img/${r.id}/${ts}?p=4&m=${S.m}`;
+     const src=
+      S.m=='S'?
+      url(
+       await frame(
+        r,
+        ts
+       )
+      ):
+      `${S.api}/api/img/${r.id}/${ts}?p=4&m=${S.m}`;
 
-    if(tk!=S.tk)
-     return;
+     if(
+      tk!=S.tk
+     )
+      return;
 
-    if(OV[r.id])
+     if(
+      OV[r.id]
+     )
 
-     OV[r.id].setUrl(src);
+      OV[r.id]
+       .setUrl(src);
 
-    else
+     else
 
-     OV[r.id]=
-      L.imageOverlay(
-       src,
-       bb(r),
-       {
-        opacity:.92,
-        zIndex:300
-       }
-      ).addTo(map);
+      OV[r.id]=
+       L.imageOverlay(
+        src,
+        bb(r),
+        {
+         opacity:.92,
+         zIndex:300
+        }
+       ).addTo(map);
 
-   }catch(e){
+    }catch(e){
 
-    bad++;
+     bad++;
 
-    if(OV[r.id]){
+     if(
+      OV[r.id]
+     ){
 
-     OV[r.id].remove();
+      OV[r.id].remove();
 
-     delete OV[r.id]
+      delete OV[r.id];
+     }
     }
    }
-  })
+  )
  );
 
- if(tk==S.tk){
+ if(
+  tk==S.tk
+ ){
 
   msg(
-   vis.length&&bad==vis.length?
+   vis.length&&
+   bad==vis.length?
    'нет данных за '+ts+' UTC':
    z<5&&RD.length?
    'приблизьте карту (zoom ≥ 5)':
@@ -1813,17 +2286,27 @@ async function show(){
  }
 }
 
-map.on('moveend',()=>{
+/* =========================================================
+   КАРТА
+   ========================================================= */
 
- show();
+map.on(
+ 'moveend',
+ ()=>{
 
- lightning();
+  show();
 
- updateCoords();
-});
+  lightning();
+
+  updateCoords();
+
+  if(S.rc)
+   renderRadarCoverage();
+ }
+);
 
 /* =========================================================
-   КООРДИНАТЫ ЦЕНТРА КАРТЫ
+   КООРДИНАТЫ
    ========================================================= */
 
 const dms=v=>{
@@ -1832,13 +2315,15 @@ const dms=v=>{
 
  let d=Math.floor(a);
 
- let m=Math.floor(
-  (a-d)*60
- );
+ let m=
+  Math.floor(
+   (a-d)*60
+  );
 
- let s=Math.round(
-  ((a-d)*60-m)*60
- );
+ let s=
+  Math.round(
+   ((a-d)*60-m)*60
+  );
 
  if(s>=60){
 
@@ -1861,7 +2346,8 @@ const dms=v=>{
 
 function updateCoords(){
 
- const c=map.getCenter();
+ const c=
+  map.getCenter();
 
  const latNS=
   c.lat>=0?'N':'S';
@@ -1899,7 +2385,7 @@ $('lb').onclick=()=>{
 };
 
 /* =========================================================
-   МОЛНИИ
+   LIGHTNING (LI)
    ========================================================= */
 
 const LL={};
@@ -1909,45 +2395,48 @@ async function lightning(){
  if(!S.api)
   return;
 
- for(const k in LG){
+ /*
+    Удаляем старый слой LI
+ */
 
-  if(LL[k]){
+ if(LL.li){
 
-   LL[k].remove();
+  LL.li.remove();
 
-   delete LL[k]
-  }
+  delete LL.li;
+ }
 
-  if(!S.lg[k])
-   continue;
+ if(!S.lg.li)
+  return;
 
-  try{
+ try{
 
-   const b=
-    map.getBounds();
+  const b=
+   map.getBounds();
 
-   const t1=
-    new Date(
-     +S.T+STEP_MS
-    ).toISOString();
+  const t1=
+   new Date(
+    +S.T+STEP_MS
+   ).toISOString();
 
-   const t0=
-    new Date(
-     +S.T
-    ).toISOString();
+  const t0=
+   new Date(
+    +S.T
+   ).toISOString();
 
-   const j=
-    await jf(
-     `/api/lightning?src=${k}&from=${t0}&to=${t1}&s=${b.getSouth()}&w=${b.getWest()}&n=${b.getNorth()}&e=${b.getEast()}`
-    );
+  const j=
+   await jf(
+    `/api/lightning?src=li&from=${t0}&to=${t1}&s=${b.getSouth()}&w=${b.getWest()}&n=${b.getNorth()}&e=${b.getEast()}`
+   );
 
-   if(!S.lg[k])
-    continue;
+  if(!S.lg.li)
+   return;
 
-   LL[k]=
-    L.layerGroup(
+  LL.li=
+   L.layerGroup(
 
-     j.slice(0,3000).map(p=>
+    j.slice(0,3000).map(
+     p=>
 
       L.marker(
        p,
@@ -1957,49 +2446,82 @@ async function lightning(){
         icon:L.divIcon({
          className:'',
          html:
-          `<b style="color:${LG[k][1]};font:bold 18px/11px Arial;position:absolute;left:-5px;top:-5px">+</b>`,
+          `<b style="
+             color:#e6e600;
+             font:bold 18px/11px Arial;
+             position:absolute;
+             left:-5px;
+             top:-5px
+           ">+</b>`,
          iconSize:[0,0]
         })
        }
       )
-     )
+    )
 
-    ).addTo(map);
+   ).addTo(map);
 
-  }catch(e){
+ }catch(e){
 
-   msg(
-    'молнии '+LG[k][0]+': нет данных'
-   );
-  }
+  msg(
+   'Lightning (LI): нет данных'
+  );
  }
 }
 
+/* =========================================================
+   ОБРАБОТКА СЛОЁВ
+   ========================================================= */
+
 $('li').onclick=e=>{
 
- const k=
+ const item=
   e.target.closest('.it');
 
- if(!k)
+ if(!item)
   return;
 
- const n=k.dataset.k;
+ const k=
+  item.dataset.k;
 
- S.lg[n]=!S.lg[n];
+ if(k=='li'){
 
- k.classList.toggle(
-  'off',
-  !S.lg[n]
- );
+  S.lg.li=
+   !S.lg.li;
 
- lightning();
+  item.classList.toggle(
+   'off',
+   !S.lg.li
+  );
+
+  lightning();
+
+  return;
+ }
+
+ if(k=='coverage'){
+
+  S.rc=
+   !S.rc;
+
+  item.classList.toggle(
+   'off',
+   !S.rc
+  );
+
+  renderRadarCoverage();
+
+  return;
+ }
 };
 
 /* =========================================================
    ЛИНЕЙКА
    ========================================================= */
 
-let rp=[],rpl=null,rtt=null;
+let rp=[];
+let rpl=null;
+let rtt=null;
 
 $('rl').onclick=()=>{
 
@@ -2020,7 +2542,9 @@ $('rl').onclick=()=>{
   if(rtt)
    rtt.remove();
 
-  rpl=rtt=null;
+  rpl=
+   rtt=
+   null;
 
  }else{
 
@@ -2036,7 +2560,10 @@ $('rl').onclick=()=>{
    ВЕРТИКАЛЬНОЕ СЕЧЕНИЕ
    ========================================================= */
 
-let va,vb,vl,vm=[];
+let va;
+let vb;
+let vl;
+let vm=[];
 
 $('vc').onclick=()=>{
 
@@ -2082,11 +2609,12 @@ function vclear(){
 
  vl=null;
 
- $('sx').style.display='none';
+ $('sx').style.display=
+  'none';
 }
 
 /* =========================================================
-   ОГРАНИЧЕНИЕ ОКНА СЕЧЕНИЯ
+   ОГРАНИЧЕНИЕ ОКНА
    ========================================================= */
 
 function clampSX(){
@@ -2103,16 +2631,23 @@ function clampSX(){
    w.dataset.scale||'1'
   );
 
- const ww=530*scale;
- const hh=310*scale;
+ const ww=
+  530*scale;
+
+ const hh=
+  310*scale;
 
  if(w.style.left){
 
   let left=
-   parseFloat(w.style.left)||0;
+   parseFloat(
+    w.style.left
+   )||0;
 
   let top=
-   parseFloat(w.style.top)||0;
+   parseFloat(
+    w.style.top
+   )||0;
 
   left=Math.max(
    0,
@@ -2181,7 +2716,8 @@ function fitSX(){
    )
   );
 
- w.dataset.scale=scale;
+ w.dataset.scale=
+  scale;
 
  w.style.transform=
   `scale(${scale})`;
@@ -2193,156 +2729,181 @@ function fitSX(){
    КЛИК ПО КАРТЕ
    ========================================================= */
 
-map.on('click',e=>{
+map.on(
+ 'click',
+ e=>{
 
- if(S.rl){
+  if(S.rl){
 
-  rp.push(e.latlng);
+   rp.push(
+    e.latlng
+   );
 
-  if(rpl)
-   rpl.setLatLngs(rp);
+   if(rpl)
 
-  else
+    rpl.setLatLngs(
+     rp
+    );
 
-   rpl=
-    L.polyline(
-     rp,
+   else
+
+    rpl=
+     L.polyline(
+      rp,
+      {
+       color:'#222',
+       weight:2,
+       dashArray:'4 3'
+      }
+     ).addTo(map);
+
+   let d=0;
+
+   for(
+    let i=1;
+    i<rp.length;
+    i++
+   )
+
+    d+=
+     rp[i-1].distanceTo(
+      rp[i]
+     );
+
+   if(rtt)
+    rtt.remove();
+
+   rtt=
+    L.tooltip({
+     permanent:true,
+     direction:'right'
+    })
+    .setLatLng(
+     e.latlng
+    )
+    .setContent(
+     (d/1000).toFixed(1)+
+     ' км'
+    )
+    .addTo(map);
+
+   return;
+  }
+
+  if(!S.vc)
+   return;
+
+  if(
+   S.va&&S.vb
+  ){
+
+   if(vl)
+    vl.remove();
+
+   vm.forEach(
+    m=>m.remove()
+   );
+
+   vm=[];
+
+   vl=null;
+
+   S.va=null;
+   S.vb=null;
+
+   va=null;
+   vb=null;
+
+   $('sx').style.display=
+    'none';
+  }
+
+  if(!S.va){
+
+   S.va=e.latlng;
+
+   vm.push(
+
+    L.marker(
+     e.latlng,
      {
-      color:'#222',
-      weight:2,
-      dashArray:'4 3'
+      interactive:false,
+
+      icon:L.divIcon({
+       className:'',
+       html:
+        '<div style="color:#7a1030;font:bold 12px Arial;margin:-8px 0 0 -4px">▲A</div>',
+       iconSize:[0,0]
+      })
+     }
+    ).addTo(map)
+
+   );
+
+   return;
+  }
+
+  if(!S.vb){
+
+   S.vb=e.latlng;
+
+   vl=
+    L.polyline(
+     [S.va,S.vb],
+     {
+      color:'#7a1030',
+      weight:1.5,
+      interactive:false
      }
     ).addTo(map);
 
-  let d=0;
+   vm.push(
 
-  for(
-   let i=1;
-   i<rp.length;
-   i++
-  )
+    L.circleMarker(
+     S.vb,
+     {
+      radius:4,
+      color:'#c33',
+      weight:2,
+      fillOpacity:0
+     }
+    ).addTo(map)
 
-   d+=
-    rp[i-1].distanceTo(
-     rp[i]
-    );
+   );
 
-  if(rtt)
-   rtt.remove();
+   sect();
+  }
 
-  rtt=
-   L.tooltip({
-    permanent:true,
-    direction:'right'
-   })
-   .setLatLng(e.latlng)
-   .setContent(
-    (d/1000).toFixed(1)+' км'
-   )
-   .addTo(map);
-
-  return;
  }
-
- if(!S.vc)
-  return;
-
- if(S.va&&S.vb){
-
-  if(vl)
-   vl.remove();
-
-  vm.forEach(
-   m=>m.remove()
-  );
-
-  vm=[];
-
-  vl=null;
-
-  S.va=null;
-  S.vb=null;
-
-  va=null;
-  vb=null;
-
-  $('sx').style.display='none';
- }
-
- if(!S.va){
-
-  S.va=e.latlng;
-
-  vm.push(
-
-   L.marker(
-    e.latlng,
-    {
-     interactive:false,
-
-     icon:L.divIcon({
-      className:'',
-      html:
-       '<div style="color:#7a1030;font:bold 12px Arial;margin:-8px 0 0 -4px">▲A</div>',
-      iconSize:[0,0]
-     })
-    }
-   ).addTo(map)
-
-  );
-
-  return;
- }
-
- if(!S.vb){
-
-  S.vb=e.latlng;
-
-  vl=
-   L.polyline(
-    [S.va,S.vb],
-    {
-     color:'#7a1030',
-     weight:1.5,
-     interactive:false
-    }
-   ).addTo(map);
-
-  vm.push(
-
-   L.circleMarker(
-    S.vb,
-    {
-     radius:4,
-     color:'#c33',
-     weight:2,
-     fillOpacity:0
-    }
-   ).addTo(map)
-
-  );
-
-  sect();
- }
-});
+);
 
 /* =========================================================
    ШКАЛА ВЫСОТЫ
    ========================================================= */
 
-for(let k=1;k<=15;k++){
+for(
+ let k=1;
+ k<=15;
+ k++
+){
 
  const d=
-  document.createElement('div');
+  document.createElement(
+   'div'
+  );
 
  d.className='yt';
 
  d.style.top=
-  (55+222*(15-k)/15+2)+'px';
+  (55+
+   222*(15-k)/15+
+   2)+'px';
 
  d.textContent=k;
 
- $('yt').appendChild(d);
+ $('yt').appendChild(
+  d
+ );
 }
 
 /* =========================================================
@@ -2351,15 +2912,18 @@ for(let k=1;k<=15;k++){
 
 async function sect(){
 
- $('sx').style.display='block';
+ $('sx').style.display=
+  'block';
 
  fitSX();
 
  const c=$('sp');
 
- const g=c.getContext('2d');
+ const g=
+  c.getContext('2d');
 
- g.fillStyle='#b8b8b8';
+ g.fillStyle=
+  '#b8b8b8';
 
  g.fillRect(
   0,
@@ -2380,8 +2944,12 @@ async function sect(){
  let r=
   RD.slice().sort(
    (a,b)=>
-    mid.distanceTo([a.lat,a.lon])-
-    mid.distanceTo([b.lat,b.lon])
+    mid.distanceTo(
+     [a.lat,a.lon]
+    )-
+    mid.distanceTo(
+     [b.lat,b.lon]
+    )
   )[0];
 
  try{
@@ -2394,11 +2962,14 @@ async function sect(){
     `/api/section?id=${r.id}&ts=${stp(S.T)}&a=${S.va.lat},${S.va.lng}&b=${S.vb.lat},${S.vb.lng}`
    );
 
-  const n=j.z.length;
+  const n=
+   j.z.length;
 
-  const cw=440/n;
+  const cw=
+   440/n;
 
-  const rh=222/15;
+  const rh=
+   222/15;
 
   $('sst').textContent='';
 
@@ -2421,7 +2992,8 @@ async function sect(){
       )
        q++;
 
-      g.fillStyle=ZC[q];
+      g.fillStyle=
+       ZC[q];
 
       g.fillRect(
        Math.floor(i*cw),
@@ -2470,7 +3042,7 @@ async function sect(){
 }
 
 /* =========================================================
-   КРЕСТИК СЕЧЕНИЯ
+   КРЕСТИК
    ========================================================= */
 
 $('sc').onclick=()=>{
@@ -2478,13 +3050,12 @@ $('sc').onclick=()=>{
 };
 
 /* =========================================================
-   ПЕРЕТАСКИВАНИЕ ОКНА СЕЧЕНИЯ
+   ПЕРЕТАСКИВАНИЕ ОКНА
    ========================================================= */
 
 (()=>{
 
  const h=$('sh');
-
  const w=$('sx');
 
  let o=null;
@@ -2498,7 +3069,8 @@ $('sc').onclick=()=>{
   const r=
    w.getBoundingClientRect();
 
-  w.style.right='auto';
+  w.style.right=
+   'auto';
 
   w.style.left=
    r.left+'px';
@@ -2527,8 +3099,11 @@ $('sc').onclick=()=>{
     w.dataset.scale||'1'
    );
 
-  const ww=530*scale;
-  const hh=310*scale;
+  const ww=
+   530*scale;
+
+  const hh=
+   310*scale;
 
   let left=
    e.clientX-o[0];
@@ -2595,6 +3170,9 @@ addEventListener(
    $('sx').style.display!='none'
   )
    fitSX();
+
+  if(S.rc)
+   renderRadarCoverage();
  }
 );
 
@@ -2605,6 +3183,7 @@ addEventListener(
 ui();
 
 init();
+
 </script>
 
 </body>

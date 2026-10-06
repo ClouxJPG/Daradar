@@ -1,29 +1,30 @@
 /* =========================================================
-   Quantum Meteo — РЛС / зоны обзора
+   Quantum Meteo — Radar Points
+   РЛС + номинальное покрытие + лучи
 
    ОТДЕЛЬНЫЙ ФАЙЛ
-   index.html НЕ ЗАГРУЖАЕТ РАДАРНЫЕ ТОЧКИ В ОСНОВНОЙ КОД
 
-   API:
-   GET /api/radars
+   Не содержит:
+   - radar image renderer
+   - timeline
+   - Lightning
+   - Vertical Section
 
-   Ожидается:
-   [
-     {
-       id: "...",
-       name: "...",
-       lat: 55.75,
-       lon: 37.61
-     }
-   ]
+   Работает через:
+   /api/radars
 
    ВАЖНО:
-   250 км — НОМИНАЛЬНЫЙ радиус обзора.
-   Это НЕ карта реальной радиолокационной видимости.
-   Реальные слепые сектора требуют данных рельефа/блокировки луча.
+   250 км — НОМИНАЛЬНЫЙ радиус.
+   Это не карта реального terrain beam blockage.
+
+   Реальные слепые зоны требуют:
+   - высоты РЛС
+   - параметров луча
+   - рельефа / DEM
+   - азимутальных данных блокировки
    ========================================================= */
 
-(() => {
+(function(){
 
 'use strict';
 
@@ -31,697 +32,646 @@
    НАСТРОЙКИ
    ========================================================= */
 
-const RADAR_API =
-  (window.S && S.api)
-    ? S.api
-    : (localStorage.api || '');
+const RANGE=250000;
 
-const MAX_RANGE_KM = 250;
+const RINGS=[
+ 50000,
+ 100000,
+ 150000,
+ 200000,
+ 250000
+];
 
-/* Показывать ли названия радаров */
-const LABEL_ZOOM = 6;
+const BEAMS=[
+ 0,
+ 45,
+ 90,
+ 135,
+ 180,
+ 225,
+ 270,
+ 315
+];
 
-/* Сколько радиальных лучей */
-const RAY_COUNT = 12;
+/*
+   Главный слой всего покрытия
+ */
+
+let layer=null;
+
+/*
+   Список радаров
+ */
+
+let radars=[];
+
+/*
+   Состояние слоя
+ */
+
+let enabled=false;
+
+/*
+   Кэш точек
+ */
+
+let objects=[];
 
 /* =========================================================
-   СОСТОЯНИЕ
+   ДОСТУП К ГЛОБАЛЬНЫМ ОБЪЕКТАМ
    ========================================================= */
 
-let radarData = [];
+function getMap(){
 
-let radarLayer =
-  L.layerGroup();
-
-let radarVisible = false;
-
-let radarObjects = [];
-
-let radarSelected = null;
-
-/* =========================================================
-   СТИЛИ
-   ========================================================= */
-
-const style = document.createElement('style');
-
-style.textContent = `
-/* ---------------------------------------------------------
-   Компактный пункт РЛС
-   --------------------------------------------------------- */
-
-#qm-radar-toggle{
- height:22px !important;
- line-height:21px !important;
- font-size:13px !important;
- padding-left:2px !important;
- white-space:nowrap;
- overflow:hidden;
+ return typeof map!=='undefined'
+  ? map
+  : null;
 }
 
-#qm-radar-toggle i{
- width:15px !important;
- margin-right:2px !important;
- font-size:15px !important;
- line-height:15px !important;
+function getState(){
+
+ return typeof S!=='undefined'
+  ? S
+  : null;
 }
 
-#qm-radar-toggle.off{
- opacity:.38;
-}
+function getElement(id){
 
-/* ---------------------------------------------------------
-   Подписи радаров
-   --------------------------------------------------------- */
-
-.qm-radar-label{
- background:rgba(255,255,255,.82);
- border:1px solid #777;
- border-radius:3px;
- padding:1px 3px;
- box-shadow:0 1px 2px #0003;
- color:#222;
- font:bold 11px Arial;
- white-space:nowrap;
- pointer-events:none;
-}
-
-/* ---------------------------------------------------------
-   Точка радара
-   --------------------------------------------------------- */
-
-.qm-radar-dot{
- width:10px;
- height:10px;
- border-radius:50%;
- background:#1769aa;
- border:2px solid #fff;
- box-shadow:
-   0 0 0 1px #174f87,
-   0 1px 3px #0006;
-}
-
-/* ---------------------------------------------------------
-   Центральная антенна
-   --------------------------------------------------------- */
-
-.qm-radar-center{
- width:4px;
- height:4px;
- border-radius:50%;
- background:#ff8c18;
- border:1px solid #fff;
- box-shadow:0 0 2px #0008;
-}
-
-/* ---------------------------------------------------------
-   Маленький popup
-   --------------------------------------------------------- */
-
-.qm-radar-popup{
- font:12px Arial;
- line-height:15px;
-}
-
-.qm-radar-popup b{
- font-size:13px;
-}
-`;
-
-document.head.appendChild(style);
-
-/* =========================================================
-   ДОБАВЛЯЕМ ПУНКТ В СУЩЕСТВУЮЩУЮ ПАНЕЛЬ
-   ========================================================= */
-
-function addPanelItem(){
-
- const list =
-  document.getElementById('li');
-
- if(!list)
-  return;
-
- if(document.getElementById('qm-radar-toggle'))
-  return;
-
- const item =
-  document.createElement('div');
-
- item.id =
-  'qm-radar-toggle';
-
- item.className =
-  'it off';
-
- item.innerHTML =
-  `<i style="
-      color:#1769aa;
-      font-style:normal;
-      font-weight:bold;
-    ">◉</i>РЛС`;
-
- list.appendChild(item);
-
- item.onclick = () => {
-
-  radarVisible =
-   !radarVisible;
-
-  item.classList.toggle(
-   'off',
-   !radarVisible
-  );
-
-  if(radarVisible){
-
-   radarLayer.addTo(map);
-
-   renderRadars();
-
-  }else{
-
-   radarLayer.remove();
-
-   radarSelected = null;
-  }
- };
+ return document.getElementById(id);
 }
 
 /* =========================================================
-   ЗАГРУЗКА РАДАРОВ
-   ========================================================= */
-
-async function loadRadars(){
-
- if(!RADAR_API)
-  return;
-
- try{
-
-  const r =
-   await fetch(
-    `${RADAR_API}/api/radars`
-   );
-
-  if(!r.ok)
-   throw new Error('radars');
-
-  const j =
-   await r.json();
-
-  if(!Array.isArray(j))
-   throw new Error('bad data');
-
-  radarData =
-   j.filter(r =>
-    Number.isFinite(
-     Number(r.lat)
-    ) &&
-    Number.isFinite(
-     Number(r.lon)
-    )
-   );
-
-  if(radarVisible)
-   renderRadars();
-
- }catch(e){
-
-  console.warn(
-   'Quantum Meteo: не удалось загрузить РЛС',
-   e
-  );
- }
-}
-
-/* =========================================================
-   РАСЧЁТ ТОЧЕК ЛУЧЕЙ
+   ГЕОГРАФИЯ
    ========================================================= */
 
 function destination(
  lat,
  lon,
- bearing,
- distanceKm
+ distance,
+ bearing
 ){
 
- const R = 6371;
+ const R=6371000;
 
- const d =
-  distanceKm / R;
+ const br=
+  bearing*Math.PI/180;
 
- const br =
-  bearing * Math.PI / 180;
+ const lat1=
+  lat*Math.PI/180;
 
- const p1 =
-  lat * Math.PI / 180;
+ const lon1=
+  lon*Math.PI/180;
 
- const l1 =
-  lon * Math.PI / 180;
+ const d=
+  distance/R;
 
- const p2 =
+ const lat2=
   Math.asin(
-   Math.sin(p1) *
-   Math.cos(d) +
-   Math.cos(p1) *
-   Math.sin(d) *
-   Math.cos(br)
+   Math.sin(lat1)*Math.cos(d)+
+   Math.cos(lat1)*Math.sin(d)*Math.cos(br)
   );
 
- const l2 =
-  l1 +
+ const lon2=
+  lon1+
   Math.atan2(
-   Math.sin(br) *
-   Math.sin(d) *
-   Math.cos(p1),
-   Math.cos(d) -
-   Math.sin(p1) *
-   Math.sin(p2)
+   Math.sin(br)*Math.sin(d)*Math.cos(lat1),
+   Math.cos(d)-
+   Math.sin(lat1)*Math.sin(lat2)
   );
 
  return [
-  p2 * 180 / Math.PI,
-  l2 * 180 / Math.PI
+  lat2*180/Math.PI,
+  lon2*180/Math.PI
  ];
 }
 
 /* =========================================================
-   СОЗДАНИЕ ЛУЧЕЙ
+   ЛУЧ
    ========================================================= */
 
-function makeRays(r){
+function beamPoints(
+ lat,
+ lon,
+ bearing
+){
 
- const group =
-  L.layerGroup();
+ const pts=[
+  [lat,lon]
+ ];
+
+ /*
+    Луч состоит из нескольких точек,
+    поэтому на карте он выглядит естественно.
+ */
 
  for(
-  let i=0;
-  i<RAY_COUNT;
-  i++
+  let d=25000;
+  d<=RANGE;
+  d+=25000
  ){
 
-  const angle =
-   i *
-   (360 / RAY_COUNT);
-
-  const p =
+  pts.push(
    destination(
-    Number(r.lat),
-    Number(r.lon),
-    angle,
-    MAX_RANGE_KM
-   );
-
-  L.polyline(
-   [
-    [
-     Number(r.lat),
-     Number(r.lon)
-    ],
-    p
-   ],
-   {
-    color:'#1769aa',
-    weight:1,
-    opacity:.16,
-    dashArray:'3 6',
-    interactive:false
-   }
-  ).addTo(group);
+    lat,
+    lon,
+    d,
+    bearing
+   )
+  );
  }
 
- return group;
+ return pts;
 }
 
 /* =========================================================
-   КОЛЬЦА ДАЛЬНОСТИ
+   ОЧИСТКА
    ========================================================= */
 
-function makeCoverage(r){
+function clear(){
 
- const group =
-  L.layerGroup();
+ if(layer){
 
- const ranges =
-  [
-   50,
-   100,
-   150,
-   200,
-   250
-  ];
+  layer.clearLayers();
+  layer.remove();
 
- ranges.forEach(km => {
+  layer=null;
+ }
 
-  L.circle(
-   [
-    Number(r.lat),
-    Number(r.lon)
-   ],
-   {
-    radius:
-     km * 1000,
-
-    color:'#1769aa',
-
-    weight:
-     km === MAX_RANGE_KM
-      ? 1.5
-      : 1,
-
-    opacity:
-     km === MAX_RANGE_KM
-      ? .30
-      : .13,
-
-    fill:false,
-
-    dashArray:
-     km === MAX_RANGE_KM
-      ? '5 5'
-      : '2 6',
-
-    interactive:false
-   }
-  ).addTo(group);
-
- });
-
- return group;
+ objects=[];
 }
 
 /* =========================================================
-   ЦЕНТРАЛЬНАЯ ТОЧКА
+   НАЗВАНИЕ РЛС
    ========================================================= */
 
-function makeMarker(r){
+function radarName(r){
 
- const marker =
-  L.marker(
-   [
-    Number(r.lat),
-    Number(r.lon)
-   ],
-   {
-    icon:
-     L.divIcon({
-      className:'',
-      html:
-       `<div class="qm-radar-dot"></div>`,
-      iconSize:[10,10],
-      iconAnchor:[5,5]
-     }),
-
-    zIndexOffset:500
-   }
-  );
-
- marker.bindPopup(
-  `<div class="qm-radar-popup">
-    <b>${escapeHtml(
-      r.name || 'Радиолокатор'
-    )}</b><br>
-    Радиус: ${MAX_RANGE_KM} км<br>
-    Координаты:
-    ${Number(r.lat).toFixed(3)},
-    ${Number(r.lon).toFixed(3)}
-   </div>`
- );
-
- marker.on(
-  'click',
-  () => {
-
-   radarSelected =
-    r.id;
-
-   highlightRadar(r.id);
-  }
- );
-
- return marker;
-}
-
-/* =========================================================
-   ЭКРАНИРОВАНИЕ HTML
-   ========================================================= */
-
-function escapeHtml(v){
-
- return String(v)
-  .replaceAll('&','&amp;')
-  .replaceAll('<','&lt;')
-  .replaceAll('>','&gt;')
-  .replaceAll('"','&quot;')
-  .replaceAll("'","&#039;");
-}
-
-/* =========================================================
-   ПОДПИСЬ РАДАРА
-   ========================================================= */
-
-function makeLabel(r){
-
- return L.marker(
-  [
-   Number(r.lat),
-   Number(r.lon)
-  ],
-  {
-   icon:
-    L.divIcon({
-     className:
-      'qm-radar-label',
-     html:
-      escapeHtml(
-       r.name ||
-       'РЛС'
-      ),
-     iconSize:null,
-     iconAnchor:[
-      -8,
-      7
-     ]
-    }),
-
-   interactive:false
-  }
+ return (
+  r.name||
+  r.title||
+  r.station||
+  r.id||
+  'РЛС'
  );
 }
 
 /* =========================================================
-   ОТРИСОВКА ВСЕХ РАДАРОВ
+   ПОКАЗ ПОДПИСИ
    ========================================================= */
 
-function renderRadars(){
+function updateLabels(){
 
- if(!radarVisible)
+ const m=getMap();
+
+ if(!m)
   return;
 
- radarObjects.forEach(
-  x=>x.remove()
- );
+ const z=m.getZoom();
 
- radarObjects=[];
+ objects.forEach(o=>{
 
- radarData.forEach(r => {
+  if(
+   !o.marker||
+   !o.marker.getTooltip()
+  )
+   return;
 
-  const coverage =
-   makeCoverage(r);
+  if(z>=6){
 
-  const rays =
-   makeRays(r);
+   if(
+    !o.marker.isTooltipOpen()
+   )
+    o.marker.openTooltip();
 
-  const marker =
-   makeMarker(r);
+  }else{
 
-  radarLayer.addLayer(
-   coverage
-  );
-
-  radarLayer.addLayer(
-   rays
-  );
-
-  radarLayer.addLayer(
-   marker
-  );
-
-  radarObjects.push(
-   coverage,
-   rays,
-   marker
-  );
-
-  if(map.getZoom()>=LABEL_ZOOM){
-
-   const label =
-    makeLabel(r);
-
-   radarLayer.addLayer(
-    label
-   );
-
-   radarObjects.push(
-    label
-   );
+   if(
+    o.marker.isTooltipOpen()
+   )
+    o.marker.closeTooltip();
   }
 
  });
-
- updateRadarAppearance();
 }
 
 /* =========================================================
-   ВЫДЕЛЕНИЕ РАДАРА
+   РИСОВАНИЕ
    ========================================================= */
 
-function highlightRadar(id){
+function render(){
 
- radarData.forEach(r => {
+ clear();
 
-  const selected =
-   r.id == id;
+ if(!enabled)
+  return;
 
-  /*
-   Здесь намеренно не меняем
-   основную карту.
-   Выбранный радар просто
-   получает более заметную
-   границу.
-   */
+ const m=getMap();
 
-  radarObjects.forEach(obj => {
+ if(!m||!radars.length)
+  return;
 
-   if(
-    obj instanceof L.Circle
-   ){
+ layer=
+  L.layerGroup()
+   .addTo(m);
 
-    if(
-     obj.getLatLng &&
-     obj.getLatLng().lat ===
-      Number(r.lat) &&
-     obj.getLatLng().lng ===
-      Number(r.lon)
-    ){
+ radars.forEach(r=>{
 
-     obj.setStyle({
-      opacity:
-       selected ? .55 : .13,
+  const lat=
+   Number(r.lat);
 
-      weight:
-       selected ? 2 : 1
-     });
+  const lon=
+   Number(
+    r.lon!=null?
+    r.lon:
+    r.lng
+   );
+
+  if(
+   !Number.isFinite(lat)||
+   !Number.isFinite(lon)
+  )
+   return;
+
+  const name=
+   radarName(r);
+
+  /* =====================================================
+     250 КМ — ОСНОВНАЯ ОБЛАСТЬ
+     ===================================================== */
+
+  const main=
+   L.circle(
+    [lat,lon],
+    {
+     radius:RANGE,
+
+     color:'#2674b8',
+
+     weight:1.2,
+
+     opacity:.38,
+
+     fillColor:'#4c9bd4',
+
+     fillOpacity:.025,
+
+     interactive:false
     }
-   }
+   ).addTo(layer);
+
+  /* =====================================================
+     КОЛЬЦА
+     ===================================================== */
+
+  RINGS.forEach(dist=>{
+
+   if(dist===RANGE)
+    return;
+
+   L.circle(
+    [lat,lon],
+    {
+     radius:dist,
+
+     color:'#2674b8',
+
+     weight:1,
+
+     opacity:.18,
+
+     dashArray:'4 5',
+
+     fill:false,
+
+     interactive:false
+    }
+   ).addTo(layer);
 
   });
 
+  /* =====================================================
+     ЛУЧИ
+     ===================================================== */
+
+  BEAMS.forEach(angle=>{
+
+   const line=
+    L.polyline(
+     beamPoints(
+      lat,
+      lon,
+      angle
+     ),
+     {
+      color:'#2674b8',
+
+      weight:1,
+
+      opacity:.20,
+
+      dashArray:'3 6',
+
+      interactive:false,
+
+      smoothFactor:1
+     }
+    ).addTo(layer);
+
+  });
+
+  /* =====================================================
+     ЦЕНТР РЛС
+     ===================================================== */
+
+  const marker=
+   L.circleMarker(
+    [lat,lon],
+    {
+     radius:5,
+
+     color:'#174f87',
+
+     weight:1.5,
+
+     fillColor:'#ffad24',
+
+     fillOpacity:1,
+
+     bubblingMouseEvents:false
+    }
+   ).addTo(layer);
+
+  /* =====================================================
+     POPUP
+     ===================================================== */
+
+  marker.bindPopup(`
+   <div style="
+    font:12px Arial;
+    min-width:155px;
+   ">
+
+    <b>${escapeHtml(name)}</b>
+
+    <div style="
+     margin-top:4px;
+     color:#555;
+    ">
+     ${lat.toFixed(3)},
+     ${lon.toFixed(3)}
+    </div>
+
+    <div style="
+     margin-top:4px;
+    ">
+     Номинальный радиус:
+     <b>250 км</b>
+    </div>
+
+    <div style="
+     margin-top:5px;
+     color:#777;
+     font-size:10px;
+     line-height:12px;
+    ">
+     Круг и лучи показывают
+     номинальную область обзора.
+    </div>
+
+   </div>
+  `);
+
+  /* =====================================================
+     TOOLTIP
+     ===================================================== */
+
+  marker.bindTooltip(
+   escapeHtml(name),
+   {
+    permanent:false,
+
+    direction:'right',
+
+    offset:[7,0],
+
+    className:'qm-radar-label'
+   }
+  );
+
+  objects.push({
+   marker,
+   main
+  });
+
  });
+
+ updateLabels();
 }
 
 /* =========================================================
-   АДАПТАЦИЯ ПРИ ZOOM
+   HTML-БЕЗОПАСНОСТЬ
    ========================================================= */
 
-function updateRadarAppearance(){
+function escapeHtml(value){
 
- if(!radarVisible)
+ return String(value)
+  .replace(/&/g,'&amp;')
+  .replace(/</g,'&lt;')
+  .replace(/>/g,'&gt;')
+  .replace(/"/g,'&quot;')
+  .replace(/'/g,'&#039;');
+}
+
+/* =========================================================
+   ЗАГРУЗКА РЛС
+   ========================================================= */
+
+async function load(){
+
+ const state=getState();
+
+ if(!state||!state.api)
   return;
 
- const z =
-  map.getZoom();
+ try{
 
- radarObjects.forEach(
-  obj => {
+  const response=
+   await fetch(
+    state.api+'/api/radars'
+   );
 
-   if(
-    obj.getElement &&
-    obj.getElement()
-   ){
+  if(!response.ok)
+   throw new Error('radars');
 
-    const el =
-     obj.getElement();
+  const data=
+   await response.json();
 
-    if(
-     el.classList &&
-     el.classList.contains(
-      'qm-radar-label'
-     )
-    ){
+  if(!Array.isArray(data))
+   throw new Error('bad data');
 
-     el.style.display =
-      z >= LABEL_ZOOM
-       ? ''
-       : 'none';
-    }
-   }
+  radars=data;
 
+  /*
+     Если слой уже включен —
+     сразу обновляем.
+   */
+
+  if(enabled)
+   render();
+
+ }catch(e){
+
+  /*
+     Ошибка специально не выводится
+     поверх карты.
+   */
+
+ }
+}
+
+/* =========================================================
+   ПЕРЕКЛЮЧАТЕЛЬ
+   ========================================================= */
+
+function toggle(){
+
+ enabled=!enabled;
+
+ const item=
+  getElement('li')
+   ?.querySelector(
+    '[data-k="coverage"]'
+   );
+
+ if(item){
+
+  item.classList.toggle(
+   'off',
+   !enabled
+  );
+ }
+
+ if(enabled){
+
+  if(!radars.length)
+   load();
+
+  render();
+
+ }else{
+
+  clear();
+ }
+}
+
+/* =========================================================
+   КЛИК ПО ПУНКТУ
+   ========================================================= */
+
+function bind(){
+
+ const list=
+  getElement('li');
+
+ if(!list)
+  return;
+
+ list.addEventListener(
+  'click',
+  e=>{
+
+   const item=
+    e.target.closest(
+     '[data-k="coverage"]'
+    );
+
+   if(!item)
+    return;
+
+   e.stopPropagation();
+
+   toggle();
   }
  );
 }
 
 /* =========================================================
-   MAP EVENTS
+   ОБНОВЛЕНИЕ
    ========================================================= */
 
-if(typeof map !== 'undefined'){
+function update(){
 
- map.on(
-  'zoomend',
-  () => {
+ if(!enabled)
+  return;
 
-   if(
-    radarVisible
-   )
-    renderRadars();
+ /*
+    При движении карты сами РЛС
+    никуда не исчезают.
 
-  }
- );
+    Здесь обновляем только подписи.
+ */
 
- map.on(
-  'moveend',
-  () => {
-
-   if(
-    radarVisible
-   )
-    updateRadarAppearance();
-
-  }
- );
+ updateLabels();
 }
 
 /* =========================================================
    ИНИЦИАЛИЗАЦИЯ
    ========================================================= */
 
-function initQuantumRadars(){
+function start(){
 
- addPanelItem();
+ bind();
 
- loadRadars();
+ load();
 }
 
-/*
-   Ждём создания карты и #li.
-*/
+/* =========================================================
+   PUBLIC API
+   ========================================================= */
+
+window.RadarPoints={
+
+ setRadars(data){
+
+  if(Array.isArray(data))
+   radars=data;
+
+  if(enabled)
+   render();
+ },
+
+ update,
+
+ toggle,
+
+ render,
+
+ clear,
+
+ get enabled(){
+
+  return enabled;
+ }
+
+};
+
+/* =========================================================
+   СТАРТ
+   ========================================================= */
 
 if(
- document.readyState ===
- 'loading'
+ document.readyState==='loading'
 ){
 
  document.addEventListener(
   'DOMContentLoaded',
-  initQuantumRadars
+  start,
+  {once:true}
  );
 
 }else{
 
- initQuantumRadars();
-
+ start();
 }
 
 })();

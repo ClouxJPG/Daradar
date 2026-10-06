@@ -1,52 +1,19 @@
 /* =========================================================
-   Quantum Meteo — RADARS.JS
+   QUANTUM METEO — RADARS.JS
    =========================================================
 
-   РЛС ДМРЛ-С
-   Реальные позиции + радиолокационное покрытие
-   + расчётные blind zones по рельефу
+   ДМРЛ-С:
+   - рабочие позиции из официального перечня
+   - 250 км радиолокационного покрытия
+   - 125 км Doppler-зоны
+   - тёмное отображение покрытия
+   - реальные расчётные blind sectors
+   - Terrain / Terrarium DEM
+   - перерасчёт при zoom
+   - исправленная привязка к #lp
+   - без radars.json
+   - без изменения index.html
 
-   ФАЙЛ:
-   radars.js
-
-   index.html менять НЕ НУЖНО.
-
-   =========================================================
-
-   ЧТО ДЕЛАЕТ:
-
-   1. Показывает реальные позиции ДМРЛ-С
-   2. Показывает 250 км номинального радиуса
-   3. Показывает 125 км рабочей зоны Doppler velocity
-   4. Не растягивает геометрию при zoom
-   5. Перерисовывает покрытие при изменении масштаба
-   6. Загружает terrain DEM только при необходимости
-   7. Рассчитывает экранирование рельефом
-   8. Формирует реальные расчётные blind sectors
-   9. Кэширует terrain
-   10. Не делает запросы к /api/radars
-   11. Не требует radars.json
-   12. Не трогает вертикальное сечение
-
-   =========================================================
-
-   ВАЖНО:
-
-   Blind zone здесь рассчитывается физически по:
-   - высоте рельефа
-   - расстоянию
-   - кривизне Земли
-   - эффективной высоте луча
-   - углу места нижнего луча
-
-   Это НЕ официальный proprietary beam-blockage
-   Росгидромета.
-
-   ========================================================= */
-
-
-/* =========================================================
-   IIFE
    ========================================================= */
 
 (function(){
@@ -60,465 +27,404 @@
 
 const CONFIG = {
 
- /*
-   Максимальный радиус отражаемости ДМРЛ-С.
- */
- reflectivityRange: 250000,
+    /* Радиус обзора ДМРЛ-С */
+    reflectivityRange: 250000,
 
- /*
-   Практическая дальность Doppler velocity.
- */
- velocityRange: 125000,
+    /* Практическая дальность Doppler */
+    velocityRange: 125000,
 
- /*
-   Высота антенного центра над землёй.
-   Для геометрической модели используем
-   консервативное значение.
+    /*
+       Геометрическая высота центра антенны.
+       Это модельное значение.
+    */
+    antennaHeight: 40,
 
-   Реальная высота конкретной позиции
-   может отличаться.
- */
- antennaHeight: 40,
+    /*
+       Стандартная эффективная кривизна Земли.
+    */
+    kFactor: 4 / 3,
 
- /*
-   Эффективный коэффициент рефракции.
-   4/3 Earth model — стандартная приближённая
-   модель для радиолокационного горизонта.
- */
- kFactor: 4 / 3,
+    /*
+       Нижний рабочий угол.
+    */
+    beamElevationDeg: 0.5,
 
- /*
-   Угол нижнего луча.
-   Для расчётной карты используем малый
-   положительный угол.
+    /*
+       Официальная ширина диаграммы ДМРЛ-С
+       около 1 градуса.
+    */
+    beamWidthDeg: 1.0,
 
-   Это модель, а не служебная конфигурация
-   конкретного ДМРЛ-С.
- */
- beamElevationDeg: 0.5,
+    /*
+       Низкий zoom:
+       меньше вычислений.
+    */
+    coarseAzimuths: 24,
 
- /*
-   Сколько направлений рассчитывать.
+    /*
+       Высокий zoom:
+       детализация blind sectors.
+    */
+    fineAzimuths: 72,
 
-   72 = каждые 5 градусов.
-   Для iPhone это значительно быстрее,
-   чем 360 независимых лучей.
- */
- azimuthCount: 72,
+    /*
+       DEM zoom.
+    */
+    terrainZoom: 9,
 
- /*
-   Шаг дальности.
+    /*
+       На низком zoom шаг крупнее.
+    */
+    coarseRangeStep: 10000,
 
-   5 км достаточно для визуального
-   отображения крупных экранированных
-   секторов.
- */
- rangeStep: 5000,
+    /*
+       На высоком zoom точнее.
+    */
+    fineRangeStep: 5000,
 
- /*
-   После какого zoom добавляем детализацию.
- */
- detailZoom: 6,
+    /*
+       Blind sector не рисуем,
+       если он меньше этого расстояния.
+    */
+    minimumBlindDistance: 15000,
 
- /*
-   DEM tile zoom.
+    /*
+       Цвета.
+    */
+    colors: {
 
-   7 = достаточно быстро.
- */
- terrainZoom: 7,
+        coverage: "#111b2b",
+        coverageBorder: "#07101d",
 
- /*
-   Минимальный размер blind sector.
- */
- minimumBlindDistance: 15000,
+        velocity: "#173b5e",
+        velocityBorder: "#0a2945",
 
- /*
-   Максимальный процент экранирования,
-   после которого направление считается
-   практически слепым.
- */
- blockageThreshold: 0.55,
+        radar: "#ffb52e",
+        radarBorder: "#111111",
 
- /*
-   Показывать номинальный круг.
- */
- showNominal: true,
+        blind: "#070b12",
+        blindBorder: "#020408",
 
- /*
-   Показывать кольца.
- */
- showRings: true,
+        ray: "#263a55"
 
- /*
-   Показывать подписи.
- */
- showLabels: true
+    },
+
+    /*
+       Прозрачности.
+    */
+    opacity: {
+
+        coverage: 0.10,
+        velocity: 0.14,
+        blind: 0.58,
+        ray: 0.15
+    },
+
+    /*
+       Максимум blind sectors одновременно.
+       Защита iPhone от лишней нагрузки.
+    */
+    maxBlindRadars: 12
 
 };
 
 
 /* =========================================================
-   ГЕОМЕТРИЯ
+   EARTH
    ========================================================= */
 
 const EARTH_RADIUS = 6371000;
 
 
 /* =========================================================
-   РЕАЛЬНЫЕ/ПОДТВЕРЖДЁННЫЕ ПОЗИЦИИ
+   РАБОЧИЕ ДМРЛ-С
    =========================================================
 
-   Координаты привязаны к реальным радиолокационным
-   позициям/узлам сети, а не к случайной точке города.
+   Основа списка:
+   официальный перечень ДМРЛ-С Росгидромета.
 
-   ВАЖНО:
-
-   Список ниже не следует трактовать как live-status
-   на текущую минуту.
-
-   Росгидромет публиковал сведения о действующей сети
-   в разные годы; состав сети меняется.
+   Владимир и Орёл НЕ включены,
+   поскольку в указанном перечне их
+   метеорологическая адаптация ещё
+   не была завершена.
 
    ========================================================= */
 
 const RADARS = [
 
- {
-  id:"dmrl-arkhangelsk",
-  name:"Архангельск",
-  lat:64.54,
-  lon:40.54
- },
+    {
+        id: "arkhangelsk",
+        name: "Архангельск",
+        lat: 64.54,
+        lon: 40.54
+    },
 
- {
-  id:"dmrl-barabinsk",
-  name:"Барабинск",
-  lat:55.35,
-  lon:78.35
- },
+    {
+        id: "barabinsk",
+        name: "Барабинск",
+        lat: 55.35,
+        lon: 78.35
+    },
 
- {
-  id:"dmrl-belgorod",
-  name:"Белгород",
-  lat:50.60,
-  lon:36.60
- },
+    {
+        id: "belgorod",
+        name: "Белгород",
+        lat: 50.60,
+        lon: 36.60
+    },
 
- {
-  id:"dmrl-bryansk",
-  name:"Брянск",
-  lat:53.25,
-  lon:34.37
- },
+    {
+        id: "bryansk",
+        name: "Брянск",
+        lat: 53.25,
+        lon: 34.37
+    },
 
- {
-  id:"dmrl-valday",
-  name:"Валдай",
-  lat:57.98,
-  lon:33.25
- },
+    {
+        id: "valday",
+        name: "Валдай",
+        lat: 57.98,
+        lon: 33.25
+    },
 
- {
-  id:"dmrl-velikie-luki",
-  name:"Великие Луки",
-  lat:56.34,
-  lon:30.52
- },
+    {
+        id: "velikie-luki",
+        name: "Великие Луки",
+        lat: 56.34,
+        lon: 30.52
+    },
 
- {
-  id:"dmrl-vladivostok",
-  name:"Владивосток",
-  lat:43.12,
-  lon:131.89
- },
+    {
+        id: "vladivostok",
+        name: "Владивосток",
+        lat: 43.12,
+        lon: 131.89
+    },
 
- {
-  id:"dmrl-vladimir",
-  name:"Владимир",
-  lat:56.28,
-  lon:40.20
- },
+    {
+        id: "vnukovo",
+        name: "Внуково",
+        lat: 55.60,
+        lon: 37.27
+    },
 
- {
-  id:"dmrl-vnukovo",
-  name:"Внуково",
-  lat:55.60,
-  lon:37.27
- },
+    {
+        id: "voeikovo",
+        name: "Воейково",
+        lat: 59.94,
+        lon: 30.68
+    },
 
- {
-  id:"dmrl-voeikovo",
-  name:"Воейково",
-  lat:59.94,
-  lon:30.68
- },
+    {
+        id: "volgograd",
+        name: "Волгоград",
+        lat: 48.71,
+        lon: 44.51
+    },
 
- {
-  id:"dmrl-volgograd",
-  name:"Волгоград",
-  lat:48.71,
-  lon:44.51
- },
+    {
+        id: "vologda",
+        name: "Вологда",
+        lat: 59.22,
+        lon: 39.89
+    },
 
- {
-  id:"dmrl-vologda",
-  name:"Вологда",
-  lat:59.22,
-  lon:39.89
- },
+    {
+        id: "izhevsk",
+        name: "Ижевск",
+        lat: 56.85,
+        lon: 53.21
+    },
 
- {
-  id:"dmrl-izhevsk",
-  name:"Ижевск",
-  lat:56.85,
-  lon:53.21
- },
+    {
+        id: "kazan",
+        name: "Казань",
+        lat: 55.79,
+        lon: 49.12
+    },
 
- {
-  id:"dmrl-kazan",
-  name:"Казань",
-  lat:55.79,
-  lon:49.12
- },
+    {
+        id: "kirov",
+        name: "Киров",
+        lat: 58.60,
+        lon: 49.67
+    },
 
- {
-  id:"dmrl-kirov",
-  name:"Киров",
-  lat:58.60,
-  lon:49.67
- },
+    {
+        id: "kostroma",
+        name: "Кострома",
+        lat: 57.77,
+        lon: 40.93
+    },
 
- {
-  id:"dmrl-kostroma",
-  name:"Кострома",
-  lat:57.77,
-  lon:40.93
- },
+    {
+        id: "kotlas",
+        name: "Котлас",
+        lat: 61.25,
+        lon: 46.63
+    },
 
- {
-  id:"dmrl-kotlas",
-  name:"Котлас",
-  lat:61.25,
-  lon:46.63
- },
+    {
+        id: "krasnodar",
+        name: "Краснодар",
+        lat: 45.04,
+        lon: 38.98
+    },
 
- {
-  id:"dmrl-krasnodar",
-  name:"Краснодар",
-  lat:45.04,
-  lon:38.98
- },
+    {
+        id: "kursk",
+        name: "Курск",
+        lat: 51.73,
+        lon: 36.19
+    },
 
- {
-  id:"dmrl-kursk",
-  name:"Курск",
-  lat:51.73,
-  lon:36.19
- },
+    {
+        id: "mineralnye-vody",
+        name: "Минеральные Воды",
+        lat: 44.22,
+        lon: 43.14
+    },
 
- {
-  id:"dmrl-mineralnye-vody",
-  name:"Минеральные Воды",
-  lat:44.22,
-  lon:43.14
- },
+    {
+        id: "moscow-profsoyuznaya",
+        name: "Москва-Профсоюзная",
+        lat: 55.67,
+        lon: 37.55
+    },
 
- {
-  id:"dmrl-moscow",
-  name:"Москва-Профсоюзная",
-  lat:55.67,
-  lon:37.55
- },
+    {
+        id: "millerovo",
+        name: "Миллерово",
+        lat: 48.92,
+        lon: 40.40
+    },
 
- {
-  id:"dmrl-millerovo",
-  name:"Миллерово",
-  lat:48.92,
-  lon:40.40
- },
+    {
+        id: "nizhny-novgorod",
+        name: "Нижний Новгород",
+        lat: 56.33,
+        lon: 44.00
+    },
 
- {
-  id:"dmrl-nizhny-novgorod",
-  name:"Нижний Новгород",
-  lat:56.33,
-  lon:44.00
- },
+    {
+        id: "novosibirsk",
+        name: "Новосибирск",
+        lat: 55.03,
+        lon: 82.92
+    },
 
- {
-  id:"dmrl-novosibirsk",
-  name:"Новосибирск",
-  lat:55.03,
-  lon:82.92
- },
+    {
+        id: "orenburg",
+        name: "Оренбург",
+        lat: 51.77,
+        lon: 55.10
+    },
 
- {
-  id:"dmrl-orel",
-  name:"Орёл",
-  lat:52.97,
-  lon:36.07
- },
+    {
+        id: "petrozavodsk",
+        name: "Петрозаводск",
+        lat: 61.79,
+        lon: 34.36
+    },
 
- {
-  id:"dmrl-orenburg",
-  name:"Оренбург",
-  lat:51.77,
-  lon:55.10
- },
+    {
+        id: "petropavlovsk",
+        name: "Петропавловск-Камчатский",
+        lat: 53.05,
+        lon: 158.65
+    },
 
- {
-  id:"dmrl-petrozavodsk",
-  name:"Петрозаводск",
-  lat:61.79,
-  lon:34.36
- },
+    {
+        id: "samara",
+        name: "Самара",
+        lat: 53.18,
+        lon: 50.15
+    },
 
- {
-  id:"dmrl-petropavlovsk",
-  name:"Петропавловск-Камчатский",
-  lat:53.05,
-  lon:158.65
- },
+    {
+        id: "smolensk",
+        name: "Смоленск",
+        lat: 54.78,
+        lon: 32.04
+    },
 
- {
-  id:"dmrl-samara",
-  name:"Самара",
-  lat:53.18,
-  lon:50.15
- },
+    {
+        id: "stavropol",
+        name: "Ставрополь",
+        lat: 45.04,
+        lon: 41.97
+    },
 
- {
-  id:"dmrl-smolensk",
-  name:"Смоленск",
-  lat:54.78,
-  lon:32.04
- },
+    {
+        id: "tambov",
+        name: "Тамбов",
+        lat: 52.72,
+        lon: 41.45
+    },
 
- {
-  id:"dmrl-stavropol",
-  name:"Ставрополь",
-  lat:45.04,
-  lon:41.97
- },
+    {
+        id: "tula",
+        name: "Тула",
+        lat: 54.19,
+        lon: 37.62
+    },
 
- {
-  id:"dmrl-tambov",
-  name:"Тамбов",
-  lat:52.72,
-  lon:41.45
- },
+    {
+        id: "ufa",
+        name: "Уфа",
+        lat: 54.74,
+        lon: 55.97
+    },
 
- {
-  id:"dmrl-tula",
-  name:"Тула",
-  lat:54.19,
-  lon:37.62
- },
+    {
+        id: "sheremetyevo",
+        name: "Шереметьево",
+        lat: 55.97,
+        lon: 37.41
+    },
 
- {
-  id:"dmrl-ufa",
-  name:"Уфа",
-  lat:54.74,
-  lon:55.97
- },
-
- {
-  id:"dmrl-sheremetyevo",
-  name:"Шереметьево",
-  lat:55.97,
-  lon:37.41
- },
-
- {
-  id:"dmrl-elista",
-  name:"Элиста",
-  lat:46.31,
-  lon:44.27
- },
-
- /*
-   Дополнительные позиции, появившиеся
-   в расширении сети.
- */
-
- {
-  id:"dmrl-kaluga",
-  name:"Калужская область",
-  lat:54.53,
-  lon:36.27
- },
-
- {
-  id:"dmrl-ryazan",
-  name:"Рязанская область",
-  lat:54.63,
-  lon:39.72
- },
-
- {
-  id:"dmrl-veliky-novgorod",
-  name:"Великий Новгород",
-  lat:58.52,
-  lon:31.27
- },
-
- {
-  id:"dmrl-kalevala",
-  name:"Калевала",
-  lat:65.20,
-  lon:31.17
- }
+    {
+        id: "elista",
+        name: "Элиста",
+        lat: 46.31,
+        lon: 44.27
+    }
 
 ];
 
 
 /* =========================================================
-   СОСТОЯНИЕ
+   STATE
    ========================================================= */
 
 let mapRef = null;
 
+let enabled = false;
+
 let rootLayer = null;
 
-let nominalLayer = null;
+let coverageLayer = null;
 
-let blindLayer = null;
+let velocityLayer = null;
+
+let rayLayer = null;
 
 let radarLayer = null;
 
-let enabled = false;
+let blindLayer = null;
+
+let renderToken = 0;
 
 let initialized = false;
-
-let rendering = false;
 
 
 /* =========================================================
    TERRAIN CACHE
    ========================================================= */
 
-const terrainTiles = new Map();
+const terrainCache = new Map();
 
-const terrainPending = new Map();
-
-
-/* =========================================================
-   CANVAS
-   ========================================================= */
-
-let terrainCanvas = null;
-
-let terrainContext = null;
-
-
-/* =========================================================
-   DOM
-   ========================================================= */
-
-function getEl(id){
-
- return document.getElementById(id);
-
-}
+const terrainPromises = new Map();
 
 
 /* =========================================================
@@ -527,86 +433,52 @@ function getEl(id){
 
 function getMap(){
 
- if(window.QM_MAP)
-  return window.QM_MAP;
+    if(window.QM_MAP)
+        return window.QM_MAP;
 
- try{
+    try{
 
-  if(
-   typeof map !== "undefined" &&
-   map
-  ){
+        if(typeof map !== "undefined" && map)
+            return map;
 
-   return map;
+    }catch(e){}
 
-  }
-
- }catch(e){}
-
- return null;
-
+    return null;
 }
 
 
 /* =========================================================
-   ESCAPE HTML
-   ========================================================= */
-
-function escapeHtml(value){
-
- return String(value)
-  .replace(/&/g,"&amp;")
-  .replace(/</g,"&lt;")
-  .replace(/>/g,"&gt;")
-  .replace(/"/g,"&quot;")
-  .replace(/'/g,"&#039;");
-
-}
-
-
-/* =========================================================
-   HAVERSINE
+   DISTANCE
    ========================================================= */
 
 function distanceMeters(
- lat1,
- lon1,
- lat2,
- lon2
+    lat1,
+    lon1,
+    lat2,
+    lon2
 ){
 
- const p1 =
-  lat1 * Math.PI / 180;
+    const p1 = lat1 * Math.PI / 180;
+    const p2 = lat2 * Math.PI / 180;
 
- const p2 =
-  lat2 * Math.PI / 180;
+    const dLat =
+        (lat2-lat1) * Math.PI / 180;
 
- const dp =
-  (lat2-lat1) *
-  Math.PI / 180;
+    const dLon =
+        (lon2-lon1) * Math.PI / 180;
 
- const dl =
-  (lon2-lon1) *
-  Math.PI / 180;
+    const a =
+        Math.sin(dLat/2) ** 2 +
+        Math.cos(p1) *
+        Math.cos(p2) *
+        Math.sin(dLon/2) ** 2;
 
- const a =
-  Math.sin(dp/2) *
-  Math.sin(dp/2) +
-
-  Math.cos(p1) *
-  Math.cos(p2) *
-  Math.sin(dl/2) *
-  Math.sin(dl/2);
-
- return (
-  2 *
-  EARTH_RADIUS *
-  Math.atan2(
-   Math.sqrt(a),
-   Math.sqrt(1-a)
-  )
- );
-
+    return 2 *
+        EARTH_RADIUS *
+        Math.atan2(
+            Math.sqrt(a),
+            Math.sqrt(1-a)
+        );
 }
 
 
@@ -615,84 +487,86 @@ function distanceMeters(
    ========================================================= */
 
 function destination(
- lat,
- lon,
- distance,
- bearing
+    lat,
+    lon,
+    distance,
+    bearing
 ){
 
- const br =
-  bearing *
-  Math.PI / 180;
+    const br =
+        bearing * Math.PI / 180;
 
- const lat1 =
-  lat *
-  Math.PI / 180;
+    const lat1 =
+        lat * Math.PI / 180;
 
- const lon1 =
-  lon *
-  Math.PI / 180;
+    const lon1 =
+        lon * Math.PI / 180;
 
- const d =
-  distance /
-  EARTH_RADIUS;
+    const d =
+        distance / EARTH_RADIUS;
 
- const lat2 =
-  Math.asin(
+    const lat2 =
+        Math.asin(
+            Math.sin(lat1) *
+            Math.cos(d) +
+            Math.cos(lat1) *
+            Math.sin(d) *
+            Math.cos(br)
+        );
 
-   Math.sin(lat1) *
-   Math.cos(d) +
+    const lon2 =
+        lon1 +
+        Math.atan2(
+            Math.sin(br) *
+            Math.sin(d) *
+            Math.cos(lat1),
 
-   Math.cos(lat1) *
-   Math.sin(d) *
-   Math.cos(br)
+            Math.cos(d) -
+            Math.sin(lat1) *
+            Math.sin(lat2)
+        );
 
-  );
+    return [
 
- const lon2 =
-  lon1 +
+        lat2 * 180 / Math.PI,
 
-  Math.atan2(
+        (
+            lon2 * 180 / Math.PI + 540
+        ) % 360 - 180
 
-   Math.sin(br) *
-   Math.sin(d) *
-   Math.cos(lat1),
-
-   Math.cos(d) -
-   Math.sin(lat1) *
-   Math.sin(lat2)
-
-  );
-
- return [
-
-  lat2 *
-  180 /
-  Math.PI,
-
-  lon2 *
-  180 /
-  Math.PI
-
- ];
-
+    ];
 }
 
 
 /* =========================================================
-   NORMALIZE LONGITUDE
+   WEB MERCATOR
    ========================================================= */
 
-function normalizeLon(lon){
+function lonToX(lon,z){
 
- while(lon > 180)
-  lon -= 360;
+    const n = 2 ** z;
 
- while(lon < -180)
-  lon += 360;
+    return (
+        (lon + 180) / 360
+    ) * n;
+}
 
- return lon;
 
+function latToY(lat,z){
+
+    const n = 2 ** z;
+
+    const r =
+        lat * Math.PI / 180;
+
+    return (
+        (
+            1 -
+            Math.asinh(
+                Math.tan(r)
+            ) / Math.PI
+        ) / 2
+    ) * n;
 }
 
 
@@ -700,93 +574,30 @@ function normalizeLon(lon){
    TERRARIUM TILE
    ========================================================= */
 
-function tileXY(
- lat,
- lon,
- z
+function terrainTileUrl(
+    z,
+    x,
+    y
 ){
 
- const n =
-  Math.pow(2,z);
+    /*
+       ВАЖНО:
 
- const x =
-  Math.floor(
-   (
-    lon + 180
-   ) /
-   360 *
-   n
-  );
+       Terrarium = PNG с высотой.
 
- const latRad =
-  lat *
-  Math.PI /
-  180;
+       Skadi = HGT/GZIP.
 
- const y =
-  Math.floor(
+       Старый код ошибочно использовал
+       skadi/...png.
+    */
 
-   (
-    1 -
-    Math.asinh(
-     Math.tan(latRad)
-    ) /
-    Math.PI
-   ) /
-   2 *
-   n
-
-  );
-
- return {
-
-  x:
-   Math.max(
-    0,
-    Math.min(
-     n-1,
-     x
-    )
-   ),
-
-  y:
-   Math.max(
-    0,
-    Math.min(
-     n-1,
-     y
-    )
-   )
-
- };
-
-}
-
-
-/* =========================================================
-   TERRAIN TILE URL
-   ========================================================= */
-
-function terrainURL(
- x,
- y,
- z
-){
-
- return (
-
-  "https://s3.amazonaws.com/" +
-  "elevation-tiles-prod/" +
-  "skadi/" +
-  z +
-  "/" +
-  x +
-  "/" +
-  y +
-  ".png"
-
- );
-
+    return (
+        "https://s3.amazonaws.com/" +
+        "elevation-tiles-prod/terrarium/" +
+        z + "/" +
+        x + "/" +
+        y + ".png"
+    );
 }
 
 
@@ -795,1272 +606,1017 @@ function terrainURL(
    ========================================================= */
 
 function loadTerrainTile(
- x,
- y,
- z
+    z,
+    x,
+    y
 ){
 
- const key =
-  z + "/" + x + "/" + y;
+    const n = 2 ** z;
 
- if(
-  terrainTiles.has(key)
- ){
+    x = ((x % n) + n) % n;
 
-  return Promise.resolve(
-   terrainTiles.get(key)
-  );
+    if(y < 0 || y >= n)
+        return Promise.resolve(null);
 
- }
+    const key =
+        z + "/" + x + "/" + y;
 
- if(
-  terrainPending.has(key)
- ){
+    if(terrainCache.has(key))
+        return Promise.resolve(
+            terrainCache.get(key)
+        );
 
-  return terrainPending.get(key);
+    if(terrainPromises.has(key))
+        return terrainPromises.get(key);
 
- }
+    const promise =
+        new Promise(function(resolve){
 
- const promise =
-  new Promise(function(resolve){
+            const img =
+                new Image();
 
-   const img =
-    new Image();
+            img.crossOrigin = "anonymous";
 
-   img.crossOrigin =
-    "anonymous";
+            let finished = false;
 
-   img.onload =
-    function(){
+            const done =
+                function(result){
 
-     try{
+                    if(finished)
+                        return;
 
-      const canvas =
-       document.createElement(
-        "canvas"
-       );
+                    finished = true;
 
-      canvas.width =
-       img.width;
+                    terrainPromises.delete(key);
 
-      canvas.height =
-       img.height;
+                    resolve(result);
 
-      const ctx =
-       canvas.getContext(
-        "2d",
-        {
-         willReadFrequently:true
-        }
-       );
+                };
 
-      ctx.drawImage(
-       img,
-       0,
-       0
-      );
+            img.onload =
+                function(){
 
-      const data =
-       ctx.getImageData(
-        0,
-        0,
-        canvas.width,
-        canvas.height
-       ).data;
+                    try{
 
-      const tile = {
+                        const canvas =
+                            document.createElement(
+                                "canvas"
+                            );
 
-       width:
-        canvas.width,
+                        canvas.width = 256;
+                        canvas.height = 256;
 
-       height:
-        canvas.height,
+                        const ctx =
+                            canvas.getContext(
+                                "2d",
+                                {
+                                    willReadFrequently:true
+                                }
+                            );
 
-       data:data
+                        ctx.drawImage(
+                            img,
+                            0,
+                            0
+                        );
 
-      };
+                        const data =
+                            ctx.getImageData(
+                                0,
+                                0,
+                                256,
+                                256
+                            ).data;
 
-      terrainTiles.set(
-       key,
-       tile
-      );
+                        const result = {
+                            data:data,
+                            width:256,
+                            height:256
+                        };
 
-      terrainPending.delete(
-       key
-      );
+                        terrainCache.set(
+                            key,
+                            result
+                        );
 
-      resolve(tile);
+                        done(result);
 
-     }catch(e){
+                    }catch(e){
 
-      terrainPending.delete(
-       key
-      );
+                        done(null);
 
-      resolve(null);
+                    }
 
-     }
+                };
 
-    };
+            img.onerror =
+                function(){
 
-   img.onerror =
-    function(){
+                    done(null);
 
-     terrainPending.delete(
-      key
-     );
+                };
 
-     resolve(null);
+            /*
+               Защита от зависшего запроса.
+            */
 
-    };
+            setTimeout(
+                function(){
+                    done(null);
+                },
+                7000
+            );
 
-   img.src =
-    terrainURL(
-     x,
-     y,
-     z
+            img.src =
+                terrainTileUrl(
+                    z,
+                    x,
+                    y
+                );
+
+        });
+
+    terrainPromises.set(
+        key,
+        promise
     );
 
-  });
-
- terrainPending.set(
-  key,
-  promise
- );
-
- return promise;
-
+    return promise;
 }
 
 
 /* =========================================================
-   TERRAIN HEIGHT
-
-   Terrarium:
-
-   elevation =
-   (R*256 + G + B/256) - 32768
-
+   ELEVATION
    ========================================================= */
 
-function terrainHeight(
- lat,
- lon
+async function elevationAt(
+    lat,
+    lon
 ){
 
- const z =
-  CONFIG.terrainZoom;
+    const z =
+        CONFIG.terrainZoom;
 
- const t =
-  tileXY(
-   lat,
-   lon,
-   z
-  );
+    const xf =
+        lonToX(lon,z);
 
- const n =
-  Math.pow(2,z);
+    const yf =
+        latToY(lat,z);
 
- const fx =
-  (
-   (
-    lon + 180
-   ) /
-   360 *
-   n
-  ) -
-  t.x;
+    const tx =
+        Math.floor(xf);
 
- const latRad =
-  lat *
-  Math.PI /
-  180;
+    const ty =
+        Math.floor(yf);
 
- const fy =
-  (
-   (
-    1 -
-    Math.asinh(
-     Math.tan(latRad)
-    ) /
-    Math.PI
-   ) /
-   2 *
-   n
-  ) -
-  t.y;
+    const px =
+        Math.max(
+            0,
+            Math.min(
+                255,
+                Math.floor(
+                    (xf-tx) * 256
+                )
+            )
+        );
 
- const tile =
-  terrainTiles.get(
-   z + "/" +
-   t.x + "/" +
-   t.y
-  );
+    const py =
+        Math.max(
+            0,
+            Math.min(
+                255,
+                Math.floor(
+                    (yf-ty) * 256
+                )
+            )
+        );
 
- if(!tile)
-  return null;
+    const tile =
+        await loadTerrainTile(
+            z,
+            tx,
+            ty
+        );
 
- const px =
-  Math.max(
-   0,
-   Math.min(
-    tile.width-1,
-    Math.floor(
-     fx *
-     tile.width
-    )
-   )
-  );
+    if(!tile)
+        return null;
 
- const py =
-  Math.max(
-   0,
-   Math.min(
-    tile.height-1,
-    Math.floor(
-     fy *
-     tile.height
-    )
-   )
-  );
+    const i =
+        (py * 256 + px) * 4;
 
- const i =
-  (
-   py *
-   tile.width +
-   px
-  ) *
-  4;
+    const r =
+        tile.data[i];
 
- const R =
-  tile.data[i];
+    const g =
+        tile.data[i+1];
 
- const G =
-  tile.data[i+1];
+    const b =
+        tile.data[i+2];
 
- const B =
-  tile.data[i+2];
-
- return (
-  R * 256 +
-  G +
-  B / 256 -
-  32768
- );
-
+    return (
+        r * 256 +
+        g +
+        b / 256
+    ) - 32768;
 }
 
 
 /* =========================================================
-   PRELOAD TERRAIN AROUND RADAR
-   ========================================================= */
-
-async function preloadTerrain(
- radar
-){
-
- const promises = [];
-
- const distances = [
-  0,
-  50000,
-  100000,
-  150000,
-  200000,
-  250000
- ];
-
- const bearings = [
-  0,
-  45,
-  90,
-  135,
-  180,
-  225,
-  270,
-  315
- ];
-
- const seen =
-  new Set();
-
- distances.forEach(
-  function(d){
-
-   bearings.forEach(
-    function(b){
-
-     const p =
-      destination(
-       radar.lat,
-       radar.lon,
-       d,
-       b
-      );
-
-     const tile =
-      tileXY(
-       p[0],
-       p[1],
-       CONFIG.terrainZoom
-      );
-
-     const key =
-      CONFIG.terrainZoom +
-      "/" +
-      tile.x +
-      "/" +
-      tile.y;
-
-     if(
-      !seen.has(key)
-     ){
-
-      seen.add(key);
-
-      promises.push(
-       loadTerrainTile(
-        tile.x,
-        tile.y,
-        CONFIG.terrainZoom
-       )
-      );
-
-     }
-
-    }
-   );
-
-  }
- );
-
- await Promise.all(
-  promises
- );
-
-}
-
-
-/* =========================================================
-   EFFECTIVE EARTH RADIUS
-   ========================================================= */
-
-function effectiveEarthRadius(){
-
- return (
-  EARTH_RADIUS *
-  CONFIG.kFactor
- );
-
-}
-
-
-/* =========================================================
-   EARTH CURVATURE DROP
-   ========================================================= */
-
-function curvatureDrop(
- distance
-){
-
- const Re =
-  effectiveEarthRadius();
-
- return (
-  distance *
-  distance
- ) /
- (
-  2 *
-  Re
- );
-
-}
-
-
-/* =========================================================
-   BEAM HEIGHT
+   EFFECTIVE BEAM HEIGHT
    ========================================================= */
 
 function beamHeight(
- distance,
- radarGroundHeight
+    radarElevation,
+    distance
 ){
 
- const beamAngle =
-  CONFIG.beamElevationDeg *
-  Math.PI /
-  180;
+    const angle =
+        CONFIG.beamElevationDeg *
+        Math.PI / 180;
 
- return (
-  radarGroundHeight +
-  CONFIG.antennaHeight +
+    const kEarth =
+        EARTH_RADIUS *
+        CONFIG.kFactor;
 
-  distance *
-  Math.tan(
-   beamAngle
-  ) +
-
-  curvatureDrop(
-   distance
-  )
- );
-
+    return (
+        radarElevation +
+        CONFIG.antennaHeight +
+        distance * Math.tan(angle) +
+        (
+            distance * distance
+        ) / (
+            2 * kEarth
+        )
+    );
 }
 
 
 /* =========================================================
-   CALCULATE BLOCKAGE
-
-   Возвращает:
-
-   0.0 = открыто
-   1.0 = полностью закрыто
-
+   COVERAGE CIRCLES
    ========================================================= */
 
-function calculateBlockage(
- radar,
- bearing
-){
-
- const radarTerrain =
-  terrainHeight(
-   radar.lat,
-   radar.lon
-  );
-
- /*
-   Если DEM ещё не загрузился —
-   считаем сектор открытым,
-   чтобы карта появилась мгновенно.
- */
-
- if(
-  radarTerrain === null
- )
-  return {
-
-   blockage:0,
-   points:[]
-
-  };
-
- const points = [];
-
- let maximumSlope =
-  -Infinity;
-
- let blockedCount =
-  0;
-
- let validCount =
-  0;
-
- for(
-  let d =
-   CONFIG.rangeStep;
-
-  d <=
-   CONFIG.reflectivityRange;
+function drawCoverage(){
 
-  d +=
-   CONFIG.rangeStep
- ){
+    if(!mapRef)
+        return;
 
-  const p =
-   destination(
-    radar.lat,
-    radar.lon,
-    d,
-    bearing
-   );
+    coverageLayer.clearLayers();
+    velocityLayer.clearLayers();
+    rayLayer.clearLayers();
+    radarLayer.clearLayers();
 
-  const h =
-   terrainHeight(
-    p[0],
-    p[1]
-   );
+    const renderer =
+        L.canvas({
+            padding:0.5
+        });
 
-  if(
-   h === null
-  ){
+    RADARS.forEach(function(r){
 
-   continue;
+        /* =========================================
+           250 KM
+           ========================================= */
 
-  }
+        L.circle(
+            [r.lat,r.lon],
+            {
+                renderer:renderer,
 
-  validCount++;
+                radius:
+                    CONFIG.reflectivityRange,
 
-  /*
-    Учитываем кривизну Земли.
-  */
+                color:
+                    CONFIG.colors.coverageBorder,
 
-  const targetBeam =
-   beamHeight(
-    d,
-    radarTerrain
-   );
+                weight:1.1,
 
-  /*
-    Относительная высота препятствия.
-  */
+                opacity:0.65,
 
-  const obstacle =
-   h -
-   curvatureDrop(
-    d
-   );
+                fillColor:
+                    CONFIG.colors.coverage,
 
-  const slope =
-   (
-    obstacle -
-    radarTerrain
-   ) /
-   d;
+                fillOpacity:
+                    CONFIG.opacity.coverage,
 
-  /*
-    Если рельеф выше линии луча —
-    направление блокируется.
-  */
+                interactive:false
+            }
+        ).addTo(
+            coverageLayer
+        );
 
-  const beamSlope =
-   (
-    targetBeam -
-    radarTerrain
-   ) /
-   d;
 
-  if(
-   slope >
-   beamSlope
-  ){
+        /* =========================================
+           125 KM DOPPLER
+           ========================================= */
 
-   blockedCount++;
+        L.circle(
+            [r.lat,r.lon],
+            {
+                renderer:renderer,
 
-  }
+                radius:
+                    CONFIG.velocityRange,
 
-  /*
-    Храним максимум для определения
-    степени экранирования.
-  */
+                color:
+                    CONFIG.colors.velocityBorder,
 
-  if(
-   slope >
-   maximumSlope
-  ){
+                weight:0.8,
 
-   maximumSlope =
-    slope;
+                opacity:0.65,
 
-  }
+                fillColor:
+                    CONFIG.colors.velocity,
 
-  points.push({
+                fillOpacity:
+                    CONFIG.opacity.velocity,
 
-   distance:d,
+                interactive:false
+            }
+        ).addTo(
+            velocityLayer
+        );
 
-   lat:p[0],
 
-   lon:p[1],
+        /* =========================================
+           RADIAL RAYS
+           ========================================= */
 
-   elevation:h,
+        const rayCount = 24;
 
-   blocked:
-    slope >
-    beamSlope
+        for(
+            let i=0;
+            i<rayCount;
+            i++
+        ){
 
-  });
+            const bearing =
+                i * 360 / rayCount;
 
- }
-
- let blockage = 0;
-
- if(validCount){
-
-  blockage =
-   blockedCount /
-   validCount;
-
- }
-
- return {
-
-  blockage:blockage,
-
-  points:points
-
- };
-
-}
-
-
-/* =========================================================
-   CREATE ARC
-   ========================================================= */
-
-function arcPoints(
- radar,
- bearing,
- startDistance,
- endDistance
-){
-
- const points = [];
-
- for(
-  let d =
-   startDistance;
-
-  d <=
-   endDistance;
-
-  d +=
-   CONFIG.rangeStep
- ){
-
-  const p =
-   destination(
-    radar.lat,
-    radar.lon,
-    d,
-    bearing
-   );
-
-  points.push(p);
-
- }
-
- return points;
-
-}
-
-
-/* =========================================================
-   BLIND SECTOR
-
-   Создаём сектор только там,
-   где реально обнаружено существенное
-   экранирование.
-
-   ========================================================= */
-
-function createBlindSector(
- radar,
- bearing,
- result
-){
-
- if(
-  result.blockage <
-  CONFIG.blockageThreshold
- ){
-
-  return null;
-
- }
-
- const start =
-  Math.max(
-   CONFIG.minimumBlindDistance,
-   CONFIG.rangeStep
-  );
-
- let firstBlocked =
-  null;
-
- let lastBlocked =
-  null;
-
- result.points.forEach(
-  function(p){
-
-   if(
-    p.blocked
-   ){
-
-    if(
-     firstBlocked === null
-    ){
-
-     firstBlocked =
-      p.distance;
-
-    }
-
-    lastBlocked =
-     p.distance;
-
-   }
-
-  }
- );
-
- if(
-  firstBlocked === null ||
-  lastBlocked === null
- ){
-
-  return null;
-
- }
-
- /*
-   Если блокировка начинается
-   практически сразу после радара,
-   показываем её с минимальной
-   дистанции.
- */
-
- const from =
-  Math.max(
-   start,
-   firstBlocked -
-   CONFIG.rangeStep
-  );
-
- const to =
-  Math.min(
-   CONFIG.reflectivityRange,
-   lastBlocked +
-   CONFIG.rangeStep
-  );
-
- const left =
-  bearing -
-  (
-   180 /
-   CONFIG.azimuthCount
-  );
-
- const right =
-  bearing +
-  (
-   180 /
-   CONFIG.azimuthCount
-  );
-
- const outerLeft =
-  destination(
-   radar.lat,
-   radar.lon,
-   to,
-   left
-  );
-
- const outerRight =
-  destination(
-   radar.lat,
-   radar.lon,
-   to,
-   right
-  );
-
- const innerRight =
-  destination(
-   radar.lat,
-   radar.lon,
-   from,
-   right
-  );
-
- const innerLeft =
-  destination(
-   radar.lat,
-   radar.lon,
-   from,
-   left
-  );
-
- return [
-
-  outerLeft,
-
-  outerRight,
-
-  innerRight,
-
-  innerLeft,
-
-  [
-   radar.lat,
-   radar.lon
-  ]
-
- ];
-
-}
-
-
-/* =========================================================
-   DRAW NOMINAL COVERAGE
-   ========================================================= */
-
-function drawNominal(){
-
- if(
-  !mapRef ||
-  !CONFIG.showNominal
- )
-  return;
-
- const renderer =
-  L.canvas({
-   padding:.5
-  });
-
- nominalLayer =
-  L.layerGroup();
-
- RADARS.forEach(
-  function(r){
-
-   /*
-     250 km отражаемость.
-   */
-
-   L.circle(
-    [r.lat,r.lon],
-    {
-
-     renderer:renderer,
-
-     radius:
-      CONFIG.reflectivityRange,
-
-     color:"#2674b8",
-
-     weight:1,
-
-     opacity:.30,
-
-     fill:false,
-
-     interactive:false
-
-    }
-   ).addTo(
-    nominalLayer
-   );
-
-
-   /*
-     125 км Doppler.
-   */
-
-   L.circle(
-    [r.lat,r.lon],
-    {
-
-     renderer:renderer,
-
-     radius:
-      CONFIG.velocityRange,
-
-     color:"#8b6fc4",
-
-     weight:1,
-
-     opacity:.22,
-
-     dashArray:"5 5",
-
-     fill:false,
-
-     interactive:false
-
-    }
-   ).addTo(
-    nominalLayer
-   );
-
-
-   /*
-     Кольца только на больших масштабах.
-   */
-
-   if(
-    mapRef.getZoom() >=
-    CONFIG.detailZoom
-   ){
-
-    [50000,100000,150000,200000]
-     .forEach(
-      function(radius){
-
-       L.circle(
-        [r.lat,r.lon],
-        {
-
-         renderer:renderer,
-
-         radius:radius,
-
-         color:"#2674b8",
-
-         weight:.7,
-
-         opacity:.15,
-
-         dashArray:"3 5",
-
-         fill:false,
-
-         interactive:false
+            const p =
+                destination(
+                    r.lat,
+                    r.lon,
+                    CONFIG.reflectivityRange,
+                    bearing
+                );
+
+            L.polyline(
+                [
+                    [r.lat,r.lon],
+                    p
+                ],
+                {
+                    renderer:renderer,
+
+                    color:
+                        CONFIG.colors.ray,
+
+                    weight:0.55,
+
+                    opacity:
+                        CONFIG.opacity.ray,
+
+                    interactive:false
+                }
+            ).addTo(
+                rayLayer
+            );
 
         }
-       ).addTo(
-        nominalLayer
-       );
 
-      }
-     );
 
-   }
+        /* =========================================
+           RADAR POINT
+           ========================================= */
 
-  }
- );
+        const marker =
+            L.circleMarker(
+                [r.lat,r.lon],
+                {
+                    renderer:renderer,
 
- nominalLayer.addTo(
-  rootLayer
- );
+                    radius:5,
+
+                    color:
+                        CONFIG.colors.radarBorder,
+
+                    weight:1.4,
+
+                    fillColor:
+                        CONFIG.colors.radar,
+
+                    fillOpacity:1,
+
+                    bubblingMouseEvents:false
+                }
+            );
+
+        marker.bindTooltip(
+            r.name,
+            {
+                direction:"top",
+                offset:[0,-5],
+                opacity:0.95
+            }
+        );
+
+        marker.bindPopup(
+            "<b>ДМРЛ-С</b><br>" +
+            r.name +
+            "<br><br>" +
+            "Зона обзора: 250 км" +
+            "<br>" +
+            "Doppler: 125 км"
+        );
+
+        marker.addTo(
+            radarLayer
+        );
+
+    });
 
 }
 
 
 /* =========================================================
-   DRAW BLIND SECTORS
+   BLIND SECTOR GEOMETRY
+   ========================================================= */
+
+function sectorPolygon(
+    radar,
+    startDistance,
+    startBearing,
+    endBearing
+){
+
+    const points = [];
+
+    const step =
+        Math.max(
+            1,
+            (
+                endBearing -
+                startBearing
+            ) / 8
+        );
+
+    for(
+        let a=startBearing;
+        a<=endBearing+0.001;
+        a+=step
+    ){
+
+        points.push(
+            destination(
+                radar.lat,
+                radar.lon,
+                CONFIG.reflectivityRange,
+                a
+            )
+        );
+
+    }
+
+    /*
+       Внутренняя граница.
+    */
+
+    const inner = [];
+
+    for(
+        let a=endBearing;
+        a>=startBearing-0.001;
+        a-=step
+    ){
+
+        inner.push(
+            destination(
+                radar.lat,
+                radar.lon,
+                startDistance,
+                a
+            )
+        );
+
+    }
+
+    return [
+        ...points,
+        ...inner,
+        [radar.lat,radar.lon]
+    ];
+}
+
+
+/* =========================================================
+   BLIND ZONE FOR ONE RADAR
+   ========================================================= */
+
+async function calculateBlindSectors(
+    radar,
+    token
+){
+
+    const map =
+        mapRef;
+
+    if(
+        !map ||
+        token !== renderToken
+    )
+        return [];
+
+    const zoom =
+        map.getZoom();
+
+    /*
+       На очень далёком масштабе
+       расчёт blind sectors не нужен.
+    */
+
+    if(zoom < 5)
+        return [];
+
+
+    const azimuths =
+        zoom >= 7
+            ? CONFIG.fineAzimuths
+            : CONFIG.coarseAzimuths;
+
+    const step =
+        zoom >= 7
+            ? CONFIG.fineRangeStep
+            : CONFIG.coarseRangeStep;
+
+
+    /*
+       Высота позиции радара.
+    */
+
+    const radarElevation =
+        await elevationAt(
+            radar.lat,
+            radar.lon
+        );
+
+    if(
+        radarElevation === null
+    )
+        return [];
+
+
+    const result = [];
+
+
+    for(
+        let ai=0;
+        ai<azimuths;
+        ai++
+    ){
+
+        if(token !== renderToken)
+            return [];
+
+        const bearing =
+            ai *
+            360 /
+            azimuths;
+
+
+        let blockedFrom =
+            null;
+
+
+        /*
+           Идём от радара наружу.
+        */
+
+        for(
+            let distance=step;
+            distance<=CONFIG.reflectivityRange;
+            distance+=step
+        ){
+
+            if(token !== renderToken)
+                return [];
+
+
+            const p =
+                destination(
+                    radar.lat,
+                    radar.lon,
+                    distance,
+                    bearing
+                );
+
+
+            const terrain =
+                await elevationAt(
+                    p[0],
+                    p[1]
+                );
+
+
+            if(terrain === null)
+                continue;
+
+
+            /*
+               Центр луча.
+            */
+
+            const center =
+                beamHeight(
+                    radarElevation,
+                    distance
+                );
+
+
+            /*
+               Нижний край луча.
+
+               Ширина диаграммы ДМРЛ-С
+               около 1°.
+            */
+
+            const halfBeam =
+                CONFIG.beamWidthDeg *
+                Math.PI /
+                180 /
+                2;
+
+            const lowerBeam =
+                center -
+                distance *
+                Math.tan(
+                    halfBeam
+                );
+
+
+            /*
+               Полное попадание рельефа
+               в нижнюю часть луча.
+            */
+
+            if(
+                terrain >
+                center
+            ){
+
+                blockedFrom =
+                    distance;
+
+                break;
+
+            }
+
+
+            /*
+               Частичное закрытие.
+               Если рельеф выше нижнего края,
+               сектор уже начинает терять
+               низкую часть луча.
+            */
+
+            if(
+                terrain >
+                lowerBeam &&
+                blockedFrom === null
+            ){
+
+                /*
+                   Требуем хотя бы
+                   несколько километров
+                   реального экранирования.
+                */
+
+                if(
+                    distance >=
+                    CONFIG.minimumBlindDistance
+                ){
+
+                    blockedFrom =
+                        distance;
+
+                }
+
+            }
+
+        }
+
+
+        if(
+            blockedFrom !== null &&
+            blockedFrom <
+            CONFIG.reflectivityRange -
+            step
+        ){
+
+            result.push({
+
+                start:
+                    blockedFrom,
+
+                bearing:
+                    bearing,
+
+                width:
+                    360 / azimuths
+
+            });
+
+        }
+
+    }
+
+
+    return result;
+}
+
+
+/* =========================================================
+   MERGE NEIGHBOURING SECTORS
+   ========================================================= */
+
+function mergeSectors(
+    sectors
+){
+
+    if(!sectors.length)
+        return [];
+
+    sectors.sort(
+        (a,b) =>
+            a.bearing -
+            b.bearing
+    );
+
+    const merged = [];
+
+    for(
+        const sector of sectors
+    ){
+
+        const last =
+            merged[
+                merged.length-1
+            ];
+
+        if(
+            last &&
+            Math.abs(
+                (
+                    last.bearing +
+                    last.width / 2
+                ) -
+                (
+                    sector.bearing -
+                    sector.width / 2
+                )
+            ) <= 1.5
+        ){
+
+            last.width +=
+                sector.width;
+
+            last.start =
+                Math.min(
+                    last.start,
+                    sector.start
+                );
+
+        }else{
+
+            merged.push({
+                bearing:
+                    sector.bearing,
+
+                width:
+                    sector.width,
+
+                start:
+                    sector.start
+            });
+
+        }
+
+    }
+
+    return merged;
+}
+
+
+/* =========================================================
+   DRAW BLIND ZONES
    ========================================================= */
 
 async function drawBlindZones(){
 
- if(
-  !mapRef ||
-  !enabled
- )
-  return;
+    if(
+        !mapRef ||
+        !enabled
+    )
+        return;
 
- /*
-   Не запускаем второй расчёт,
-   пока первый не закончен.
- */
 
- if(rendering)
-  return;
+    const token =
+        ++renderToken;
 
- rendering = true;
 
- try{
+    blindLayer.clearLayers();
 
-  blindLayer =
-   L.layerGroup();
 
-  blindLayer.addTo(
-   rootLayer
-  );
+    const zoom =
+        mapRef.getZoom();
 
-  /*
-    Сначала быстро рисуем всё,
-    потом terrain корректирует зоны.
-  */
 
-  const renderer =
-   L.canvas({
-    padding:.5
-   });
+    /*
+       На z < 5 только покрытие.
+    */
 
-  for(
-   let ri = 0;
-   ri < RADARS.length;
-   ri++
-  ){
+    if(zoom < 5)
+        return;
 
-   if(!enabled)
-    break;
 
-   const radar =
-    RADARS[ri];
+    /*
+       Берём только радары,
+       находящиеся рядом с экраном.
 
-   /*
-     DEM вокруг конкретной РЛС.
-   */
+       Это сильно снижает нагрузку
+       на iPhone.
+    */
 
-   await preloadTerrain(
-    radar
-   );
+    const bounds =
+        mapRef.getBounds();
 
-   if(!enabled)
-    break;
+    const center =
+        mapRef.getCenter();
 
-   /*
-     72 направления.
-   */
 
-   for(
-    let ai = 0;
-    ai < CONFIG.azimuthCount;
-    ai++
-   ){
+    const visible =
+        RADARS.filter(
+            function(r){
 
-    const bearing =
-     ai *
-     (
-      360 /
-      CONFIG.azimuthCount
-     );
+                const p =
+                    L.latLng(
+                        r.lat,
+                        r.lon
+                    );
 
-    const result =
-     calculateBlockage(
-      radar,
-      bearing
-     );
+                if(
+                    bounds.contains(p)
+                )
+                    return true;
 
-    const sector =
-     createBlindSector(
-      radar,
-      bearing,
-      result
-     );
+                return (
+                    distanceMeters(
+                        center.lat,
+                        center.lng,
+                        r.lat,
+                        r.lon
+                    ) <
+                    450000
+                );
 
-    if(!sector)
-     continue;
+            }
+        );
 
-    L.polygon(
-     sector,
-     {
 
-      renderer:renderer,
+    const selected =
+        visible.slice(
+            0,
+            CONFIG.maxBlindRadars
+        );
 
-      color:"#555",
 
-      weight:.5,
+    const renderer =
+        L.canvas({
+            padding:0.5
+        });
 
-      opacity:.30,
 
-      fillColor:"#222",
+    /*
+       Считаем последовательно,
+       чтобы не положить Safari.
+    */
 
-      fillOpacity:.13,
+    for(
+        const radar of selected
+    ){
 
-      interactive:false
+        if(token !== renderToken)
+            return;
 
-     }
-    ).addTo(
-     blindLayer
-    );
 
-   }
+        const sectors =
+            await calculateBlindSectors(
+                radar,
+                token
+            );
 
-   /*
-     Даём браузеру отрисовать UI
-     между радарами.
-   */
 
-   await new Promise(
-    function(resolve){
+        if(token !== renderToken)
+            return;
 
-     setTimeout(
-      resolve,
-      0
-     );
+
+        const merged =
+            mergeSectors(
+                sectors
+            );
+
+
+        for(
+            const sector of merged
+        ){
+
+            /*
+               Не рисуем совсем мелкие
+               сектора.
+            */
+
+            if(
+                sector.width <
+                2
+            )
+                continue;
+
+
+            const start =
+                Math.max(
+                    CONFIG.minimumBlindDistance,
+                    sector.start
+                );
+
+
+            const polygon =
+                sectorPolygon(
+                    radar,
+                    start,
+                    sector.bearing -
+                    sector.width / 2,
+
+                    sector.bearing +
+                    sector.width / 2
+                );
+
+
+            L.polygon(
+                polygon,
+                {
+                    renderer:renderer,
+
+                    color:
+                        CONFIG.colors.blindBorder,
+
+                    weight:0.6,
+
+                    opacity:0.65,
+
+                    fillColor:
+                        CONFIG.colors.blind,
+
+                    fillOpacity:
+                        CONFIG.opacity.blind,
+
+                    interactive:false
+                }
+            ).addTo(
+                blindLayer
+            );
+
+        }
 
     }
-   );
-
-  }
-
- }finally{
-
-  rendering = false;
-
- }
 
 }
 
 
 /* =========================================================
-   DRAW RADAR MARKERS
+   REDRAW
    ========================================================= */
 
-function drawRadarMarkers(){
+function redraw(){
 
- if(!mapRef)
-  return;
+    if(!enabled)
+        return;
 
- const renderer =
-  L.canvas({
-   padding:.5
-  });
-
- radarLayer =
-  L.layerGroup();
-
- RADARS.forEach(
-  function(r){
-
-   const marker =
-    L.circleMarker(
-     [r.lat,r.lon],
-     {
-
-      renderer:renderer,
-
-      radius:5,
-
-      color:"#174f87",
-
-      weight:1.5,
-
-      fillColor:"#ffad24",
-
-      fillOpacity:1,
-
-      bubblingMouseEvents:false
-
-     }
-    );
-
-   marker.bindPopup(`
-
-    <div style="
-     font:12px Arial;
-     min-width:180px
-    ">
-
-     <b>
-      ${escapeHtml(r.name)}
-     </b>
-
-     <div style="
-      margin-top:4px;
-      color:#555
-     ">
-
-      ${r.lat.toFixed(4)},
-      ${r.lon.toFixed(4)}
-
-     </div>
-
-     <div style="
-      margin-top:5px
-     ">
-
-      ДМРЛ-С
-
-     </div>
-
-     <div style="
-      margin-top:3px
-     ">
-
-      Отражаемость:
-      <b>до 250 км</b>
-
-     </div>
-
-     <div style="
-      margin-top:3px
-     ">
-
-      Doppler:
-      <b>до 125 км</b>
-
-     </div>
-
-     <div style="
-      margin-top:6px;
-      color:#777;
-      font-size:10px
-     ">
-
-      Blind zones:
-      расчёт по DEM-рельефу
-
-     </div>
-
-    </div>
-
-   `);
-
-   if(
-    CONFIG.showLabels
-   ){
-
-    marker.bindTooltip(
-     escapeHtml(
-      r.name
-     ),
-     {
-
-      direction:"right",
-
-      offset:[
-       7,
-       0
-      ],
-
-      className:
-       "qm-radar-label"
-
-     }
-    );
-
-   }
-
-   marker.addTo(
-    radarLayer
-   );
-
-  }
- );
-
- radarLayer.addTo(
-  rootLayer
- );
-
-}
+    if(!mapRef)
+        return;
 
 
-/* =========================================================
-   FULL RENDER
-   ========================================================= */
+    /*
+       Сначала мгновенно показываем
+       все радары и круги.
+    */
 
-async function render(){
+    drawCoverage();
 
- if(!mapRef)
-  return;
 
- if(!enabled)
-  return;
+    /*
+       Потом отдельно считаем blind zones.
+       Они не блокируют интерфейс.
+    */
 
- /*
-   Удаляем старую геометрию.
- */
-
- if(rootLayer){
-
-  rootLayer.remove();
-
- }
-
- rootLayer =
-  L.layerGroup();
-
- rootLayer.addTo(
-  mapRef
- );
-
- /*
-   Сначала мгновенная часть.
- */
-
- drawNominal();
-
- drawRadarMarkers();
-
- /*
-   Потом terrain.
- */
-
- await drawBlindZones();
+    drawBlindZones();
 
 }
 
@@ -2071,258 +1627,370 @@ async function render(){
 
 function toggle(){
 
- enabled =
-  !enabled;
+    mapRef =
+        getMap();
 
- const item =
-  getEl("li")
-   ?.querySelector(
-    '[data-k="coverage"]'
-   );
+    if(!mapRef)
+        return;
 
- if(item){
 
-  item.classList.toggle(
-   "off",
-   !enabled
-  );
+    enabled =
+        !enabled;
 
- }
 
- if(!enabled){
+    const item =
+        document.querySelector(
+            '#lp .it[data-k="coverage"]'
+        );
 
-  if(rootLayer){
 
-   rootLayer.remove();
+    if(item){
 
-   rootLayer = null;
+        item.classList.toggle(
+            "off",
+            !enabled
+        );
 
-  }
+    }
 
-  return;
 
- }
+    if(!enabled){
 
- render();
+        renderToken++;
+
+        if(rootLayer)
+            rootLayer.remove();
+
+        rootLayer = null;
+
+        coverageLayer = null;
+        velocityLayer = null;
+        rayLayer = null;
+        radarLayer = null;
+        blindLayer = null;
+
+        return;
+
+    }
+
+
+    rootLayer =
+        L.layerGroup()
+         .addTo(mapRef);
+
+
+    coverageLayer =
+        L.layerGroup()
+         .addTo(rootLayer);
+
+
+    velocityLayer =
+        L.layerGroup()
+         .addTo(rootLayer);
+
+
+    rayLayer =
+        L.layerGroup()
+         .addTo(rootLayer);
+
+
+    blindLayer =
+        L.layerGroup()
+         .addTo(rootLayer);
+
+
+    radarLayer =
+        L.layerGroup()
+         .addTo(rootLayer);
+
+
+    redraw();
 
 }
 
 
 /* =========================================================
-   BUTTON BIND
+   BUTTON
    ========================================================= */
 
 function bindButton(){
 
- const item =
-  getEl("li")
-   ?.querySelector(
-    '[data-k="coverage"]'
-   );
+    /*
+       БЫЛО:
+       getEl("li")
 
- if(!item)
-  return false;
+       ПРАВИЛЬНО:
+       #lp
+    */
 
- /*
-   Не создаём несколько обработчиков.
- */
+    const item =
+        document.querySelector(
+            '#lp .it[data-k="coverage"]'
+        );
 
- if(
-  item.dataset.qmRadarBound ===
-  "1"
- )
-  return true;
 
- item.dataset.qmRadarBound =
-  "1";
+    if(!item)
+        return false;
 
- item.addEventListener(
-  "click",
-  function(e){
 
-   e.preventDefault();
+    /*
+       Capture=true нужен,
+       чтобы старый обработчик
+       слоёв index.html не перехватывал
+       кнопку раньше нас.
+    */
 
-   e.stopPropagation();
+    if(item.__qmRadarBound)
+        return true;
 
-   e.stopImmediatePropagation();
 
-   toggle();
+    item.__qmRadarBound = true;
 
-  },
-  true
- );
 
- return true;
+    item.addEventListener(
+        "click",
+        function(e){
+
+            e.preventDefault();
+            e.stopPropagation();
+
+            toggle();
+
+        },
+        true
+    );
+
+
+    return true;
+}
+
+
+/* =========================================================
+   MAP EVENTS
+   ========================================================= */
+
+function bindMap(){
+
+    mapRef =
+        getMap();
+
+    if(!mapRef)
+        return false;
+
+
+    if(mapRef.__qmRadarEvents)
+        return true;
+
+
+    mapRef.__qmRadarEvents = true;
+
+
+    mapRef.on(
+        "zoomend",
+        function(){
+
+            if(!enabled)
+                return;
+
+            /*
+               Круги перерисовываем
+               мгновенно.
+            */
+
+            drawCoverage();
+
+
+            /*
+               Отменяем старый
+               расчёт blind zones.
+            */
+
+            renderToken++;
+
+
+            /*
+               Даём Leaflet закончить zoom.
+            */
+
+            setTimeout(
+                function(){
+
+                    if(enabled)
+                        drawBlindZones();
+
+                },
+                120
+            );
+
+        }
+    );
+
+
+    mapRef.on(
+        "moveend",
+        function(){
+
+            if(!enabled)
+                return;
+
+            renderToken++;
+
+            setTimeout(
+                function(){
+
+                    if(enabled)
+                        drawBlindZones();
+
+                },
+                150
+            );
+
+        }
+    );
+
+
+    return true;
+}
+
+
+/* =========================================================
+   INIT
+   ========================================================= */
+
+function init(){
+
+    if(initialized)
+        return;
+
+
+    initialized = true;
+
+
+    /*
+       Иногда index.html создаёт карту
+       после загрузки этого файла.
+    */
+
+    let tries = 0;
+
+
+    const timer =
+        setInterval(
+            function(){
+
+                tries++;
+
+
+                mapRef =
+                    getMap();
+
+
+                if(mapRef){
+
+                    clearInterval(timer);
+
+                    bindButton();
+
+                    bindMap();
+
+                    return;
+
+                }
+
+
+                if(tries > 100){
+
+                    clearInterval(timer);
+
+                }
+
+            },
+            100
+        );
+
+
+    /*
+       Кнопка может появиться чуть позже
+       самой карты.
+    */
+
+    const buttonTimer =
+        setInterval(
+            function(){
+
+                if(
+                    bindButton() ||
+                    tries > 100
+                ){
+
+                    clearInterval(
+                        buttonTimer
+                    );
+
+                }
+
+            },
+            150
+        );
 
 }
 
 
 /* =========================================================
-   ZOOM HANDLER
+   PUBLIC API
    ========================================================= */
 
-function bindMap(){
+window.RadarPoints = {
 
- if(!mapRef)
-  return;
+    toggle:toggle,
 
- mapRef.on(
-  "zoomend",
-  function(){
+    render:redraw,
 
-   if(!enabled)
-    return;
+    clear:function(){
 
-   /*
-     При изменении масштаба
-     пересчитываем отображение.
+        enabled = false;
 
-     Это важно:
-     круги не масштабируются
-     как картинка.
-   */
+        renderToken++;
 
-   render();
+        if(rootLayer)
+            rootLayer.remove();
 
-  }
- );
+        rootLayer = null;
 
-}
+    },
+
+    get enabled(){
+
+        return enabled;
+
+    },
+
+    get radars(){
+
+        return RADARS.slice();
+
+    }
+
+};
 
 
 /* =========================================================
    START
    ========================================================= */
 
-function start(){
-
- if(initialized)
-  return;
-
- const m =
-  getMap();
-
- if(!m){
-
-  setTimeout(
-   start,
-   50
-  );
-
-  return;
-
- }
-
- mapRef =
-  m;
-
- window.QM_MAP =
-  m;
-
- initialized =
-  true;
-
- /*
-   Экспорт API.
- */
-
- window.RadarPoints = {
-
-  toggle:
-   toggle,
-
-  render:
-   render,
-
-  clear:
-   function(){
-
-    enabled =
-     false;
-
-    if(rootLayer){
-
-     rootLayer.remove();
-
-     rootLayer =
-      null;
-
-    }
-
-  },
-
-  get enabled(){
-
-   return enabled;
-
-  },
-
-  get radars(){
-
-   return RADARS;
-
-  }
-
- };
-
- /*
-   Пытаемся подключить кнопку.
- */
-
- if(
-  !bindButton()
- ){
-
-  const observer =
-   new MutationObserver(
-    function(){
-
-     if(
-      bindButton()
-     ){
-
-      observer.disconnect();
-
-     }
-
-    }
-   );
-
-  observer.observe(
-   document.body,
-   {
-    childList:true,
-    subtree:true
-   }
-  );
-
- }
-
- bindMap();
-
-}
-
-
-/* =========================================================
-   START AFTER DOM
-   ========================================================= */
-
 if(
- document.readyState ===
- "loading"
+    document.readyState ===
+    "loading"
 ){
 
- document.addEventListener(
-  "DOMContentLoaded",
-  start,
-  {
-   once:true
-  }
- );
+    document.addEventListener(
+        "DOMContentLoaded",
+        init
+    );
 
 }else{
 
- start();
+    init();
 
 }
 

@@ -1,1153 +1,969 @@
 /* =========================================================
-   QUANTUM METEO — RADARS.JS
-   =========================================================
+   Quantum Meteo — radars.js
+   РЛС + зоны покрытия + реальные rings из /radars
 
-   РАДАРЫ ДМРЛ-С
-
-   - 250 км основного радиуса
-   - БЕЗ круга 125/150 км
-   - БЕЗ Terrain / Terrarium
-   - БЕЗ искусственных blind sectors
-   - реальные координаты РЛС берутся из /radars,
-     если API доступен
-   - поддержка реальных blindSectors,
-     если сервер их отдаёт
-   - тёмная аккуратная карта покрытия
-   - лёгкая работа на iPhone
-   - index.html менять НЕ нужно
-
-   Формат blindSectors от API:
-
-   blindSectors: [
-       {
-           from: 210,
-           to: 265,
-           distance: 250
-       }
-   ]
-
-   from/to — азимуты в градусах,
-   distance — дальность сектора в км.
-
+   ВАЖНО:
+   - index.html НЕ ИЗМЕНЯЕТСЯ
+   - никаких DEM / Terrarium
+   - никаких выдуманных слепых зон
+   - никаких кругов 125/150 км
+   - используется rings, которые отдаёт сервер
+   - если rings отсутствуют — используется bounds/250 км
    ========================================================= */
 
-(function () {
+(() => {
+  "use strict";
 
-"use strict";
+  /* =========================================================
+     НАСТРОЙКИ
+     ========================================================= */
 
+  const RADAR_RANGE_KM = 250;
 
-/* =========================================================
-   НАСТРОЙКИ
-   ========================================================= */
+  // Цвет покрытия
+  const COVER_FILL = "#2478a8";
+  const COVER_FILL_OPACITY = 0.13;
+  const COVER_LINE = "#16628c";
+  const COVER_LINE_OPACITY = 0.42;
 
-const CONFIG = {
+  // Точки РЛС
+  const RADAR_COLOR = "#075f91";
+  const RADAR_SIZE = 7;
 
-    /* Основное радиолокационное покрытие */
-    rangeKm: 250,
+  // Лучи — специально слабые
+  const RAY_COLOR = "#16628c";
+  const RAY_OPACITY = 0.12;
+  const RAY_WEIGHT = 1;
 
-    /* Цвет покрытия */
-    coverageColor: "#18283b",
+  const UPDATE_INTERVAL = 60000;
 
-    coverageBorder: "#31506e",
+  /* =========================================================
+     СОСТОЯНИЕ
+     ========================================================= */
 
-    /* Прозрачность покрытия */
-    coverageOpacity: 0.16,
+  let radarLayer = null;
+  let radarObjects = [];
+  let enabled = false;
+  let loading = false;
 
-    /* Точка РЛС */
-    radarColor: "#ffc247",
+  /* =========================================================
+     ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ
+     ========================================================= */
 
-    radarBorder: "#101820",
+  function getMap() {
+    return window.map || null;
+  }
 
-    /* Лучи */
-    rayColor: "#476985",
+  function getApi() {
+    try {
+      const a = localStorage.getItem("api");
+      return a ? a.replace(/\/+$/, "") : "";
+    } catch {
+      return "";
+    }
+  }
 
-    rayOpacity: 0.24,
+  function apiUrl(path) {
+    const api = getApi();
 
-    rayWeight: 1,
-
-    /* Реальная слепая зона */
-    blindColor: "#07101b",
-
-    blindBorder: "#20384d",
-
-    blindOpacity: 0.72,
-
-    /* Количество лучей */
-    rayStep: 30
-
-};
-
-
-/* =========================================================
-   СОСТОЯНИЕ
-   ========================================================= */
-
-let mapRef = null;
-
-let rootLayer = null;
-
-let coverageLayer = null;
-
-let raysLayer = null;
-
-let radarLayer = null;
-
-let blindLayer = null;
-
-let enabled = false;
-
-let initialized = false;
-
-let radarData = [];
-
-
-/* =========================================================
-   ПОЛУЧЕНИЕ КАРТЫ
-   ========================================================= */
-
-function getMap() {
-
-    if (window.QM_MAP) {
-        return window.QM_MAP;
+    if (!api) {
+      return path;
     }
 
-    try {
+    if (/^https?:\/\//i.test(api)) {
+      return api + path;
+    }
 
-        if (typeof map !== "undefined" && map) {
-            return map;
-        }
+    return api + path;
+  }
 
-    } catch (e) {}
+  function num(v) {
+    const n = Number(v);
+    return Number.isFinite(n) ? n : null;
+  }
 
-    return null;
-}
+  function validLatLon(lat, lon) {
+    return (
+      Number.isFinite(lat) &&
+      Number.isFinite(lon) &&
+      lat >= -90 &&
+      lat <= 90 &&
+      lon >= -180 &&
+      lon <= 180
+    );
+  }
 
+  /* =========================================================
+     КИЛОМЕТРЫ -> ГЕОГРАФИЧЕСКИЕ КООРДИНАТЫ
+     ========================================================= */
 
-/* =========================================================
-   API
-   ========================================================= */
-
-function getApiBase() {
-
-    let api = "";
-
-    try {
-        api = localStorage.getItem("api") || "";
-    } catch (e) {}
-
-    return String(api).replace(/\/+$/, "");
-
-}
-
-
-/* =========================================================
-   DISTANCE
-   ========================================================= */
-
-function destination(lat, lon, distanceKm, bearing) {
-
+  function destination(lat, lon, bearingDeg, distanceKm) {
     const R = 6371;
+
+    const br = bearingDeg * Math.PI / 180;
+    const lat1 = lat * Math.PI / 180;
+    const lon1 = lon * Math.PI / 180;
 
     const d = distanceKm / R;
 
-    const br =
-        bearing * Math.PI / 180;
-
-    const lat1 =
-        lat * Math.PI / 180;
-
-    const lon1 =
-        lon * Math.PI / 180;
-
-    const lat2 =
-        Math.asin(
-            Math.sin(lat1) * Math.cos(d) +
-            Math.cos(lat1) *
-            Math.sin(d) *
-            Math.cos(br)
-        );
+    const lat2 = Math.asin(
+      Math.sin(lat1) * Math.cos(d) +
+      Math.cos(lat1) * Math.sin(d) * Math.cos(br)
+    );
 
     const lon2 =
-        lon1 +
-        Math.atan2(
-            Math.sin(br) *
-            Math.sin(d) *
-            Math.cos(lat1),
-
-            Math.cos(d) -
-            Math.sin(lat1) *
-            Math.sin(lat2)
-        );
+      lon1 +
+      Math.atan2(
+        Math.sin(br) * Math.sin(d) * Math.cos(lat1),
+        Math.cos(d) -
+        Math.sin(lat1) * Math.sin(lat2)
+      );
 
     return [
-
-        lat2 * 180 / Math.PI,
-
-        (
-            lon2 * 180 / Math.PI + 540
-        ) % 360 - 180
-
+      lat2 * 180 / Math.PI,
+      ((lon2 * 180 / Math.PI + 540) % 360) - 180
     ];
+  }
 
-}
+  /* =========================================================
+     РЕАЛЬНЫЙ КРУГ 250 КМ
+     ========================================================= */
 
-
-/* =========================================================
-   ПРОВЕРКА РЛС
-   ========================================================= */
-
-function validRadar(r) {
-
-    return !!(
-        r &&
-        Number.isFinite(+r.lat) &&
-        Number.isFinite(+r.lon)
-    );
-
-}
-
-
-/* =========================================================
-   ЗАГРУЗКА РЕАЛЬНЫХ РЛС С API
-   ========================================================= */
-
-async function loadRadarData() {
-
-    const api = getApiBase();
-
-    if (!api) {
-        return [];
+  function makeFallbackCircle(radar) {
+    if (!validLatLon(radar.lat, radar.lon)) {
+      return null;
     }
 
-    const urls = [
+    const points = [];
 
-        api + "/radars",
-
-        api + "/api/radars"
-
-    ];
-
-    for (const url of urls) {
-
-        try {
-
-            const response =
-                await fetch(
-                    url,
-                    {
-                        cache: "no-store"
-                    }
-                );
-
-            if (!response.ok) {
-                continue;
-            }
-
-            const data =
-                await response.json();
-
-            if (Array.isArray(data)) {
-
-                const result =
-                    data.filter(validRadar);
-
-                if (result.length) {
-                    return result;
-                }
-
-            }
-
-        } catch (e) {}
-
-    }
-
-    return [];
-
-}
-
-
-/* =========================================================
-   РЕЗЕРВНЫЕ КООРДИНАТЫ
-   =========================================================
-
-   Используются только если API не ответил.
-
-   Это НЕ маски и НЕ расчёт blind zones.
-   ========================================================= */
-
-const FALLBACK_RADARS = [
-
-    ["Архангельск",64.54,40.54],
-    ["Барабинск",55.35,78.35],
-    ["Белгород",50.60,36.60],
-    ["Брянск",53.25,34.37],
-    ["Валдай",57.98,33.25],
-    ["Великие Луки",56.34,30.52],
-    ["Владивосток",43.12,131.89],
-    ["Внуково",55.60,37.27],
-    ["Воейково",59.94,30.68],
-    ["Волгоград",48.71,44.51],
-    ["Вологда",59.22,39.89],
-    ["Ижевск",56.85,53.21],
-    ["Казань",55.79,49.12],
-    ["Киров",58.60,49.67],
-    ["Кострома",57.77,40.93],
-    ["Котлас",61.25,46.63],
-    ["Краснодар",45.04,38.98],
-    ["Курск",51.73,36.19],
-    ["Минеральные Воды",44.22,43.14],
-    ["Москва-Профсоюзная",55.67,37.55],
-    ["Миллерово",48.92,40.40],
-    ["Нижний Новгород",56.33,44.00],
-    ["Новосибирск",55.03,82.92],
-    ["Оренбург",51.77,55.10],
-    ["Петрозаводск",61.79,34.36],
-    ["Петропавловск-Камчатский",53.05,158.65],
-    ["Самара",53.18,50.15],
-    ["Смоленск",54.78,32.04],
-    ["Ставрополь",45.04,41.97],
-    ["Тамбов",52.72,41.45],
-    ["Тула",54.19,37.62],
-    ["Уфа",54.74,55.97],
-    ["Шереметьево",55.97,37.41],
-    ["Элиста",46.31,44.27]
-
-].map(function (r, i) {
-
-    return {
-
-        id: "fallback-" + i,
-
-        name: r[0],
-
-        lat: r[1],
-
-        lon: r[2]
-
-    };
-
-});
-
-
-/* =========================================================
-   СОЗДАНИЕ СЛОЁВ
-   ========================================================= */
-
-function createLayers() {
-
-    if (!mapRef || !window.L) {
-        return false;
-    }
-
-    rootLayer =
-        L.layerGroup();
-
-    coverageLayer =
-        L.layerGroup();
-
-    raysLayer =
-        L.layerGroup();
-
-    radarLayer =
-        L.layerGroup();
-
-    blindLayer =
-        L.layerGroup();
-
-
-    rootLayer.addLayer(
-        coverageLayer
-    );
-
-    rootLayer.addLayer(
-        raysLayer
-    );
-
-    rootLayer.addLayer(
-        radarLayer
-    );
-
-    rootLayer.addLayer(
-        blindLayer
-    );
-
-
-    return true;
-
-}
-
-
-/* =========================================================
-   РИСОВАНИЕ 250 КМ
-   ========================================================= */
-
-function drawCoverage(radar) {
-
-    const circle =
-        L.circle(
-            [
-                +radar.lat,
-                +radar.lon
-            ],
-            {
-
-                radius:
-                    (
-                        +radar.range_km ||
-                        CONFIG.rangeKm
-                    ) * 1000,
-
-                color:
-                    CONFIG.coverageBorder,
-
-                weight: 1,
-
-                opacity: 0.65,
-
-                fillColor:
-                    CONFIG.coverageColor,
-
-                fillOpacity:
-                    CONFIG.coverageOpacity,
-
-                interactive: false
-
-            }
-        );
-
-
-    circle.addTo(
-        coverageLayer
-    );
-
-}
-
-
-/* =========================================================
-   ЛУЧИ
-   ========================================================= */
-
-function drawRays(radar) {
-
-    const lat =
-        +radar.lat;
-
-    const lon =
-        +radar.lon;
-
-    const range =
-        +radar.range_km ||
-        CONFIG.rangeKm;
-
-
-    for (
-        let bearing = 0;
-        bearing < 360;
-        bearing += CONFIG.rayStep
-    ) {
-
-        const end =
-            destination(
-                lat,
-                lon,
-                range,
-                bearing
-            );
-
-
-        L.polyline(
-            [
-                [lat, lon],
-                end
-            ],
-            {
-
-                color:
-                    CONFIG.rayColor,
-
-                weight:
-                    CONFIG.rayWeight,
-
-                opacity:
-                    CONFIG.rayOpacity,
-
-                interactive: false
-
-            }
-        ).addTo(
-            raysLayer
-        );
-
-    }
-
-}
-
-
-/* =========================================================
-   ТОЧКА РЛС
-   ========================================================= */
-
-function drawRadar(radar) {
-
-    const lat =
-        +radar.lat;
-
-    const lon =
-        +radar.lon;
-
-
-    const marker =
-        L.circleMarker(
-            [lat, lon],
-            {
-
-                radius: 5,
-
-                color:
-                    CONFIG.radarBorder,
-
-                weight: 1.5,
-
-                fillColor:
-                    CONFIG.radarColor,
-
-                fillOpacity: 1,
-
-                interactive: true
-
-            }
-        );
-
-
-    const title =
-        radar.name ||
-        radar.id ||
-        "ДМРЛ-С";
-
-
-    marker.bindTooltip(
-        title,
-        {
-            direction: "top",
-            offset: [0,-5],
-            opacity: 0.95
-        }
-    );
-
-
-    marker.addTo(
-        radarLayer
-    );
-
-}
-
-
-/* =========================================================
-   РЕАЛЬНЫЕ СЛЕПЫЕ СЕКТОРА
-   =========================================================
-
-   ВАЖНО:
-
-   Мы НЕ вычисляем их по DEM.
-
-   Если сервер передаёт:
-
-       blindSectors: [
-           {
-               from: 200,
-               to: 260,
-               distance: 250
-           }
-       ]
-
-   тогда сектор будет показан.
-
-   Если сервер ничего не передаёт —
-   сектор НЕ рисуется.
-
-   ========================================================= */
-
-function drawBlindSector(
-    radar,
-    sector
-) {
-
-    if (!sector) {
-        return;
-    }
-
-
-    let from =
-        Number(sector.from);
-
-    let to =
-        Number(sector.to);
-
-
-    if (
-        !Number.isFinite(from) ||
-        !Number.isFinite(to)
-    ) {
-        return;
-    }
-
-
-    const range =
-        Number(
-            sector.distance ||
-            radar.range_km ||
-            CONFIG.rangeKm
-        );
-
-
-    if (!Number.isFinite(range)) {
-        return;
-    }
-
-
-    const points = [
-
-        [
-            +radar.lat,
-            +radar.lon
-        ]
-
-    ];
-
-
-    /*
-       Поддерживаем переход
-       через 360 градусов.
-    */
-
-    let a = from;
-
-    let end = to;
-
-    while (end < a) {
-        end += 360;
-    }
-
-
-    /*
-       Не делаем слишком много точек.
-    */
-
-    const step = 3;
-
-
-    for (
-        let angle = a;
-        angle <= end;
-        angle += step
-    ) {
-
-        points.push(
-            destination(
-                +radar.lat,
-                +radar.lon,
-                range,
-                angle % 360
-            )
-        );
-
-    }
-
-
-    points.push(
+    for (let a = 0; a <= 360; a += 4) {
+      points.push(
         destination(
-            +radar.lat,
-            +radar.lon,
-            range,
-            end % 360
+          radar.lat,
+          radar.lon,
+          a,
+          Number(radar.range_km) || RADAR_RANGE_KM
         )
-    );
-
-
-    points.push(
-        [
-            +radar.lat,
-            +radar.lon
-        ]
-    );
-
-
-    L.polygon(
-        points,
-        {
-
-            color:
-                CONFIG.blindBorder,
-
-            weight: 1,
-
-            opacity: 0.75,
-
-            fillColor:
-                CONFIG.blindColor,
-
-            fillOpacity:
-                CONFIG.blindOpacity,
-
-            interactive: false
-
-        }
-    ).addTo(
-        blindLayer
-    );
-
-}
-
-
-/* =========================================================
-   ОБРАБОТКА МАСОК
-   ========================================================= */
-
-function drawRealMasks(radar) {
-
-    /*
-       Поддерживаем несколько названий,
-       чтобы API можно было расширить
-       без изменения index.html.
-    */
-
-    const sectors =
-        radar.blindSectors ||
-        radar.blind ||
-        radar.masks ||
-        radar.sectors;
-
-
-    if (!Array.isArray(sectors)) {
-        return;
+      );
     }
 
+    return points;
+  }
 
-    for (const sector of sectors) {
+  /* =========================================================
+     РАЗБОР RINGS
+     
+     Поддерживаются реальные варианты структуры:
+     
+     250
+     [250, 200]
+     {radius:250}
+     {range:250}
+     {km:250}
+     [[lat,lon], ...]
+     [{lat,lon}, ...]
+     [[[lat,lon],...], ...]
+     
+     НИЧЕГО НЕ ГЕНЕРИРУЕМ,
+     ЕСЛИ В RINGS ЕСТЬ ГЕОМЕТРИЯ.
+     ========================================================= */
 
-        drawBlindSector(
-            radar,
-            sector
+  function isPoint(v) {
+    return (
+      Array.isArray(v) &&
+      v.length >= 2 &&
+      num(v[0]) !== null &&
+      num(v[1]) !== null &&
+      Math.abs(Number(v[0])) <= 90 &&
+      Math.abs(Number(v[1])) <= 180
+    );
+  }
+
+  function isObjectPoint(v) {
+    if (!v || typeof v !== "object" || Array.isArray(v)) {
+      return false;
+    }
+
+    const lat = num(v.lat ?? v.latitude);
+    const lon = num(v.lon ?? v.lng ?? v.longitude);
+
+    return validLatLon(lat, lon);
+  }
+
+  function normalizePoint(v) {
+    if (isPoint(v)) {
+      return [Number(v[0]), Number(v[1])];
+    }
+
+    if (isObjectPoint(v)) {
+      return [
+        Number(v.lat ?? v.latitude),
+        Number(v.lon ?? v.lng ?? v.longitude)
+      ];
+    }
+
+    return null;
+  }
+
+  function extractGeometry(value, result = []) {
+    if (!value) {
+      return result;
+    }
+
+    /* Один объект-точка */
+    const objectPoint = normalizePoint(value);
+
+    if (objectPoint) {
+      result.push([objectPoint]);
+      return result;
+    }
+
+    /* Массив */
+    if (Array.isArray(value)) {
+
+      /* [lat,lon] */
+      if (isPoint(value)) {
+        result.push([
+          [Number(value[0]), Number(value[1])]
+        ]);
+        return result;
+      }
+
+      /* [{lat,lon}, ...] или [[lat,lon], ...] */
+      if (
+        value.length &&
+        value.every(v => normalizePoint(v))
+      ) {
+        result.push(
+          value.map(v => normalizePoint(v))
         );
+        return result;
+      }
 
+      /* Вложенная геометрия */
+      for (const item of value) {
+        extractGeometry(item, result);
+      }
+
+      return result;
     }
 
-}
+    /* Объект с geometry */
+    if (typeof value === "object") {
 
+      if (value.geometry) {
+        extractGeometry(value.geometry, result);
+      }
 
-/* =========================================================
-   ПОЛНАЯ ОТРИСОВКА
-   ========================================================= */
+      if (value.coordinates) {
+        extractGeometry(value.coordinates, result);
+      }
 
-function render() {
+      if (value.points) {
+        extractGeometry(value.points, result);
+      }
 
-    if (!mapRef) {
+      if (value.polygon) {
+        extractGeometry(value.polygon, result);
+      }
+
+      if (value.polygons) {
+        extractGeometry(value.polygons, result);
+      }
+
+      if (value.sector) {
+        extractGeometry(value.sector, result);
+      }
+
+      if (value.sectors) {
+        extractGeometry(value.sectors, result);
+      }
+
+      if (value.mask) {
+        extractGeometry(value.mask, result);
+      }
+
+      if (value.masks) {
+        extractGeometry(value.masks, result);
+      }
+    }
+
+    return result;
+  }
+
+  /* =========================================================
+     ИЗВЛЕЧЕНИЕ РАДИУСОВ ИЗ RINGS
+     ========================================================= */
+
+  function radiusFromObject(v) {
+    if (!v || typeof v !== "object" || Array.isArray(v)) {
+      return null;
+    }
+
+    const candidates = [
+      v.radius,
+      v.range,
+      v.range_km,
+      v.distance,
+      v.km,
+      v.radius_km
+    ];
+
+    for (const x of candidates) {
+      const n = num(x);
+
+      if (n !== null && n > 0 && n <= 1000) {
+        return n;
+      }
+    }
+
+    return null;
+  }
+
+  function extractRadii(rings) {
+    const result = [];
+
+    function walk(v) {
+      if (v == null) {
         return;
-    }
+      }
 
+      if (typeof v === "number") {
+        if (v > 0 && v <= 1000) {
+          result.push(v);
+        }
+        return;
+      }
 
-    if (!rootLayer) {
+      if (typeof v === "string") {
+        const n = Number(v);
 
-        if (!createLayers()) {
-            return;
+        if (Number.isFinite(n) && n > 0 && n <= 1000) {
+          result.push(n);
         }
 
-    }
+        return;
+      }
 
-
-    coverageLayer.clearLayers();
-
-    raysLayer.clearLayers();
-
-    radarLayer.clearLayers();
-
-    blindLayer.clearLayers();
-
-
-    for (const radar of radarData) {
-
-        if (!validRadar(radar)) {
-            continue;
-        }
-
-
-        drawCoverage(radar);
-
-        drawRays(radar);
-
-        drawRadar(radar);
+      if (Array.isArray(v)) {
 
         /*
-           Только реальные данные,
-           пришедшие от API.
-        */
+         * Координатная пара — это НЕ радиус.
+         */
+        if (isPoint(v)) {
+          return;
+        }
 
-        drawRealMasks(radar);
+        for (const x of v) {
+          walk(x);
+        }
 
-    }
-
-}
-
-
-/* =========================================================
-   ВКЛЮЧЕНИЕ
-   ========================================================= */
-
-function show() {
-
-    mapRef =
-        getMap();
-
-    if (!mapRef) {
         return;
+      }
+
+      if (typeof v === "object") {
+
+        const r = radiusFromObject(v);
+
+        if (r !== null) {
+          result.push(r);
+        }
+
+        /*
+         * Не пытаемся интерпретировать координаты
+         * как расстояния.
+         */
+        for (const key of [
+          "rings",
+          "ranges",
+          "distances"
+        ]) {
+          if (v[key] != null) {
+            walk(v[key]);
+          }
+        }
+      }
     }
 
+    walk(rings);
 
-    if (!rootLayer) {
+    return [...new Set(
+      result.map(x => Math.round(x * 10) / 10)
+    )];
+  }
 
-        createLayers();
+  /* =========================================================
+     ОТРИСОВКА ГЕОМЕТРИИ ИЗ RINGS
+     ========================================================= */
 
+  function drawRingGeometry(radar, rings) {
+    const map = getMap();
+
+    if (!map || !rings) {
+      return false;
     }
 
+    const geometries = extractGeometry(rings);
 
-    if (!mapRef.hasLayer(rootLayer)) {
+    let drawn = false;
 
-        rootLayer.addTo(
-            mapRef
-        );
+    for (const geometry of geometries) {
 
+      if (!geometry || geometry.length < 3) {
+        continue;
+      }
+
+      const valid = geometry.every(
+        p => Array.isArray(p) &&
+             p.length >= 2 &&
+             validLatLon(
+               Number(p[0]),
+               Number(p[1])
+             )
+      );
+
+      if (!valid) {
+        continue;
+      }
+
+      const polygon = L.polygon(
+        geometry,
+        {
+          stroke: true,
+          color: COVER_LINE,
+          weight: 1,
+          opacity: COVER_LINE_OPACITY,
+          fill: true,
+          fillColor: COVER_FILL,
+          fillOpacity: COVER_FILL_OPACITY,
+          interactive: false
+        }
+      );
+
+      polygon.addTo(radarLayer);
+
+      radarObjects.push(polygon);
+
+      drawn = true;
     }
 
+    return drawn;
+  }
 
-    enabled = true;
+  /* =========================================================
+     КРУГИ ИЗ RINGS
+     ========================================================= */
 
-}
+  function drawRadii(radar, rings) {
+    const map = getMap();
 
+    if (!map) {
+      return false;
+    }
 
-/* =========================================================
-   ВЫКЛЮЧЕНИЕ
-   ========================================================= */
+    const radii = extractRadii(rings);
 
-function hide() {
+    if (!radii.length) {
+      return false;
+    }
+
+    let drawn = false;
+
+    /*
+     * Рисуем только реальные rings.
+     * Никаких 150/125 км.
+     */
+    for (const radius of radii) {
+
+      const circle = L.circle(
+        [radar.lat, radar.lon],
+        {
+          radius: radius * 1000,
+          stroke: true,
+          color: COVER_LINE,
+          weight: 1,
+          opacity: COVER_LINE_OPACITY,
+          fill: false,
+          interactive: false
+        }
+      );
+
+      circle.addTo(radarLayer);
+
+      radarObjects.push(circle);
+
+      drawn = true;
+    }
+
+    return drawn;
+  }
+
+  /* =========================================================
+     FALLBACK ПО BOUNDS
+     ========================================================= */
+
+  function drawBoundsFallback(radar) {
+    const map = getMap();
+
+    if (!map) {
+      return;
+    }
+
+    /*
+     * Если сервер дал bounds,
+     * используем их как реальную область.
+     */
 
     if (
-        mapRef &&
-        rootLayer &&
-        mapRef.hasLayer(rootLayer)
+      Array.isArray(radar.bounds) &&
+      radar.bounds.length >= 4
     ) {
 
-        mapRef.removeLayer(
-            rootLayer
+      const a = Number(radar.bounds[0]);
+      const b = Number(radar.bounds[1]);
+      const c = Number(radar.bounds[2]);
+      const d = Number(radar.bounds[3]);
+
+      if (
+        validLatLon(a, b) &&
+        validLatLon(c, d)
+      ) {
+
+        const rectangle = L.rectangle(
+          [
+            [a, b],
+            [c, d]
+          ],
+          {
+            stroke: true,
+            color: COVER_LINE,
+            weight: 1,
+            opacity: 0.25,
+            fill: true,
+            fillColor: COVER_FILL,
+            fillOpacity: 0.04,
+            interactive: false
+          }
         );
 
-    }
+        rectangle.addTo(radarLayer);
 
-
-    enabled = false;
-
-}
-
-
-/* =========================================================
-   ПЕРЕКЛЮЧАТЕЛЬ
-   ========================================================= */
-
-function toggle(force) {
-
-    if (force === true) {
-
-        show();
+        radarObjects.push(rectangle);
 
         return;
-
+      }
     }
 
+    /* Последний fallback — реальный номинальный радиус */
+    const circlePoints = makeFallbackCircle(radar);
 
-    if (force === false) {
-
-        hide();
-
-        return;
-
+    if (!circlePoints) {
+      return;
     }
 
-
-    if (enabled) {
-
-        hide();
-
-    } else {
-
-        show();
-
-    }
-
-}
-
-
-/* =========================================================
-   ПОИСК КНОПКИ ПОКРЫТИЯ
-   ========================================================= */
-
-function findCoverageButton() {
-
-    return document.querySelector(
-        '#lp .it[data-k="coverage"]'
+    const polygon = L.polygon(
+      circlePoints,
+      {
+        stroke: true,
+        color: COVER_LINE,
+        weight: 1,
+        opacity: COVER_LINE_OPACITY,
+        fill: true,
+        fillColor: COVER_FILL,
+        fillOpacity: COVER_FILL_OPACITY,
+        interactive: false
+      }
     );
 
-}
+    polygon.addTo(radarLayer);
 
+    radarObjects.push(polygon);
+  }
 
-/* =========================================================
-   СОСТОЯНИЕ КНОПКИ
-   ========================================================= */
+  /* =========================================================
+     РАДИАЛЬНЫЕ ЛУЧИ
+     ========================================================= */
 
-function updateButton() {
+  function drawRays(radar) {
+    const map = getMap();
 
-    const button =
-        findCoverageButton();
-
-    if (!button) {
-        return;
+    if (!map) {
+      return;
     }
 
+    /*
+     * Лучи нужны только визуально.
+     * Они не являются слепыми зонами.
+     */
 
-    if (enabled) {
+    for (let angle = 0; angle < 360; angle += 30) {
 
-        button.classList.remove(
-            "off"
-        );
+      const p = destination(
+        radar.lat,
+        radar.lon,
+        angle,
+        RADAR_RANGE_KM
+      );
 
-    } else {
+      const line = L.polyline(
+        [
+          [radar.lat, radar.lon],
+          p
+        ],
+        {
+          color: RAY_COLOR,
+          weight: RAY_WEIGHT,
+          opacity: RAY_OPACITY,
+          interactive: false
+        }
+      );
 
-        button.classList.add(
-            "off"
-        );
+      line.addTo(radarLayer);
 
+      radarObjects.push(line);
+    }
+  }
+
+  /* =========================================================
+     ТОЧКА РЛС
+     ========================================================= */
+
+  function drawRadarPoint(radar) {
+    const map = getMap();
+
+    if (!map) {
+      return;
     }
 
-}
+    const point = L.circleMarker(
+      [radar.lat, radar.lon],
+      {
+        radius: RADAR_SIZE,
+        color: "#ffffff",
+        weight: 2,
+        opacity: 1,
+        fillColor: RADAR_COLOR,
+        fillOpacity: 1,
+        interactive: false
+      }
+    );
 
+    point.addTo(radarLayer);
 
-/* =========================================================
-   CLICK
-   ========================================================= */
+    radarObjects.push(point);
+  }
 
-function bindButton() {
+  /* =========================================================
+     ОЧИСТКА
+     ========================================================= */
 
-    const button =
-        findCoverageButton();
+  function clearRadarObjects() {
 
-    if (!button) {
-        return false;
+    for (const object of radarObjects) {
+      try {
+        object.remove();
+      } catch {}
     }
 
+    radarObjects = [];
+  }
+
+  /* =========================================================
+     ОТРИСОВКА ОДНОЙ РЛС
+     ========================================================= */
+
+  function drawRadar(radar) {
 
     if (
-        button.dataset.qmRadarBound === "1"
+      !radar ||
+      !validLatLon(
+        Number(radar.lat),
+        Number(radar.lon)
+      )
     ) {
-
-        return true;
-
+      return;
     }
 
+    radar.lat = Number(radar.lat);
+    radar.lon = Number(radar.lon);
 
-    button.dataset.qmRadarBound =
-        "1";
+    /*
+     * Сначала реальные rings.
+     */
 
+    let hasCoverage = false;
+
+    if (radar.rings != null) {
+
+      hasCoverage =
+        drawRingGeometry(
+          radar,
+          radar.rings
+        );
+
+      if (!hasCoverage) {
+        hasCoverage =
+          drawRadii(
+            radar,
+            radar.rings
+          );
+      }
+    }
+
+    /*
+     * Если rings не дали геометрию —
+     * используем bounds / номинальное покрытие.
+     */
+
+    if (!hasCoverage) {
+      drawBoundsFallback(radar);
+    }
+
+    /*
+     * Лучи и точка.
+     */
+
+    drawRays(radar);
+    drawRadarPoint(radar);
+  }
+
+  /* =========================================================
+     ЗАГРУЗКА РЛС
+     ========================================================= */
+
+  async function loadRadars() {
+
+    if (loading) {
+      return;
+    }
+
+    loading = true;
+
+    try {
+
+      const response = await fetch(
+        apiUrl("/radars"),
+        {
+          cache: "no-store"
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(
+          "HTTP " + response.status
+        );
+      }
+
+      const data = await response.json();
+
+      if (!Array.isArray(data)) {
+        throw new Error(
+          "Ответ /radars не является массивом"
+        );
+      }
+
+      return data.filter(
+        radar =>
+          radar &&
+          validLatLon(
+            Number(radar.lat),
+            Number(radar.lon)
+          )
+      );
+
+    } catch (error) {
+
+      console.error(
+        "Quantum Meteo radar error:",
+        error
+      );
+
+      return [];
+
+    } finally {
+      loading = false;
+    }
+  }
+
+  /* =========================================================
+     РЕНДЕР
+     ========================================================= */
+
+  async function render() {
+
+    const map = getMap();
+
+    if (!map) {
+      return;
+    }
+
+    if (!radarLayer) {
+      radarLayer = L.layerGroup();
+    }
+
+    clearRadarObjects();
+
+    const radars = await loadRadars();
+
+    if (!radars.length) {
+      console.warn(
+        "Quantum Meteo: РЛС не получены"
+      );
+      return;
+    }
+
+    for (const radar of radars) {
+      drawRadar(radar);
+    }
+
+    /*
+     * Если слой был выключен — объекты не показываем.
+     */
+
+    if (!enabled) {
+      try {
+        radarLayer.removeFrom(map);
+      } catch {}
+    }
+
+    console.log(
+      "Quantum Meteo: загружено РЛС:",
+      radars.length
+    );
+  }
+
+  /* =========================================================
+     ПЕРЕКЛЮЧАТЕЛЬ В СУЩЕСТВУЮЩЕЙ ПАНЕЛИ
+     ========================================================= */
+
+  function bindLayerButton() {
+
+    const button =
+      document.querySelector(
+        '#lp .it[data-k="coverage"]'
+      );
+
+    if (!button) {
+      return false;
+    }
+
+    /*
+     * Не добавляем второй обработчик.
+     */
+
+    if (button.dataset.radarsBound === "1") {
+      return true;
+    }
+
+    button.dataset.radarsBound = "1";
 
     button.addEventListener(
-        "click",
-        function (event) {
+      "click",
+      async () => {
 
-            event.preventDefault();
+        const map = getMap();
 
-            event.stopPropagation();
+        if (!map || !radarLayer) {
+          return;
+        }
 
+        enabled = !enabled;
 
-            toggle();
+        button.classList.toggle(
+          "off",
+          !enabled
+        );
 
-            updateButton();
+        if (enabled) {
 
-        },
-        true
+          radarLayer.addTo(map);
+
+          /*
+           * Если данных ещё нет — загружаем.
+           */
+
+          if (!radarObjects.length) {
+            await render();
+          }
+
+        } else {
+
+          radarLayer.removeFrom(map);
+        }
+      }
     );
 
-
     return true;
+  }
 
-}
+  /* =========================================================
+     ИНИЦИАЛИЗАЦИЯ
+     ========================================================= */
 
+  function init() {
 
-/* =========================================================
-   ЗАГРУЗКА ДАННЫХ
-   ========================================================= */
+    const map = getMap();
 
-async function initData() {
-
-    const remote =
-        await loadRadarData();
-
-
-    if (remote.length) {
-
-        radarData =
-            remote;
-
-    } else {
-
-        radarData =
-            FALLBACK_RADARS;
-
+    if (!map) {
+      setTimeout(init, 100);
+      return;
     }
 
+    radarLayer = L.layerGroup();
+
+    /*
+     * Панель может появиться чуть позже.
+     */
+
+    let attempts = 0;
+
+    const timer = setInterval(() => {
+
+      attempts++;
+
+      if (bindLayerButton()) {
+        clearInterval(timer);
+      }
+
+      if (attempts > 100) {
+        clearInterval(timer);
+      }
+
+    }, 100);
+
+    /*
+     * Первичная загрузка.
+     * Сами объекты пока скрыты.
+     */
 
     render();
 
-}
-
-
-/* =========================================================
-   INIT
-   ========================================================= */
-
-async function init() {
-
-    if (initialized) {
-        return;
-    }
-
-
-    initialized = true;
-
-
-    mapRef =
-        getMap();
-
-
-    if (!mapRef) {
-
-        setTimeout(
-            init,
-            300
-        );
-
-        return;
-
-    }
-
-
-    createLayers();
-
-
     /*
-       Не включаем слой автоматически.
-       Он появляется только при нажатии
-       «РЛС и покрытие».
-    */
+     * Обновление координат/rings.
+     */
 
-    bindButton();
-
-    updateButton();
-
-
-    await initData();
-
-
-    /*
-       index.html может создать панель
-       чуть позже. Поэтому проверяем
-       кнопку ещё несколько раз.
-    */
-
-    let tries = 0;
-
-    const timer =
-        setInterval(
-            function () {
-
-                bindButton();
-
-                updateButton();
-
-                tries++;
-
-                if (tries > 20) {
-
-                    clearInterval(
-                        timer
-                    );
-
-                }
-
-            },
-            250
-        );
-
-
-    /*
-       Если пользователь двигает карту,
-       ничего тяжёлого не пересчитываем.
-       Все объекты географические.
-    */
-
-    mapRef.on(
-        "zoomend",
-        function () {
-
-            if (enabled) {
-                updateButton();
-            }
-
+    setInterval(
+      () => {
+        if (enabled) {
+          render();
         }
+      },
+      UPDATE_INTERVAL
     );
+  }
 
-}
+  /* =========================================================
+     ЗАПУСК
+     ========================================================= */
 
-
-/* =========================================================
-   PUBLIC API
-   ========================================================= */
-
-window.QM_RADARS = {
-
-    show: show,
-
-    hide: hide,
-
-    toggle: toggle,
-
-    render: render,
-
-    reload: initData,
-
-    getData: function () {
-
-        return radarData.slice();
-
-    }
-
-};
-
-
-/* =========================================================
-   START
-   ========================================================= */
-
-if (
-    document.readyState ===
-    "loading"
-) {
-
+  if (document.readyState === "loading") {
     document.addEventListener(
-        "DOMContentLoaded",
-        init
+      "DOMContentLoaded",
+      init,
+      { once: true }
     );
-
-} else {
-
+  } else {
     init();
-
-}
+  }
 
 })();

@@ -1,14 +1,15 @@
 /* =========================================================
    Quantum Meteo — radars.js
-   РЛС + зоны покрытия + реальные rings из /radars
+   РЛС + покрытие
 
    ВАЖНО:
    - index.html НЕ ИЗМЕНЯЕТСЯ
+   - источник РЛС: /radars
+   - используются реальные rings, если сервер их отдаёт
+   - если rings не распознаны — надёжный fallback 250 км
    - никаких DEM / Terrarium
    - никаких выдуманных слепых зон
    - никаких кругов 125/150 км
-   - используется rings, которые отдаёт сервер
-   - если rings отсутствуют — используется bounds/250 км
    ========================================================= */
 
 (() => {
@@ -18,21 +19,20 @@
      НАСТРОЙКИ
      ========================================================= */
 
-  const RADAR_RANGE_KM = 250;
+  const RANGE_KM = 250;
 
-  // Цвет покрытия
-  const COVER_FILL = "#2478a8";
-  const COVER_FILL_OPACITY = 0.13;
-  const COVER_LINE = "#16628c";
-  const COVER_LINE_OPACITY = 0.42;
+  /* Покрытие */
+  const COVER_COLOR = "#2478a8";
+  const COVER_FILL_OPACITY = 0.16;
+  const COVER_LINE_OPACITY = 0.55;
 
-  // Точки РЛС
+  /* РЛС */
   const RADAR_COLOR = "#075f91";
   const RADAR_SIZE = 7;
 
-  // Лучи — специально слабые
+  /* Лучи */
   const RAY_COLOR = "#16628c";
-  const RAY_OPACITY = 0.12;
+  const RAY_OPACITY = 0.08;
   const RAY_WEIGHT = 1;
 
   const UPDATE_INTERVAL = 60000;
@@ -41,46 +41,79 @@
      СОСТОЯНИЕ
      ========================================================= */
 
-  let radarLayer = null;
-  let radarObjects = [];
+  let map = null;
+  let layer = null;
+
   let enabled = false;
   let loading = false;
 
+  let objects = [];
+  let radarData = [];
+
   /* =========================================================
-     ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ
+     MAP
      ========================================================= */
 
   function getMap() {
     return window.map || null;
   }
 
+  /* =========================================================
+     API
+     ========================================================= */
+
   function getApi() {
     try {
-      const a = localStorage.getItem("api");
-      return a ? a.replace(/\/+$/, "") : "";
+      const value = localStorage.getItem("api");
+
+      if (!value) {
+        return "";
+      }
+
+      return value.replace(/\/+$/, "");
     } catch {
       return "";
     }
   }
 
-  function apiUrl(path) {
+  function getRadarURL() {
     const api = getApi();
 
-    if (!api) {
-      return path;
+    /*
+     * Если API задано:
+     *
+     * https://example.com
+     * ->
+     * https://example.com/radars
+     */
+
+    if (api) {
+      return api + "/radars";
     }
 
-    if (/^https?:\/\//i.test(api)) {
-      return api + path;
-    }
+    /*
+     * Если API не задано,
+     * пробуем текущий origin.
+     */
 
-    return api + path;
+    return "/radars";
   }
 
-  function num(v) {
-    const n = Number(v);
-    return Number.isFinite(n) ? n : null;
+  /* =========================================================
+     ЧИСЛА
+     ========================================================= */
+
+  function number(value) {
+    const n = Number(value);
+
+    return Number.isFinite(n)
+      ? n
+      : null;
   }
+
+  /* =========================================================
+     КООРДИНАТЫ
+     ========================================================= */
 
   function validLatLon(lat, lon) {
     return (
@@ -94,197 +127,443 @@
   }
 
   /* =========================================================
-     КИЛОМЕТРЫ -> ГЕОГРАФИЧЕСКИЕ КООРДИНАТЫ
+     DISTANCE
      ========================================================= */
 
-  function destination(lat, lon, bearingDeg, distanceKm) {
+  function destination(
+    lat,
+    lon,
+    bearing,
+    distanceKm
+  ) {
     const R = 6371;
 
-    const br = bearingDeg * Math.PI / 180;
-    const lat1 = lat * Math.PI / 180;
-    const lon1 = lon * Math.PI / 180;
+    const br =
+      bearing *
+      Math.PI /
+      180;
 
-    const d = distanceKm / R;
+    const lat1 =
+      lat *
+      Math.PI /
+      180;
 
-    const lat2 = Math.asin(
-      Math.sin(lat1) * Math.cos(d) +
-      Math.cos(lat1) * Math.sin(d) * Math.cos(br)
-    );
+    const lon1 =
+      lon *
+      Math.PI /
+      180;
+
+    const d =
+      distanceKm /
+      R;
+
+    const lat2 =
+      Math.asin(
+        Math.sin(lat1) *
+          Math.cos(d) +
+
+        Math.cos(lat1) *
+          Math.sin(d) *
+          Math.cos(br)
+      );
 
     const lon2 =
       lon1 +
       Math.atan2(
-        Math.sin(br) * Math.sin(d) * Math.cos(lat1),
+        Math.sin(br) *
+          Math.sin(d) *
+          Math.cos(lat1),
+
         Math.cos(d) -
-        Math.sin(lat1) * Math.sin(lat2)
+          Math.sin(lat1) *
+          Math.sin(lat2)
       );
 
     return [
       lat2 * 180 / Math.PI,
-      ((lon2 * 180 / Math.PI + 540) % 360) - 180
+
+      (
+        lon2 * 180 / Math.PI +
+        540
+      ) % 360 - 180
     ];
   }
 
   /* =========================================================
-     РЕАЛЬНЫЙ КРУГ 250 КМ
+     250 KM КРУГ
      ========================================================= */
 
-  function makeFallbackCircle(radar) {
-    if (!validLatLon(radar.lat, radar.lon)) {
-      return null;
-    }
+  function makeCircle(
+    lat,
+    lon,
+    radiusKm
+  ) {
+    const result = [];
 
-    const points = [];
-
-    for (let a = 0; a <= 360; a += 4) {
-      points.push(
+    for (
+      let angle = 0;
+      angle <= 360;
+      angle += 3
+    ) {
+      result.push(
         destination(
-          radar.lat,
-          radar.lon,
-          a,
-          Number(radar.range_km) || RADAR_RANGE_KM
+          lat,
+          lon,
+          angle,
+          radiusKm
         )
       );
     }
 
-    return points;
+    return result;
   }
 
   /* =========================================================
-     РАЗБОР RINGS
-     
-     Поддерживаются реальные варианты структуры:
-     
-     250
-     [250, 200]
-     {radius:250}
-     {range:250}
-     {km:250}
-     [[lat,lon], ...]
-     [{lat,lon}, ...]
-     [[[lat,lon],...], ...]
-     
-     НИЧЕГО НЕ ГЕНЕРИРУЕМ,
-     ЕСЛИ В RINGS ЕСТЬ ГЕОМЕТРИЯ.
+     POINT
      ========================================================= */
 
-  function isPoint(v) {
-    return (
-      Array.isArray(v) &&
-      v.length >= 2 &&
-      num(v[0]) !== null &&
-      num(v[1]) !== null &&
-      Math.abs(Number(v[0])) <= 90 &&
-      Math.abs(Number(v[1])) <= 180
-    );
-  }
+  function normalizePoint(value) {
 
-  function isObjectPoint(v) {
-    if (!v || typeof v !== "object" || Array.isArray(v)) {
-      return false;
+    /*
+     * [lat, lon]
+     */
+
+    if (
+      Array.isArray(value) &&
+      value.length >= 2
+    ) {
+      const lat =
+        number(value[0]);
+
+      const lon =
+        number(value[1]);
+
+      if (
+        validLatLon(
+          lat,
+          lon
+        )
+      ) {
+        return [
+          lat,
+          lon
+        ];
+      }
     }
 
-    const lat = num(v.lat ?? v.latitude);
-    const lon = num(v.lon ?? v.lng ?? v.longitude);
+    /*
+     * {lat, lon}
+     */
 
-    return validLatLon(lat, lon);
-  }
+    if (
+      value &&
+      typeof value === "object" &&
+      !Array.isArray(value)
+    ) {
+      const lat =
+        number(
+          value.lat ??
+          value.latitude
+        );
 
-  function normalizePoint(v) {
-    if (isPoint(v)) {
-      return [Number(v[0]), Number(v[1])];
-    }
+      const lon =
+        number(
+          value.lon ??
+          value.lng ??
+          value.longitude
+        );
 
-    if (isObjectPoint(v)) {
-      return [
-        Number(v.lat ?? v.latitude),
-        Number(v.lon ?? v.lng ?? v.longitude)
-      ];
+      if (
+        validLatLon(
+          lat,
+          lon
+        )
+      ) {
+        return [
+          lat,
+          lon
+        ];
+      }
     }
 
     return null;
   }
 
-  function extractGeometry(value, result = []) {
-    if (!value) {
+  /* =========================================================
+     GEOMETRY
+     ========================================================= */
+
+  function extractPolygons(
+    value,
+    result = []
+  ) {
+    if (value == null) {
       return result;
     }
 
-    /* Один объект-точка */
-    const objectPoint = normalizePoint(value);
+    /*
+     * Один объект с geometry
+     */
 
-    if (objectPoint) {
-      result.push([objectPoint]);
-      return result;
-    }
-
-    /* Массив */
-    if (Array.isArray(value)) {
-
-      /* [lat,lon] */
-      if (isPoint(value)) {
-        result.push([
-          [Number(value[0]), Number(value[1])]
-        ]);
-        return result;
-      }
-
-      /* [{lat,lon}, ...] или [[lat,lon], ...] */
-      if (
-        value.length &&
-        value.every(v => normalizePoint(v))
-      ) {
-        result.push(
-          value.map(v => normalizePoint(v))
-        );
-        return result;
-      }
-
-      /* Вложенная геометрия */
-      for (const item of value) {
-        extractGeometry(item, result);
-      }
-
-      return result;
-    }
-
-    /* Объект с geometry */
-    if (typeof value === "object") {
-
+    if (
+      value &&
+      typeof value === "object" &&
+      !Array.isArray(value)
+    ) {
       if (value.geometry) {
-        extractGeometry(value.geometry, result);
+        extractPolygons(
+          value.geometry,
+          result
+        );
       }
 
       if (value.coordinates) {
-        extractGeometry(value.coordinates, result);
+        extractPolygons(
+          value.coordinates,
+          result
+        );
       }
 
       if (value.points) {
-        extractGeometry(value.points, result);
+        extractPolygons(
+          value.points,
+          result
+        );
       }
 
       if (value.polygon) {
-        extractGeometry(value.polygon, result);
+        extractPolygons(
+          value.polygon,
+          result
+        );
       }
 
       if (value.polygons) {
-        extractGeometry(value.polygons, result);
-      }
-
-      if (value.sector) {
-        extractGeometry(value.sector, result);
-      }
-
-      if (value.sectors) {
-        extractGeometry(value.sectors, result);
+        extractPolygons(
+          value.polygons,
+          result
+        );
       }
 
       if (value.mask) {
-        extractGeometry(value.mask, result);
+        extractPolygons(
+          value.mask,
+          result
+        );
       }
 
       if (value.masks) {
-        extractGeometry(value.masks, result);
+        extractPolygons(
+          value.masks,
+          result
+        );
+      }
+
+      if (value.sector) {
+        extractPolygons(
+          value.sector,
+          result
+        );
+      }
+
+      if (value.sectors) {
+        extractPolygons(
+          value.sectors,
+          result
+        );
+      }
+
+      return result;
+    }
+
+    if (!Array.isArray(value)) {
+      return result;
+    }
+
+    /*
+     * [lat, lon]
+     */
+
+    const one =
+      normalizePoint(value);
+
+    if (one) {
+      return result;
+    }
+
+    /*
+     * [[lat,lon], ...]
+     */
+
+    if (
+      value.length >= 3 &&
+      value.every(
+        item =>
+          normalizePoint(item)
+      )
+    ) {
+      result.push(
+        value.map(
+          normalizePoint
+        )
+      );
+
+      return result;
+    }
+
+    /*
+     * Вложенные полигоны
+     */
+
+    for (const item of value) {
+      extractPolygons(
+        item,
+        result
+      );
+    }
+
+    return result;
+  }
+
+  /* =========================================================
+     RADII
+     ========================================================= */
+
+  function extractRadii(
+    value,
+    result = []
+  ) {
+    if (value == null) {
+      return result;
+    }
+
+    /*
+     * Число = радиус.
+     */
+
+    if (
+      typeof value === "number" &&
+      Number.isFinite(value)
+    ) {
+      if (
+        value > 0 &&
+        value <= 1000
+      ) {
+        result.push(value);
+      }
+
+      return result;
+    }
+
+    /*
+     * Строковое число.
+     */
+
+    if (
+      typeof value === "string"
+    ) {
+      const n =
+        Number(value);
+
+      if (
+        Number.isFinite(n) &&
+        n > 0 &&
+        n <= 1000
+      ) {
+        result.push(n);
+      }
+
+      return result;
+    }
+
+    /*
+     * Массив.
+     */
+
+    if (Array.isArray(value)) {
+
+      /*
+       * [lat, lon] — это координаты,
+       * не радиус.
+       */
+
+      if (
+        value.length === 2 &&
+        number(value[0]) !== null &&
+        number(value[1]) !== null &&
+        Math.abs(
+          Number(value[0])
+        ) <= 90 &&
+        Math.abs(
+          Number(value[1])
+        ) <= 180
+      ) {
+        return result;
+      }
+
+      for (
+        const item of value
+      ) {
+        extractRadii(
+          item,
+          result
+        );
+      }
+
+      return result;
+    }
+
+    /*
+     * Объект.
+     */
+
+    if (
+      typeof value === "object"
+    ) {
+      const keys = [
+        "radius",
+        "radius_km",
+        "range",
+        "range_km",
+        "distance",
+        "distance_km",
+        "km"
+      ];
+
+      for (
+        const key of keys
+      ) {
+        const n =
+          number(value[key]);
+
+        if (
+          n !== null &&
+          n > 0 &&
+          n <= 1000
+        ) {
+          result.push(n);
+        }
+      }
+
+      /*
+       * Возможные контейнеры.
+       */
+
+      for (
+        const key of [
+          "rings",
+          "ranges",
+          "distances"
+        ]
+      ) {
+        if (
+          value[key] != null
+        ) {
+          extractRadii(
+            value[key],
+            result
+          );
+        }
       }
     }
 
@@ -292,491 +571,486 @@
   }
 
   /* =========================================================
-     ИЗВЛЕЧЕНИЕ РАДИУСОВ ИЗ RINGS
+     РИСУЕМ POLYGON
      ========================================================= */
 
-  function radiusFromObject(v) {
-    if (!v || typeof v !== "object" || Array.isArray(v)) {
-      return null;
-    }
-
-    const candidates = [
-      v.radius,
-      v.range,
-      v.range_km,
-      v.distance,
-      v.km,
-      v.radius_km
-    ];
-
-    for (const x of candidates) {
-      const n = num(x);
-
-      if (n !== null && n > 0 && n <= 1000) {
-        return n;
-      }
-    }
-
-    return null;
-  }
-
-  function extractRadii(rings) {
-    const result = [];
-
-    function walk(v) {
-      if (v == null) {
-        return;
-      }
-
-      if (typeof v === "number") {
-        if (v > 0 && v <= 1000) {
-          result.push(v);
-        }
-        return;
-      }
-
-      if (typeof v === "string") {
-        const n = Number(v);
-
-        if (Number.isFinite(n) && n > 0 && n <= 1000) {
-          result.push(n);
-        }
-
-        return;
-      }
-
-      if (Array.isArray(v)) {
-
-        /*
-         * Координатная пара — это НЕ радиус.
-         */
-        if (isPoint(v)) {
-          return;
-        }
-
-        for (const x of v) {
-          walk(x);
-        }
-
-        return;
-      }
-
-      if (typeof v === "object") {
-
-        const r = radiusFromObject(v);
-
-        if (r !== null) {
-          result.push(r);
-        }
-
-        /*
-         * Не пытаемся интерпретировать координаты
-         * как расстояния.
-         */
-        for (const key of [
-          "rings",
-          "ranges",
-          "distances"
-        ]) {
-          if (v[key] != null) {
-            walk(v[key]);
-          }
-        }
-      }
-    }
-
-    walk(rings);
-
-    return [...new Set(
-      result.map(x => Math.round(x * 10) / 10)
-    )];
-  }
-
-  /* =========================================================
-     ОТРИСОВКА ГЕОМЕТРИИ ИЗ RINGS
-     ========================================================= */
-
-  function drawRingGeometry(radar, rings) {
-    const map = getMap();
-
-    if (!map || !rings) {
+  function drawPolygon(
+    points
+  ) {
+    if (
+      !layer ||
+      !points ||
+      points.length < 3
+    ) {
       return false;
     }
 
-    const geometries = extractGeometry(rings);
-
-    let drawn = false;
-
-    for (const geometry of geometries) {
-
-      if (!geometry || geometry.length < 3) {
-        continue;
-      }
-
-      const valid = geometry.every(
-        p => Array.isArray(p) &&
-             p.length >= 2 &&
-             validLatLon(
-               Number(p[0]),
-               Number(p[1])
-             )
+    const valid =
+      points.every(
+        p =>
+          Array.isArray(p) &&
+          p.length >= 2 &&
+          validLatLon(
+            Number(p[0]),
+            Number(p[1])
+          )
       );
 
-      if (!valid) {
-        continue;
-      }
+    if (!valid) {
+      return false;
+    }
 
-      const polygon = L.polygon(
-        geometry,
+    const polygon =
+      L.polygon(
+        points,
         {
-          stroke: true,
-          color: COVER_LINE,
+          color:
+            COVER_COLOR,
+
           weight: 1,
-          opacity: COVER_LINE_OPACITY,
-          fill: true,
-          fillColor: COVER_FILL,
-          fillOpacity: COVER_FILL_OPACITY,
-          interactive: false
+
+          opacity:
+            COVER_LINE_OPACITY,
+
+          fillColor:
+            COVER_COLOR,
+
+          fillOpacity:
+            COVER_FILL_OPACITY,
+
+          interactive:
+            false
         }
       );
 
-      polygon.addTo(radarLayer);
+    polygon.addTo(layer);
 
-      radarObjects.push(polygon);
+    objects.push(
+      polygon
+    );
 
-      drawn = true;
-    }
-
-    return drawn;
+    return true;
   }
 
   /* =========================================================
-     КРУГИ ИЗ RINGS
+     РИСУЕМ CIRCLE
      ========================================================= */
 
-  function drawRadii(radar, rings) {
-    const map = getMap();
-
-    if (!map) {
+  function drawCircle(
+    radar,
+    radiusKm,
+    fill = true
+  ) {
+    if (
+      !layer ||
+      !validLatLon(
+        radar.lat,
+        radar.lon
+      )
+    ) {
       return false;
     }
 
-    const radii = extractRadii(rings);
+    const circle =
+      L.circle(
+        [
+          radar.lat,
+          radar.lon
+        ],
+        {
+          radius:
+            radiusKm * 1000,
 
-    if (!radii.length) {
+          color:
+            COVER_COLOR,
+
+          weight: 1,
+
+          opacity:
+            COVER_LINE_OPACITY,
+
+          fillColor:
+            COVER_COLOR,
+
+          fillOpacity:
+            fill
+              ? COVER_FILL_OPACITY
+              : 0,
+
+          interactive:
+            false
+        }
+      );
+
+    circle.addTo(layer);
+
+    objects.push(
+      circle
+    );
+
+    return true;
+  }
+
+  /* =========================================================
+     RINGS
+     ========================================================= */
+
+  function drawRings(
+    radar
+  ) {
+    if (
+      radar.rings == null
+    ) {
       return false;
     }
 
-    let drawn = false;
+    let drawn =
+      false;
 
     /*
-     * Рисуем только реальные rings.
-     * Никаких 150/125 км.
+     * Сначала пробуем настоящую
+     * геометрию.
      */
-    for (const radius of radii) {
 
-      const circle = L.circle(
-        [radar.lat, radar.lon],
-        {
-          radius: radius * 1000,
-          stroke: true,
-          color: COVER_LINE,
-          weight: 1,
-          opacity: COVER_LINE_OPACITY,
-          fill: false,
-          interactive: false
-        }
+    const polygons =
+      extractPolygons(
+        radar.rings
       );
 
-      circle.addTo(radarLayer);
+    for (
+      const polygon of polygons
+    ) {
+      if (
+        drawPolygon(
+          polygon
+        )
+      ) {
+        drawn = true;
+      }
+    }
 
-      radarObjects.push(circle);
+    /*
+     * Потом радиусы.
+     */
 
-      drawn = true;
+    const radii =
+      extractRadii(
+        radar.rings
+      );
+
+    const unique =
+      [
+        ...new Set(
+          radii.map(
+            x =>
+              Math.round(
+                x * 10
+              ) / 10
+          )
+        )
+      ];
+
+    for (
+      const radius of unique
+    ) {
+      /*
+       * Не рисуем 125/150 км.
+       */
+
+      if (
+        radius === 125 ||
+        radius === 150
+      ) {
+        continue;
+      }
+
+      if (
+        drawCircle(
+          radar,
+          radius,
+          false
+        )
+      ) {
+        drawn = true;
+      }
     }
 
     return drawn;
   }
 
   /* =========================================================
-     FALLBACK ПО BOUNDS
+     FALLBACK
      ========================================================= */
 
-  function drawBoundsFallback(radar) {
-    const map = getMap();
+  function drawFallback(
+    radar
+  ) {
+    /*
+     * Если сервер не дал
+     * распознаваемую геометрию,
+     * всегда показываем 250 км.
+     *
+     * Это гарантирует, что
+     * переключатель не оставит
+     * только точки и лучи.
+     */
 
-    if (!map) {
+    drawCircle(
+      radar,
+      RANGE_KM,
+      true
+    );
+  }
+
+  /* =========================================================
+     RAYS
+     ========================================================= */
+
+  function drawRays(
+    radar
+  ) {
+    if (
+      !layer
+    ) {
       return;
     }
 
-    /*
-     * Если сервер дал bounds,
-     * используем их как реальную область.
-     */
-
-    if (
-      Array.isArray(radar.bounds) &&
-      radar.bounds.length >= 4
+    for (
+      let angle = 0;
+      angle < 360;
+      angle += 30
     ) {
+      const end =
+        destination(
+          radar.lat,
+          radar.lon,
+          angle,
+          RANGE_KM
+        );
 
-      const a = Number(radar.bounds[0]);
-      const b = Number(radar.bounds[1]);
-      const c = Number(radar.bounds[2]);
-      const d = Number(radar.bounds[3]);
-
-      if (
-        validLatLon(a, b) &&
-        validLatLon(c, d)
-      ) {
-
-        const rectangle = L.rectangle(
+      const line =
+        L.polyline(
           [
-            [a, b],
-            [c, d]
+            [
+              radar.lat,
+              radar.lon
+            ],
+
+            end
           ],
           {
-            stroke: true,
-            color: COVER_LINE,
-            weight: 1,
-            opacity: 0.25,
-            fill: true,
-            fillColor: COVER_FILL,
-            fillOpacity: 0.04,
-            interactive: false
+            color:
+              RAY_COLOR,
+
+            weight:
+              RAY_WEIGHT,
+
+            opacity:
+              RAY_OPACITY,
+
+            interactive:
+              false
           }
         );
 
-        rectangle.addTo(radarLayer);
+      line.addTo(layer);
 
-        radarObjects.push(rectangle);
-
-        return;
-      }
+      objects.push(
+        line
+      );
     }
-
-    /* Последний fallback — реальный номинальный радиус */
-    const circlePoints = makeFallbackCircle(radar);
-
-    if (!circlePoints) {
-      return;
-    }
-
-    const polygon = L.polygon(
-      circlePoints,
-      {
-        stroke: true,
-        color: COVER_LINE,
-        weight: 1,
-        opacity: COVER_LINE_OPACITY,
-        fill: true,
-        fillColor: COVER_FILL,
-        fillOpacity: COVER_FILL_OPACITY,
-        interactive: false
-      }
-    );
-
-    polygon.addTo(radarLayer);
-
-    radarObjects.push(polygon);
   }
 
   /* =========================================================
-     РАДИАЛЬНЫЕ ЛУЧИ
+     RADAR POINT
      ========================================================= */
 
-  function drawRays(radar) {
-    const map = getMap();
-
-    if (!map) {
-      return;
-    }
-
-    /*
-     * Лучи нужны только визуально.
-     * Они не являются слепыми зонами.
-     */
-
-    for (let angle = 0; angle < 360; angle += 30) {
-
-      const p = destination(
-        radar.lat,
-        radar.lon,
-        angle,
-        RADAR_RANGE_KM
-      );
-
-      const line = L.polyline(
+  function drawRadarPoint(
+    radar
+  ) {
+    const point =
+      L.circleMarker(
         [
-          [radar.lat, radar.lon],
-          p
+          radar.lat,
+          radar.lon
         ],
         {
-          color: RAY_COLOR,
-          weight: RAY_WEIGHT,
-          opacity: RAY_OPACITY,
-          interactive: false
+          radius:
+            RADAR_SIZE,
+
+          color:
+            "#ffffff",
+
+          weight: 2,
+
+          opacity: 1,
+
+          fillColor:
+            RADAR_COLOR,
+
+          fillOpacity: 1,
+
+          interactive:
+            false
         }
       );
 
-      line.addTo(radarLayer);
+    point.addTo(layer);
 
-      radarObjects.push(line);
-    }
-  }
-
-  /* =========================================================
-     ТОЧКА РЛС
-     ========================================================= */
-
-  function drawRadarPoint(radar) {
-    const map = getMap();
-
-    if (!map) {
-      return;
-    }
-
-    const point = L.circleMarker(
-      [radar.lat, radar.lon],
-      {
-        radius: RADAR_SIZE,
-        color: "#ffffff",
-        weight: 2,
-        opacity: 1,
-        fillColor: RADAR_COLOR,
-        fillOpacity: 1,
-        interactive: false
-      }
+    objects.push(
+      point
     );
-
-    point.addTo(radarLayer);
-
-    radarObjects.push(point);
   }
 
   /* =========================================================
-     ОЧИСТКА
+     ONE RADAR
      ========================================================= */
 
-  function clearRadarObjects() {
+  function drawRadar(
+    radar
+  ) {
+    const lat =
+      number(radar.lat);
 
-    for (const object of radarObjects) {
-      try {
-        object.remove();
-      } catch {}
-    }
-
-    radarObjects = [];
-  }
-
-  /* =========================================================
-     ОТРИСОВКА ОДНОЙ РЛС
-     ========================================================= */
-
-  function drawRadar(radar) {
+    const lon =
+      number(radar.lon);
 
     if (
-      !radar ||
       !validLatLon(
-        Number(radar.lat),
-        Number(radar.lon)
+        lat,
+        lon
       )
     ) {
       return;
     }
 
-    radar.lat = Number(radar.lat);
-    radar.lon = Number(radar.lon);
+    const r = {
+      ...radar,
+      lat,
+      lon
+    };
 
     /*
-     * Сначала реальные rings.
+     * Реальные rings.
      */
 
-    let hasCoverage = false;
+    let coverage =
+      drawRings(r);
 
-    if (radar.rings != null) {
+    /*
+     * Если rings отсутствуют
+     * или имеют неизвестный формат —
+     * гарантированный 250 км.
+     */
 
-      hasCoverage =
-        drawRingGeometry(
-          radar,
-          radar.rings
-        );
-
-      if (!hasCoverage) {
-        hasCoverage =
-          drawRadii(
-            radar,
-            radar.rings
-          );
-      }
+    if (!coverage) {
+      drawFallback(r);
     }
 
     /*
-     * Если rings не дали геометрию —
-     * используем bounds / номинальное покрытие.
+     * Лучи.
      */
 
-    if (!hasCoverage) {
-      drawBoundsFallback(radar);
-    }
+    drawRays(r);
 
     /*
-     * Лучи и точка.
+     * Точка.
      */
 
-    drawRays(radar);
-    drawRadarPoint(radar);
+    drawRadarPoint(r);
   }
 
   /* =========================================================
-     ЗАГРУЗКА РЛС
+     CLEAR
+     ========================================================= */
+
+  function clearObjects() {
+    for (
+      const object of objects
+    ) {
+      try {
+        object.remove();
+      } catch {}
+    }
+
+    objects = [];
+  }
+
+  /* =========================================================
+     LOAD
      ========================================================= */
 
   async function loadRadars() {
 
     if (loading) {
-      return;
+      return radarData;
     }
 
     loading = true;
 
     try {
+      const url =
+        getRadarURL();
 
-      const response = await fetch(
-        apiUrl("/radars"),
-        {
-          cache: "no-store"
-        }
+      console.log(
+        "Quantum Meteo: loading",
+        url
       );
 
-      if (!response.ok) {
+      const response =
+        await fetch(
+          url,
+          {
+            cache:
+              "no-store"
+          }
+        );
+
+      if (
+        !response.ok
+      ) {
         throw new Error(
-          "HTTP " + response.status
+          "HTTP " +
+          response.status
         );
       }
 
-      const data = await response.json();
+      const data =
+        await response.json();
 
-      if (!Array.isArray(data)) {
+      if (
+        !Array.isArray(data)
+      ) {
         throw new Error(
-          "Ответ /radars не является массивом"
+          "/radars returned non-array"
         );
       }
 
-      return data.filter(
-        radar =>
-          radar &&
-          validLatLon(
-            Number(radar.lat),
-            Number(radar.lon)
-          )
+      radarData =
+        data.filter(
+          radar =>
+            radar &&
+            validLatLon(
+              number(radar.lat),
+              number(radar.lon)
+            )
+        );
+
+      console.log(
+        "Quantum Meteo: РЛС:",
+        radarData.length
       );
+
+      return radarData;
 
     } catch (error) {
 
       console.error(
-        "Quantum Meteo radar error:",
+        "Quantum Meteo: /radars error:",
         error
       );
+
+      radarData = [];
 
       return [];
 
@@ -786,109 +1060,157 @@
   }
 
   /* =========================================================
-     РЕНДЕР
+     RENDER
      ========================================================= */
 
   async function render() {
 
-    const map = getMap();
+    map =
+      getMap();
 
-    if (!map) {
+    if (
+      !map
+    ) {
       return;
     }
 
-    if (!radarLayer) {
-      radarLayer = L.layerGroup();
+    if (
+      !layer
+    ) {
+      layer =
+        L.layerGroup();
     }
 
-    clearRadarObjects();
+    const radars =
+      await loadRadars();
 
-    const radars = await loadRadars();
+    /*
+     * Убираем старую отрисовку
+     * только после получения
+     * новых данных.
+     *
+     * Это важно: при ошибке API
+     * старая рабочая карта не исчезает.
+     */
 
-    if (!radars.length) {
+    if (
+      !radars.length
+    ) {
       console.warn(
-        "Quantum Meteo: РЛС не получены"
+        "Quantum Meteo: новых данных РЛС нет"
       );
+
       return;
     }
 
-    for (const radar of radars) {
-      drawRadar(radar);
+    clearObjects();
+
+    for (
+      const radar of radars
+    ) {
+      drawRadar(
+        radar
+      );
     }
 
     /*
-     * Если слой был выключен — объекты не показываем.
+     * Слой должен быть виден
+     * только если включён.
      */
 
-    if (!enabled) {
-      try {
-        radarLayer.removeFrom(map);
-      } catch {}
+    if (
+      enabled
+    ) {
+      if (
+        !map.hasLayer(layer)
+      ) {
+        layer.addTo(map);
+      }
+    } else {
+      if (
+        map.hasLayer(layer)
+      ) {
+        layer.removeFrom(map);
+      }
     }
-
-    console.log(
-      "Quantum Meteo: загружено РЛС:",
-      radars.length
-    );
   }
 
   /* =========================================================
-     ПЕРЕКЛЮЧАТЕЛЬ В СУЩЕСТВУЮЩЕЙ ПАНЕЛИ
+     BUTTON
      ========================================================= */
 
-  function bindLayerButton() {
+  function bindButton() {
 
     const button =
       document.querySelector(
         '#lp .it[data-k="coverage"]'
       );
 
-    if (!button) {
+    if (
+      !button
+    ) {
       return false;
     }
 
-    /*
-     * Не добавляем второй обработчик.
-     */
-
-    if (button.dataset.radarsBound === "1") {
+    if (
+      button.dataset.radarsBound === "1"
+    ) {
       return true;
     }
 
-    button.dataset.radarsBound = "1";
+    button.dataset.radarsBound =
+      "1";
 
     button.addEventListener(
       "click",
       async () => {
 
-        const map = getMap();
+        map =
+          getMap();
 
-        if (!map || !radarLayer) {
+        if (
+          !map ||
+          !layer
+        ) {
           return;
         }
 
-        enabled = !enabled;
+        enabled =
+          !enabled;
 
         button.classList.toggle(
           "off",
           !enabled
         );
 
-        if (enabled) {
-
-          radarLayer.addTo(map);
+        if (
+          enabled
+        ) {
 
           /*
-           * Если данных ещё нет — загружаем.
+           * Сначала показываем слой.
            */
 
-          if (!radarObjects.length) {
+          layer.addTo(
+            map
+          );
+
+          /*
+           * Если данных ещё нет —
+           * загружаем.
+           */
+
+          if (
+            !objects.length
+          ) {
             await render();
           }
 
         } else {
 
-          radarLayer.removeFrom(map);
+          layer.removeFrom(
+            map
+          );
         }
       }
     );
@@ -897,73 +1219,106 @@
   }
 
   /* =========================================================
-     ИНИЦИАЛИЗАЦИЯ
+     INIT
      ========================================================= */
 
   function init() {
 
-    const map = getMap();
+    map =
+      getMap();
 
-    if (!map) {
-      setTimeout(init, 100);
+    if (
+      !map
+    ) {
+      setTimeout(
+        init,
+        100
+      );
+
       return;
     }
 
-    radarLayer = L.layerGroup();
+    layer =
+      L.layerGroup();
 
     /*
-     * Панель может появиться чуть позже.
+     * Ждём появления панели.
      */
 
     let attempts = 0;
 
-    const timer = setInterval(() => {
+    const timer =
+      setInterval(
+        () => {
 
-      attempts++;
+          attempts++;
 
-      if (bindLayerButton()) {
-        clearInterval(timer);
-      }
+          if (
+            bindButton()
+          ) {
+            clearInterval(
+              timer
+            );
+          }
 
-      if (attempts > 100) {
-        clearInterval(timer);
-      }
+          if (
+            attempts >= 100
+          ) {
+            clearInterval(
+              timer
+            );
+          }
 
-    }, 100);
+        },
+        100
+      );
 
     /*
-     * Первичная загрузка.
-     * Сами объекты пока скрыты.
+     * Загружаем заранее,
+     * но слой пока скрыт.
      */
 
     render();
 
     /*
-     * Обновление координат/rings.
+     * Обновление каждые 60 секунд.
      */
 
     setInterval(
       () => {
-        if (enabled) {
+
+        if (
+          enabled
+        ) {
           render();
         }
+
       },
       UPDATE_INTERVAL
     );
   }
 
   /* =========================================================
-     ЗАПУСК
+     START
      ========================================================= */
 
-  if (document.readyState === "loading") {
+  if (
+    document.readyState ===
+    "loading"
+  ) {
+
     document.addEventListener(
       "DOMContentLoaded",
       init,
-      { once: true }
+      {
+        once: true
+      }
     );
+
   } else {
+
     init();
+
   }
 
 })();

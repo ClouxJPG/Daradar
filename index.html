@@ -2246,10 +2246,49 @@ $('li').onclick=e=>{
   return;
  }
 
- /*
-    РЛС теперь полностью находятся
-    в отдельном radars.js
- */
+ if(k=='coverage'){
+
+  const enabled=
+   item.classList.contains('off');
+
+  item.classList.toggle(
+   'off',
+   !enabled
+  );
+
+  if(
+   window.RadarPoints
+  ){
+
+   if(
+    typeof window.RadarPoints.setVisible===
+    'function'
+   ){
+
+    window.RadarPoints.setVisible(
+     enabled
+    );
+
+   }else if(
+    typeof window.RadarPoints.toggle===
+    'function'
+   ){
+
+    window.RadarPoints.toggle();
+
+   }else if(
+    typeof window.RadarPoints.update===
+    'function'
+   ){
+
+    window.RadarPoints.update(
+     enabled
+    );
+   }
+  }
+
+  return;
+ }
 };
 
 /* =========================================================
@@ -2260,38 +2299,75 @@ let rp=[];
 let rpl=null;
 let rtt=null;
 
-$('rl').onclick=()=>{
+/* =========================================================
+   ИСПРАВЛЕННОЕ НАЖАТИЕ КНОПКИ ЛИНЕЙКИ
+   ========================================================= */
 
- S.rl^=1;
+(()=>{
+ const btn=$('rl');
 
- $('rl').classList.toggle(
-  'on',
-  !!S.rl
+ if(!btn)
+  return;
+
+ let busy=false;
+
+ const toggle=()=>{
+
+  if(busy)
+   return;
+
+  busy=true;
+
+  setTimeout(
+   ()=>{
+    busy=false;
+   },
+   250
+  );
+
+  S.rl=!S.rl;
+
+  btn.classList.toggle(
+   'on',
+   !!S.rl
+  );
+
+  if(!S.rl){
+
+   rp=[];
+
+   if(rpl)
+    rpl.remove();
+
+   if(rtt)
+    rtt.remove();
+
+   rpl=null;
+   rtt=null;
+
+  }else{
+
+   S.vc=0;
+
+   $('vc').classList.remove(
+    'on'
+   );
+  }
+ };
+
+ btn.addEventListener(
+  'pointerup',
+  e=>{
+   e.preventDefault();
+   e.stopPropagation();
+   toggle();
+  },
+  {
+   passive:false
+  }
  );
 
- if(!S.rl){
-
-  rp=[];
-
-  if(rpl)
-   rpl.remove();
-
-  if(rtt)
-   rtt.remove();
-
-  rpl=
-   rtt=
-   null;
-
- }else{
-
-  S.vc=0;
-
-  $('vc').classList.remove(
-   'on'
-  );
- }
-};
+})();
 
 /* =========================================================
    ВЕРТИКАЛЬНОЕ СЕЧЕНИЕ

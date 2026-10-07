@@ -1,294 +1,58 @@
 /* =========================================================
    Quantum Meteo — ДМРЛ-С / РЛС и покрытие
 
-   ВАЖНО:
    - index.html НЕ ИЗМЕНЯЕТСЯ
    - ЛИНЕЙКА НЕ ИЗМЕНЯЕТСЯ
    - НИКАКИХ запросов к Nowcast
-   - НИКАКИХ fetch()
-   - НИКАКИХ XMLHttpRequest
-   - НИКАКИХ WMS
-   - НИКАКИХ внешних API
+   - НИКАКИХ fetch / XHR / WMS
    - НИКАКИХ таймеров
-   - все данные находятся локально в этом файле
-
-   28 ДМРЛ-С:
-   RUDO RUDP RUTD RUDX RAVO RAKT RUDB RUDV
-   RUDG RATL RAKD RUDT RUWJ RAMI RAVN RAKU
-   RUDI RAYL RUDL RASM RABG RUDM RUDK RUDZ
-   RAVL RUDU RUDN RAKW
-
-   Источник списка:
-   материалы ЦАО / Росгидромета.
-
-   Координаты:
-   статическая визуальная привязка станций.
+   - РЛС полностью статические
    ========================================================= */
 
 
 /* =========================================================
-   1. РЛС
+   РЛС
    ========================================================= */
 
 const RADARS = [
 
-  {
-    id:"RUDO",
-    name:"Оренбург",
-    lat:51.77,
-    lon:55.10,
-    range:250,
-    beam:2.2
-  },
+  {id:"RUDO",name:"Оренбург",lat:51.77,lon:55.10,range:250,beam:1.2},
+  {id:"RUDP",name:"Петрозаводск",lat:61.78,lon:34.35,range:250,beam:1.0},
+  {id:"RUTD",name:"Тамбов",lat:52.72,lon:41.45,range:250,beam:1.3},
+  {id:"RUDX",name:"Архангельск",lat:64.54,lon:40.54,range:250,beam:.9},
+  {id:"RAVO",name:"Воейково",lat:59.96,lon:30.67,range:250,beam:1.0},
+  {id:"RAKT",name:"Котлас",lat:61.25,lon:46.63,range:240,beam:1.1},
+  {id:"RUDB",name:"Брянск",lat:53.25,lon:34.37,range:250,beam:1.4},
+  {id:"RUDV",name:"Вологда",lat:59.22,lon:39.89,range:250,beam:1.0},
+  {id:"RUDG",name:"Волгоград",lat:48.71,lon:44.51,range:250,beam:1.5},
+  {id:"RATL",name:"Тула",lat:54.20,lon:37.62,range:250,beam:1.3},
+  {id:"RAKD",name:"Краснодар",lat:45.04,lon:38.98,range:250,beam:1.5},
+  {id:"RUDT",name:"Ставрополь",lat:45.04,lon:41.97,range:250,beam:1.4},
+  {id:"RUWJ",name:"Валдай",lat:57.98,lon:33.25,range:250,beam:1.0},
+  {id:"RAMI",name:"Миллерово",lat:48.93,lon:40.40,range:250,beam:1.5},
+  {id:"RAVN",name:"Внуково",lat:55.60,lon:37.29,range:230,beam:1.2},
+  {id:"RAKU",name:"Курск",lat:51.73,lon:36.19,range:250,beam:1.4},
+  {id:"RUDI",name:"Ижевск",lat:56.85,lon:53.20,range:250,beam:1.1},
+  {id:"RAYL",name:"Элиста",lat:46.31,lon:44.27,range:250,beam:1.6},
+  {id:"RUDL",name:"Смоленск",lat:54.78,lon:32.04,range:250,beam:1.2},
+  {id:"RASM",name:"Самара",lat:53.20,lon:50.15,range:250,beam:1.4},
+  {id:"RABG",name:"Белгород",lat:50.60,lon:36.60,range:250,beam:1.3},
+  {id:"RUDM",name:"Минеральные Воды",lat:44.21,lon:43.14,range:250,beam:1.5},
+  {id:"RUDK",name:"Кострома",lat:57.77,lon:40.93,range:250,beam:1.1},
+  {id:"RUDZ",name:"Казань",lat:55.79,lon:49.12,range:250,beam:1.3},
+  {id:"RAVL",name:"Великие Луки",lat:56.34,lon:30.52,range:245,beam:1.0},
 
-  {
-    id:"RUDP",
-    name:"Петрозаводск",
-    lat:61.78,
-    lon:34.35,
-    range:250,
-    beam:2.0
-  },
+  /* Уфа — привязка ближе к аэродромной зоне */
+  {id:"RUDU",name:"Уфа",lat:54.5567,lon:55.8750,range:250,beam:1.4},
 
-  {
-    id:"RUTD",
-    name:"Тамбов",
-    lat:52.72,
-    lon:41.45,
-    range:250,
-    beam:2.4
-  },
-
-  {
-    id:"RUDX",
-    name:"Архангельск",
-    lat:64.54,
-    lon:40.54,
-    range:250,
-    beam:1.9
-  },
-
-  {
-    id:"RAVO",
-    name:"Воейково",
-    lat:59.96,
-    lon:30.67,
-    range:250,
-    beam:2.0
-  },
-
-  {
-    id:"RAKT",
-    name:"Котлас",
-    lat:61.25,
-    lon:46.63,
-    range:240,
-    beam:2.1
-  },
-
-  {
-    id:"RUDB",
-    name:"Брянск",
-    lat:53.25,
-    lon:34.37,
-    range:250,
-    beam:2.5
-  },
-
-  {
-    id:"RUDV",
-    name:"Вологда",
-    lat:59.22,
-    lon:39.89,
-    range:250,
-    beam:2.0
-  },
-
-  {
-    id:"RUDG",
-    name:"Волгоград",
-    lat:48.71,
-    lon:44.51,
-    range:250,
-    beam:2.6
-  },
-
-  {
-    id:"RATL",
-    name:"Тула",
-    lat:54.20,
-    lon:37.62,
-    range:250,
-    beam:2.4
-  },
-
-  {
-    id:"RAKD",
-    name:"Краснодар",
-    lat:45.04,
-    lon:38.98,
-    range:250,
-    beam:2.7
-  },
-
-  {
-    id:"RUDT",
-    name:"Ставрополь",
-    lat:45.04,
-    lon:41.97,
-    range:250,
-    beam:2.5
-  },
-
-  {
-    id:"RUWJ",
-    name:"Валдай",
-    lat:57.98,
-    lon:33.25,
-    range:250,
-    beam:2.0
-  },
-
-  {
-    id:"RAMI",
-    name:"Миллерово",
-    lat:48.93,
-    lon:40.40,
-    range:250,
-    beam:2.6
-  },
-
-  {
-    id:"RAVN",
-    name:"Внуково",
-    lat:55.60,
-    lon:37.29,
-    range:230,
-    beam:2.3
-  },
-
-  {
-    id:"RAKU",
-    name:"Курск",
-    lat:51.73,
-    lon:36.19,
-    range:250,
-    beam:2.5
-  },
-
-  {
-    id:"RUDI",
-    name:"Ижевск",
-    lat:56.85,
-    lon:53.20,
-    range:250,
-    beam:2.1
-  },
-
-  {
-    id:"RAYL",
-    name:"Элиста",
-    lat:46.31,
-    lon:44.27,
-    range:250,
-    beam:2.8
-  },
-
-  {
-    id:"RUDL",
-    name:"Смоленск",
-    lat:54.78,
-    lon:32.04,
-    range:250,
-    beam:2.2
-  },
-
-  {
-    id:"RASM",
-    name:"Самара",
-    lat:53.20,
-    lon:50.15,
-    range:250,
-    beam:2.5
-  },
-
-  {
-    id:"RABG",
-    name:"Белгород",
-    lat:50.60,
-    lon:36.60,
-    range:250,
-    beam:2.4
-  },
-
-  {
-    id:"RUDM",
-    name:"Минеральные Воды",
-    lat:44.21,
-    lon:43.14,
-    range:250,
-    beam:2.6
-  },
-
-  {
-    id:"RUDK",
-    name:"Кострома",
-    lat:57.77,
-    lon:40.93,
-    range:250,
-    beam:2.1
-  },
-
-  {
-    id:"RUDZ",
-    name:"Казань",
-    lat:55.79,
-    lon:49.12,
-    range:250,
-    beam:2.4
-  },
-
-  {
-    id:"RAVL",
-    name:"Великие Луки",
-    lat:56.34,
-    lon:30.52,
-    range:245,
-    beam:2.0
-  },
-
-  {
-    id:"RUDU",
-    name:"Уфа",
-    lat:54.5567,
-    lon:55.8750,
-    range:250,
-    beam:2.5
-  },
-
-  {
-    id:"RUDN",
-    name:"Нижний Новгород",
-    lat:56.33,
-    lon:44.00,
-    range:250,
-    beam:2.3
-  },
-
-  {
-    id:"RAKW",
-    name:"Киров",
-    lat:58.60,
-    lon:49.67,
-    range:250,
-    beam:2.0
-  }
+  {id:"RUDN",name:"Нижний Новгород",lat:56.33,lon:44.00,range:250,beam:1.2},
+  {id:"RAKW",name:"Киров",lat:58.60,lon:49.67,range:250,beam:1.0}
 
 ];
 
 
 /* =========================================================
-   2. Состояние
+   Состояние
    ========================================================= */
 
 let radarVisible=false;
@@ -299,7 +63,7 @@ let radarObjects=[];
 
 
 /* =========================================================
-   3. Leaflet layer
+   LayerGroup
    ========================================================= */
 
 function ensureRadarLayer(){
@@ -313,13 +77,11 @@ function ensureRadarLayer(){
 
   }
 
-
   if(!radarLayer){
 
     radarLayer=L.layerGroup();
 
   }
-
 
   return radarLayer;
 
@@ -327,7 +89,7 @@ function ensureRadarLayer(){
 
 
 /* =========================================================
-   4. Геометрия
+   Географическая точка по направлению
    ========================================================= */
 
 function destination(
@@ -384,7 +146,7 @@ function destination(
 
 
 /* =========================================================
-   5. Кликабельная точка
+   РЛС — БОЛЬШАЯ БЕЛАЯ ТОЧКА
    ========================================================= */
 
 function createRadarPoint(r){
@@ -395,8 +157,8 @@ function createRadarPoint(r){
 
 
   /*
-     Большая невидимая область нажатия.
-     Особенно удобно на телефоне.
+     Большая невидимая зона нажатия.
+     Нужна именно для iPhone.
   */
 
   const hit=L.circleMarker(
@@ -404,17 +166,15 @@ function createRadarPoint(r){
     [r.lat,r.lon],
 
     {
-      radius:18,
+      radius:22,
 
-      color:"#000",
+      stroke:false,
 
-      weight:0,
-
-      opacity:0,
-
-      fillColor:"#000",
+      fill:false,
 
       fillOpacity:0,
+
+      opacity:0,
 
       interactive:true
     }
@@ -423,7 +183,7 @@ function createRadarPoint(r){
 
 
   /*
-     Видимая точка.
+     Основная белая точка.
   */
 
   const point=L.circleMarker(
@@ -431,11 +191,11 @@ function createRadarPoint(r){
     [r.lat,r.lon],
 
     {
-      radius:8,
+      radius:10,
 
-      color:"#222",
+      color:"#111",
 
-      weight:2,
+      weight:2.5,
 
       opacity:1,
 
@@ -450,53 +210,23 @@ function createRadarPoint(r){
 
 
   /*
-     Центральная точка.
-  */
-
-  const core=L.circleMarker(
-
-    [r.lat,r.lon],
-
-    {
-      radius:3,
-
-      color:"#555",
-
-      weight:1,
-
-      fillColor:"#555",
-
-      fillOpacity:1,
-
-      interactive:false
-    }
-
-  );
-
-
-  /*
-     Общий popup открывается по большой зоне.
+     Popup открывается именно
+     по большой зоне нажатия.
   */
 
   hit.bindPopup(
 
-    "<div style=\"font:12px Arial;line-height:17px\">"+
+    "<div style=\"font:12px Arial;line-height:18px\">"+
 
     "<b>ДМРЛ-С</b><br>"+
 
     r.name+
 
-    "<br><b>"+
+    "<br>"+
 
-    r.id+
+    "<b>"+r.id+"</b><br>"+
 
-    "</b><br>"+
-
-    "Радиус: "+
-
-    r.range+
-
-    " км"+
+    "Радиус: "+r.range+" км"+
 
     "</div>",
 
@@ -513,18 +243,12 @@ function createRadarPoint(r){
 
   hit.bindTooltip(
 
-    r.name+
-
-    " ("+
-
-    r.id+
-
-    ")",
+    r.name+" ("+r.id+")",
 
     {
       direction:"top",
 
-      offset:[0,-10],
+      offset:[0,-11],
 
       opacity:.95
     }
@@ -536,16 +260,12 @@ function createRadarPoint(r){
 
   point.addTo(group);
 
-  core.addTo(group);
-
 
   return [
 
     hit,
 
-    point,
-
-    core
+    point
 
   ];
 
@@ -553,7 +273,7 @@ function createRadarPoint(r){
 
 
 /* =========================================================
-   6. Основное покрытие
+   ОСНОВНОЕ ПОКРЫТИЕ
    ========================================================= */
 
 function createCoverage(r){
@@ -572,13 +292,13 @@ function createCoverage(r){
 
       color:"#666",
 
-      weight:1,
+      weight:.8,
 
-      opacity:.45,
+      opacity:.32,
 
-      fillColor:"#777",
+      fillColor:"#888",
 
-      fillOpacity:.035,
+      fillOpacity:.018,
 
       interactive:false
     }
@@ -595,7 +315,7 @@ function createCoverage(r){
 
 
 /* =========================================================
-   7. Кольца
+   КОЛЬЦА ПОКРЫТИЯ
    ========================================================= */
 
 function createRings(r){
@@ -607,10 +327,6 @@ function createRings(r){
 
   const result=[];
 
-
-  /*
-     Кольца через 50 км.
-  */
 
   for(
 
@@ -631,9 +347,9 @@ function createRings(r){
 
         color:"#777",
 
-        weight:.55,
+        weight:.45,
 
-        opacity:.20,
+        opacity:.16,
 
         fill:false,
 
@@ -656,7 +372,13 @@ function createRings(r){
 
 
 /* =========================================================
-   8. Лучи
+   ЛУЧИ
+
+   ВАЖНО:
+   Никаких секторов.
+   Никаких треугольников.
+   Никаких двойных полос.
+   Только одна тонкая линия.
    ========================================================= */
 
 function createRays(r){
@@ -670,10 +392,7 @@ function createRays(r){
 
 
   /*
-     Не одинаковая ширина.
-
-     У каждой РЛС своё значение beam.
-     Кроме того, дальние части луча немного тоньше.
+     12 направлений.
   */
 
   const angles=[
@@ -694,63 +413,39 @@ function createRays(r){
   ];
 
 
-  angles.forEach(function(angle,index){
+  angles.forEach(function(angle){
 
-    const p1=destination(
+    const end=destination(
 
       r.lat,
+
       r.lon,
-      angle-r.beam/2,
+
+      angle,
+
       r.range
 
     );
 
 
-    const p2=destination(
-
-      r.lat,
-      r.lon,
-      angle+r.beam/2,
-      r.range
-
-    );
-
-
-    /*
-       Тонкий сектор вместо одинаковой линии.
-       Это визуально ближе к радиолокационному
-       лучу и позволяет каждой станции иметь
-       собственную ширину.
-    */
-
-    const sector=L.polygon(
+    const line=L.polyline(
 
       [
         [r.lat,r.lon],
-        p1,
-        p2
+        end
       ],
 
       {
         color:"#666",
 
-        weight:
+        /*
+           Своя ширина у каждой РЛС.
+           Но это ОДНА линия, а не полоса.
+        */
 
-          index%3===0
+        weight:r.beam,
 
-            ? 1.15
-
-            : index%2===0
-
-              ? .85
-
-              : .6,
-
-        opacity:.25,
-
-        fillColor:"#777",
-
-        fillOpacity:.018,
+        opacity:.20,
 
         interactive:false
       }
@@ -758,9 +453,9 @@ function createRays(r){
     );
 
 
-    sector.addTo(group);
+    line.addTo(group);
 
-    result.push(sector);
+    result.push(line);
 
   });
 
@@ -771,7 +466,7 @@ function createRays(r){
 
 
 /* =========================================================
-   9. Создание РЛС
+   Создание одной РЛС
    ========================================================= */
 
 function createRadar(r){
@@ -779,13 +474,13 @@ function createRadar(r){
   const objects=[];
 
 
-  const point=createRadarPoint(r);
+  const points=createRadarPoint(r);
 
-  if(point){
+  if(points){
 
-    point.forEach(function(x){
+    points.forEach(function(obj){
 
-      objects.push(x);
+      objects.push(obj);
 
     });
 
@@ -803,18 +498,18 @@ function createRadar(r){
 
   const rings=createRings(r);
 
-  rings.forEach(function(x){
+  rings.forEach(function(obj){
 
-    objects.push(x);
+    objects.push(obj);
 
   });
 
 
   const rays=createRays(r);
 
-  rays.forEach(function(x){
+  rays.forEach(function(obj){
 
-    objects.push(x);
+    objects.push(obj);
 
   });
 
@@ -825,7 +520,7 @@ function createRadar(r){
 
 
 /* =========================================================
-   10. Очистка
+   Очистка
    ========================================================= */
 
 function clearRadar(){
@@ -836,14 +531,13 @@ function clearRadar(){
 
   radarLayer.clearLayers();
 
-
   radarObjects=[];
 
 }
 
 
 /* =========================================================
-   11. Отрисовка
+   Отрисовка
    ========================================================= */
 
 function drawRadar(){
@@ -859,14 +553,11 @@ function drawRadar(){
 
   RADARS.forEach(function(r){
 
-    const objects=createRadar(r);
-
-
     radarObjects.push({
 
       radar:r,
 
-      objects:objects
+      objects:createRadar(r)
 
     });
 
@@ -883,7 +574,7 @@ function drawRadar(){
 
 
 /* =========================================================
-   12. Видимость
+   Включение / выключение
    ========================================================= */
 
 function setRadarVisible(enabled){
@@ -915,7 +606,7 @@ function setRadarVisible(enabled){
 
 
 /* =========================================================
-   13. Переключение
+   Toggle
    ========================================================= */
 
 function toggleRadar(){
@@ -930,7 +621,7 @@ function toggleRadar(){
 
 
 /* =========================================================
-   14. Обновление
+   Update
    ========================================================= */
 
 function updateRadar(){
@@ -945,7 +636,7 @@ function updateRadar(){
 
 
 /* =========================================================
-   15. Передача реальных координат
+   Возможность передать реальные данные
    ========================================================= */
 
 function setRadars(data){
@@ -962,15 +653,6 @@ function setRadars(data){
 
   }
 
-
-  /*
-     Если когда-нибудь index.html/server
-     передаст реальные координаты,
-     они заменят статические.
-
-     При этом этот файл сам НИЧЕГО
-     не запрашивает.
-  */
 
   RADARS.length=0;
 
@@ -1002,27 +684,23 @@ function setRadars(data){
 
       lon:r.lon,
 
-      range:
+      range:Number(
 
-        Number(
+        r.range_km ||
 
-          r.range_km ||
+        r.range ||
 
-          r.range ||
+        250
 
-          250
+      ),
 
-        ),
+      beam:Number(
 
-      beam:
+        r.beam ||
 
-        Number(
+        1
 
-          r.beam ||
-
-          2
-
-        )
+      )
 
     });
 
@@ -1035,7 +713,9 @@ function setRadars(data){
 
 
 /* =========================================================
-   16. Глобальный API
+   Глобальный API
+
+   Совместим с index.html
    ========================================================= */
 
 window.RadarPoints={
@@ -1064,7 +744,7 @@ window.RadarPoints={
 
 
 /* =========================================================
-   17. Инициализация
+   Инициализация
    ========================================================= */
 
 function initRadarLayer(){
@@ -1088,7 +768,7 @@ function initRadarLayer(){
 
 
 /* =========================================================
-   18. Запуск
+   Запуск
    ========================================================= */
 
 if(

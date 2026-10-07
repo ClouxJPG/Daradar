@@ -49,7 +49,7 @@ html,body{
 
 .ov{
  position:absolute;
- z-index:1000
+ z-index:1000;
 }
 
 .wb{
@@ -60,7 +60,9 @@ html,body{
  cursor:pointer;
  padding:0;
  font:15px Arial;
- color:#000
+ color:#000;
+ -webkit-tap-highlight-color:transparent;
+ touch-action:manipulation
 }
 
 .wb.on{
@@ -99,7 +101,8 @@ html,body{
  left:54px;
  top:17px;
  width:37px;
- height:33px
+ height:33px;
+ touch-action:manipulation
 }
 
 #vc{
@@ -108,7 +111,8 @@ html,body{
  width:38px;
  height:33px;
  font-size:15px;
- font-weight:600
+ font-weight:600;
+ touch-action:manipulation
 }
 
 /* =========================================================
@@ -2050,7 +2054,7 @@ map.on(
   ){
    window.RadarPoints.update();
   }
- });
+});
 
 /* =========================================================
    КООРДИНАТЫ
@@ -2244,7 +2248,7 @@ $('li').onclick=e=>{
 
  /*
     РЛС теперь полностью находятся
-    в отдельном radar-points.js
+    в отдельном radars.js
  */
 };
 
@@ -2924,10 +2928,74 @@ init();
 
 <!-- =========================================================
      РЛС / ТОЧКИ / ЛУЧИ
-     ВЕСЬ КОД ВЫНEСЕН ИЗ index.html
      ========================================================= -->
 
 <script src="./radars.js"></script>
+
+<script>
+/* =========================================================
+   МОБИЛЬНОЕ НАЖАТИЕ КНОПКИ РАДАРНЫХ ЛУЧЕЙ
+   ========================================================= */
+
+(()=>{
+ const btn=$('rl');
+
+ if(!btn)
+  return;
+
+ let last=0;
+
+ const toggleRadarRays=()=>{
+
+  const now=Date.now();
+
+  if(now-last<350)
+   return;
+
+  last=now;
+
+  S.rl=!S.rl;
+
+  btn.classList.toggle(
+   'on',
+   S.rl
+  );
+
+  if(!S.rl){
+
+   rp=[];
+
+   if(rpl)
+    rpl.remove();
+
+   if(rtt)
+    rtt.remove();
+
+   rpl=null;
+   rtt=null;
+
+  }else{
+
+   S.vc=false;
+
+   $('vc').classList.remove('on');
+  }
+ };
+
+ btn.addEventListener(
+  'pointerup',
+  e=>{
+   e.preventDefault();
+   e.stopPropagation();
+   toggleRadarRays();
+  },
+  {
+   passive:false
+  }
+ );
+
+})();
+</script>
 
 </body>
 </html>

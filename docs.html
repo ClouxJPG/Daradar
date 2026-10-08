@@ -2,490 +2,362 @@
 <html lang="ru">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport"
-      content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover">
 
 <title>Quantum Meteo — Документация</title>
 
 <style>
-* {
-    box-sizing: border-box;
-    -webkit-tap-highlight-color: transparent;
+*{
+    box-sizing:border-box;
+    -webkit-tap-highlight-color:transparent;
 }
 
-html {
-    scroll-behavior: smooth;
+html,body{
+    margin:0;
+    min-height:100%;
+    background:#080a0e;
+    color:#e8edf5;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;
 }
 
-body {
-    margin: 0;
-    background: #080a0f;
-    color: #e8ebf2;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
-    line-height: 1.6;
+body{
+    padding-bottom:40px;
 }
 
-a {
-    color: inherit;
-    text-decoration: none;
+a{
+    color:inherit;
+    text-decoration:none;
 }
 
-/* =========================================================
+/* =========================
    HEADER
-   ========================================================= */
+========================= */
 
-.header {
-    position: sticky;
-    top: 0;
-    z-index: 100;
-    height: 64px;
-
-    display: flex;
-    align-items: center;
-
-    border-bottom: 1px solid #20242d;
-
-    background: rgba(8, 10, 15, 0.94);
-
-    backdrop-filter: blur(14px);
-    -webkit-backdrop-filter: blur(14px);
+header{
+    position:sticky;
+    top:0;
+    z-index:100;
+    height:64px;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding:0 18px;
+    background:rgba(8,10,14,.94);
+    border-bottom:1px solid #20252d;
+    backdrop-filter:blur(14px);
+    -webkit-backdrop-filter:blur(14px);
 }
 
-.header-inner {
-    width: min(1120px, calc(100% - 32px));
-    margin: 0 auto;
-
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
+.logo{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    font-weight:700;
+    letter-spacing:.3px;
 }
 
-.logo {
-    font-size: 20px;
-    font-weight: 800;
-    letter-spacing: -0.5px;
+.logo-mark{
+    width:34px;
+    height:34px;
+    border:2px solid #fff;
+    border-radius:50%;
+    position:relative;
 }
 
-.logo span {
-    color: #8e98aa;
-    font-weight: 500;
+.logo-mark:before{
+    content:"";
+    position:absolute;
+    left:7px;
+    top:7px;
+    width:16px;
+    height:16px;
+    border:2px solid #fff;
+    border-radius:50%;
 }
 
-.back {
-    padding: 8px 13px;
-
-    border: 1px solid #292e38;
-    border-radius: 9px;
-
-    color: #aeb5c2;
-    font-size: 13px;
+.logo-mark:after{
+    content:"";
+    position:absolute;
+    width:7px;
+    height:2px;
+    background:#fff;
+    right:-5px;
+    top:15px;
+    transform:rotate(-35deg);
 }
 
-.back:active {
-    background: #151922;
+.logo-text{
+    font-size:16px;
 }
 
-/* =========================================================
-   LAYOUT
-   ========================================================= */
-
-.layout {
-    width: min(1120px, calc(100% - 32px));
-    margin: 0 auto;
-
-    display: grid;
-    grid-template-columns: 235px minmax(0, 1fr);
-    gap: 42px;
+.back{
+    padding:9px 13px;
+    border:1px solid #303640;
+    border-radius:9px;
+    color:#cbd2dc;
+    font-size:13px;
+    transition:.15s;
 }
 
-/* =========================================================
-   SIDEBAR
-   ========================================================= */
-
-.sidebar {
-    position: sticky;
-    top: 88px;
-
-    align-self: start;
-
-    padding: 28px 0;
+.back:hover{
+    background:#151922;
+    border-color:#4a5260;
 }
 
-.sidebar-title {
-    margin-bottom: 12px;
-
-    color: #717987;
-
-    font-size: 11px;
-    font-weight: 700;
-
-    text-transform: uppercase;
-    letter-spacing: 1.2px;
-}
-
-.sidebar a {
-    display: block;
-
-    padding: 7px 10px;
-    margin: 2px 0;
-
-    border-radius: 7px;
-
-    color: #9da5b3;
-
-    font-size: 13px;
-}
-
-.sidebar a:hover {
-    background: #11151d;
-    color: #fff;
-}
-
-/* =========================================================
+/* =========================
    MAIN
-   ========================================================= */
+========================= */
 
-main {
-    min-width: 0;
-
-    padding: 58px 0 90px;
+main{
+    width:min(940px,calc(100% - 28px));
+    margin:0 auto;
 }
 
-/* =========================================================
-   HERO
-   ========================================================= */
-
-.hero {
-    padding-bottom: 34px;
-
-    border-bottom: 1px solid #20242d;
+.hero{
+    padding:54px 0 35px;
 }
 
-.badge {
-    display: inline-block;
-
-    margin-bottom: 14px;
-    padding: 5px 9px;
-
-    border: 1px solid #2b303a;
-    border-radius: 999px;
-
-    color: #9da5b3;
-
-    font-size: 11px;
-    font-weight: 700;
-
-    letter-spacing: .7px;
-    text-transform: uppercase;
+.hero h1{
+    margin:0 0 12px;
+    font-size:clamp(30px,6vw,48px);
+    line-height:1.05;
+    letter-spacing:-1.5px;
 }
 
-h1 {
-    margin: 0 0 12px;
-
-    font-size: clamp(32px, 6vw, 48px);
-    line-height: 1.05;
-
-    letter-spacing: -1.7px;
+.hero p{
+    margin:0;
+    max-width:700px;
+    color:#9da6b4;
+    font-size:16px;
+    line-height:1.65;
 }
 
-.hero p {
-    max-width: 720px;
-
-    margin: 0;
-
-    color: #929aa8;
-    font-size: 16px;
-}
-
-/* =========================================================
+/* =========================
    SECTIONS
-   ========================================================= */
+========================= */
 
-section {
-    padding-top: 46px;
-
-    scroll-margin-top: 82px;
+section{
+    margin:18px 0;
+    padding:24px;
+    background:#0e1117;
+    border:1px solid #20252d;
+    border-radius:15px;
 }
 
-h2 {
-    margin: 0 0 13px;
-
-    font-size: 25px;
-    letter-spacing: -.6px;
+section h2{
+    margin:0 0 14px;
+    font-size:21px;
 }
 
-h3 {
-    margin: 25px 0 8px;
-
-    font-size: 17px;
+section h3{
+    margin:22px 0 8px;
+    font-size:16px;
 }
 
-p {
-    color: #a9b0bc;
-    margin: 8px 0 14px;
+section p{
+    margin:9px 0;
+    color:#b7bfca;
+    line-height:1.65;
 }
 
-ul {
-    color: #a9b0bc;
-    padding-left: 21px;
+section ul{
+    margin:10px 0 0;
+    padding-left:21px;
+    color:#b7bfca;
+    line-height:1.75;
 }
 
-li {
-    margin: 6px 0;
+code{
+    padding:2px 5px;
+    border-radius:5px;
+    background:#171b22;
+    color:#dce3ed;
+    font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
+    font-size:.9em;
 }
 
-/* =========================================================
-   CARDS
-   ========================================================= */
-
-.card-grid {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-
-    gap: 12px;
-
-    margin-top: 18px;
-}
-
-.card {
-    padding: 17px;
-
-    border: 1px solid #20242d;
-    border-radius: 11px;
-
-    background: #0d1016;
-}
-
-.card-title {
-    margin-bottom: 5px;
-
-    color: #eef1f6;
-
-    font-weight: 700;
-}
-
-.card p {
-    margin: 0;
-
-    font-size: 14px;
-}
-
-/* =========================================================
-   NOTE
-   ========================================================= */
-
-.note {
-    margin: 18px 0;
-    padding: 14px 16px;
-
-    border-left: 3px solid #737b8b;
-
-    background: #0d1016;
-
-    color: #aeb5c2;
-
-    border-radius: 0 8px 8px 0;
-}
-
-/* =========================================================
-   CODE
-   ========================================================= */
-
-.code {
-    overflow-x: auto;
-
-    margin: 15px 0;
-    padding: 15px;
-
-    border: 1px solid #20242d;
-    border-radius: 9px;
-
-    background: #06080c;
-
-    color: #b9c0cc;
-
-    font: 12px/1.6 ui-monospace,
-          SFMono-Regular,
-          Menlo,
-          Consolas,
-          monospace;
-}
-
-/* =========================================================
-   TABLE
-   ========================================================= */
-
-.table-wrap {
-    overflow-x: auto;
-
-    margin-top: 16px;
-
-    border: 1px solid #20242d;
-    border-radius: 10px;
-}
-
-table {
-    width: 100%;
-    min-width: 580px;
-
-    border-collapse: collapse;
-}
-
-th,
-td {
-    padding: 11px 13px;
-
-    border-bottom: 1px solid #20242d;
-
-    text-align: left;
-
-    font-size: 13px;
-}
-
-th {
-    background: #0d1016;
-    color: #e4e8ef;
-}
-
-td {
-    color: #9fa7b5;
-}
-
-tr:last-child td {
-    border-bottom: 0;
-}
-
-/* =========================================================
+/* =========================
    RADAR DEMO
-   ========================================================= */
+========================= */
 
-.radar-demo {
-    position: relative;
-
-    width: 150px;
-    height: 150px;
-
-    margin: 20px auto;
-
-    border-radius: 50%;
-
-    background: rgba(130, 130, 130, .14);
-
-    border: 1px solid rgba(150, 150, 150, .25);
+.radar-demo{
+    position:relative;
+    height:260px;
+    margin-top:18px;
+    overflow:hidden;
+    border:1px solid #282e38;
+    border-radius:12px;
+    background:
+        linear-gradient(45deg,#10141a 25%,transparent 25%),
+        linear-gradient(-45deg,#10141a 25%,transparent 25%),
+        linear-gradient(45deg,transparent 75%,#10141a 75%),
+        linear-gradient(-45deg,transparent 75%,#10141a 75%);
+    background-size:32px 32px;
+    background-position:0 0,0 16px,16px -16px,-16px 0;
 }
 
-.radar-demo::before,
-.radar-demo::after {
-    content: "";
-
-    position: absolute;
-
-    inset: 50%;
-
-    background: rgba(180, 180, 180, .25);
+.coverage{
+    position:absolute;
+    left:50%;
+    top:50%;
+    width:190px;
+    height:190px;
+    transform:translate(-50%,-50%);
+    border-radius:50%;
+    background:rgba(120,120,120,.16);
+    border:1px solid rgba(160,160,160,.25);
 }
 
-.radar-demo::before {
-    width: 1px;
-    height: 100%;
-
-    transform: translate(-50%, -50%);
+.radar-point{
+    position:absolute;
+    left:50%;
+    top:50%;
+    width:15px;
+    height:15px;
+    transform:translate(-50%,-50%);
+    border-radius:50%;
+    background:#fff;
+    border:2px solid #000;
+    box-shadow:0 0 0 2px rgba(255,255,255,.08);
 }
 
-.radar-demo::after {
-    width: 100%;
-    height: 1px;
-
-    transform: translate(-50%, -50%);
+.radar-label{
+    position:absolute;
+    left:calc(50% + 15px);
+    top:calc(50% - 9px);
+    color:#fff;
+    font-size:12px;
 }
 
-.radar-point {
-    position: absolute;
+/* =========================
+   TABLE
+========================= */
 
-    top: 50%;
-    left: 50%;
-
-    width: 13px;
-    height: 13px;
-
-    transform: translate(-50%, -50%);
-
-    border: 2px solid #000;
-    border-radius: 50%;
-
-    background: #fff;
+.table-wrap{
+    overflow-x:auto;
+    margin-top:14px;
 }
 
-/* =========================================================
+table{
+    width:100%;
+    min-width:500px;
+    border-collapse:collapse;
+}
+
+th,td{
+    padding:11px 12px;
+    text-align:left;
+    border-bottom:1px solid #252a33;
+    font-size:13px;
+}
+
+th{
+    color:#e8edf5;
+    background:#13171e;
+}
+
+td{
+    color:#aeb7c4;
+}
+
+/* =========================
+   TAGS
+========================= */
+
+.tags{
+    display:flex;
+    flex-wrap:wrap;
+    gap:8px;
+    margin-top:14px;
+}
+
+.tag{
+    padding:7px 10px;
+    border:1px solid #2c333e;
+    border-radius:8px;
+    background:#12161d;
+    color:#bfc7d2;
+    font-size:12px;
+}
+
+/* =========================
    FOOTER
-   ========================================================= */
+========================= */
 
-.footer {
-    padding: 35px 0 0;
-
-    margin-top: 55px;
-
-    border-top: 1px solid #20242d;
-
-    color: #646c79;
-
-    font-size: 12px;
+footer{
+    width:min(940px,calc(100% - 28px));
+    margin:30px auto 0;
+    padding-top:20px;
+    border-top:1px solid #20252d;
+    color:#697382;
+    font-size:12px;
+    line-height:1.6;
 }
 
-/* =========================================================
+/* =========================
    MOBILE
-   ========================================================= */
+========================= */
 
-@media (max-width: 800px) {
+@media(max-width:600px){
 
-    .layout {
-        display: block;
+    header{
+        height:58px;
+        padding:0 12px;
     }
 
-    .sidebar {
-        position: static;
-
-        padding: 18px 0;
-
-        border-bottom: 1px solid #20242d;
+    .logo-text{
+        font-size:14px;
     }
 
-    .sidebar a {
-        display: inline-block;
-
-        margin-right: 3px;
+    .logo-mark{
+        width:30px;
+        height:30px;
     }
 
-    main {
-        padding-top: 35px;
+    .logo-mark:before{
+        left:6px;
+        top:6px;
+        width:14px;
+        height:14px;
     }
 
-    .card-grid {
-        grid-template-columns: 1fr;
-    }
-}
-
-@media (max-width: 480px) {
-
-    .header {
-        height: 58px;
+    .logo-mark:after{
+        top:13px;
     }
 
-    .header-inner,
-    .layout {
-        width: min(100% - 22px, 1120px);
+    .back{
+        padding:8px 10px;
+        font-size:12px;
     }
 
-    h1 {
-        font-size: 34px;
+    .hero{
+        padding:38px 0 25px;
     }
 
-    h2 {
-        font-size: 23px;
+    .hero h1{
+        font-size:32px;
     }
 
-    section {
-        padding-top: 38px;
+    .hero p{
+        font-size:14px;
+    }
+
+    section{
+        padding:18px;
+        border-radius:12px;
+    }
+
+    section h2{
+        font-size:19px;
+    }
+
+    section p,
+    section ul{
+        font-size:14px;
+    }
+
+    .radar-demo{
+        height:220px;
     }
 }
 </style>
@@ -493,743 +365,217 @@ tr:last-child td {
 
 <body>
 
-<!-- =======================================================
-     HEADER
-     ======================================================= -->
+<header>
+    <a class="logo" href="./index.html" aria-label="Вернуться на карту">
+        <div class="logo-mark"></div>
+        <div class="logo-text">Quantum Meteo</div>
+    </a>
 
-<header class="header">
-
-    <div class="header-inner">
-
-        <a class="logo" href="./index.html">
-            Quantum <span>Meteo</span>
-        </a>
-
-        <a class="back" href="./index.html">
-            ← Вернуться к карте
-        </a>
-
-    </div>
-
+    <a class="back" href="./index.html">
+        ← Карта
+    </a>
 </header>
 
+<main>
 
-<!-- =======================================================
-     CONTENT
-     ======================================================= -->
+    <div class="hero">
+        <h1>Документация</h1>
+        <p>
+            Quantum Meteo — интерактивная метеорологическая карта
+            с радиолокационными данными, временной шкалой и
+            дополнительными инструментами анализа.
+        </p>
+    </div>
 
-<div class="layout">
+    <section>
+        <h2>О проекте</h2>
 
-    <!-- ===================================================
-         SIDEBAR
-         =================================================== -->
+        <p>
+            Quantum Meteo предназначен для визуализации метеорологической
+            информации на интерактивной карте.
+        </p>
 
-    <aside class="sidebar">
+        <p>
+            Основной интерфейс построен на Leaflet. Карта позволяет
+            перемещаться по территории, изменять масштаб и включать
+            доступные метеорологические слои.
+        </p>
 
-        <div class="sidebar-title">
-            Документация
+        <div class="tags">
+            <span class="tag">Leaflet</span>
+            <span class="tag">Метеорология</span>
+            <span class="tag">РЛС</span>
+            <span class="tag">Радиолокация</span>
+            <span class="tag">Nowcasting</span>
+        </div>
+    </section>
+
+    <section>
+        <h2>РЛС и покрытие</h2>
+
+        <p>
+            Слой <code>РЛС и покрытие</code> отображает расположение
+            радиолокационных пунктов и условную область их покрытия.
+        </p>
+
+        <div class="radar-demo">
+            <div class="coverage"></div>
+            <div class="radar-point"></div>
+            <div class="radar-label">Радиолокационный пункт</div>
         </div>
 
-        <a href="#about">
-            О проекте
-        </a>
+        <h3>Обозначения</h3>
 
-        <a href="#radars">
-            РЛС
-        </a>
+        <ul>
+            <li>Белый круг с чёрной обводкой — радиолокационный пункт.</li>
+            <li>Серая полупрозрачная область — область покрытия.</li>
+            <li>Нажатие на точку РЛС открывает информацию о ней.</li>
+        </ul>
+    </section>
 
-        <a href="#coverage">
-            Покрытие
-        </a>
+    <section>
+        <h2>Слой «РЛС и покрытие»</h2>
 
-        <a href="#layers">
-            Слои
-        </a>
+        <p>
+            Слой управляется непосредственно из панели слоёв карты.
+            При отключении слоя точки РЛС и области покрытия скрываются.
+        </p>
 
-        <a href="#map">
-            Управление картой
-        </a>
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Элемент</th>
+                        <th>Назначение</th>
+                    </tr>
+                </thead>
 
-        <a href="#timeline">
-            Временная шкала
-        </a>
+                <tbody>
+                    <tr>
+                        <td>РЛС</td>
+                        <td>Показывает положение радиолокационного пункта.</td>
+                    </tr>
 
-        <a href="#points">
-            Точки и информация
-        </a>
+                    <tr>
+                        <td>Покрытие</td>
+                        <td>Показывает условную область наблюдения.</td>
+                    </tr>
 
-        <a href="#legend">
-            Легенда
-        </a>
-
-        <a href="#limitations">
-            Ограничения
-        </a>
-
-    </aside>
-
-
-    <!-- ===================================================
-         MAIN
-         =================================================== -->
-
-    <main>
-
-        <!-- HERO -->
-
-        <div class="hero">
-
-            <div class="badge">
-                Quantum Meteo · Documentation
-            </div>
-
-            <h1>
-                Документация
-            </h1>
-
-            <p>
-                Справочник по интерфейсу Quantum Meteo,
-                радиолокационным станциям, зонам покрытия,
-                слоям и управлению метеорологической картой.
-            </p>
-
+                    <tr>
+                        <td>Popup</td>
+                        <td>Показывает сведения о выбранной РЛС.</td>
+                    </tr>
+                </tbody>
+            </table>
         </div>
-
-
-        <!-- =================================================
-             О ПРОЕКТЕ
-             ================================================= -->
-
-        <section id="about">
-
-            <h2>
-                О проекте
-            </h2>
-
-            <p>
-                Quantum Meteo — интерактивная метеорологическая
-                карта для визуального анализа погодной обстановки
-                и работы с радиолокационной инфраструктурой.
-            </p>
-
-            <div class="card-grid">
-
-                <div class="card">
-
-                    <div class="card-title">
-                        Интерактивная карта
-                    </div>
-
-                    <p>
-                        Карта позволяет перемещаться по территории,
-                        изменять масштаб и исследовать отдельные объекты.
-                    </p>
-
-                </div>
-
-
-                <div class="card">
-
-                    <div class="card-title">
-                        Радиолокационная сеть
-                    </div>
-
-                    <p>
-                        На карте отображаются радиолокационные станции
-                        и условные зоны их покрытия.
-                    </p>
-
-                </div>
-
-            </div>
-
-        </section>
-
-
-        <!-- =================================================
-             РЛС
-             ================================================= -->
-
-        <section id="radars">
-
-            <h2>
-                РЛС
-            </h2>
-
-            <p>
-                РЛС — радиолокационная станция.
-                В Quantum Meteo станции отображаются отдельными
-                точками непосредственно на географической карте.
-            </p>
-
-
-            <div class="radar-demo">
-
-                <div class="radar-point"></div>
-
-            </div>
-
-
-            <h3>
-                Обозначение станции
-            </h3>
-
-            <ul>
-
-                <li>
-                    белый круг — положение РЛС;
-                </li>
-
-                <li>
-                    чёрная обводка — контур точки;
-                </li>
-
-                <li>
-                    положение точки привязано к географическим координатам;
-                </li>
-
-                <li>
-                    чёрной точки внутри маркера нет.
-                </li>
-
-            </ul>
-
-
-            <h3>
-                Информация о РЛС
-            </h3>
-
-            <p>
-                При нажатии на точку станции открывается
-                информационное окно.
-            </p>
-
-            <p>
-                В нём отображается название станции
-                и её координаты.
-            </p>
-
-
-            <div class="code">РЛС → название станции → широта → долгота</div>
-
-        </section>
-
-
-        <!-- =================================================
-             ПОКРЫТИЕ
-             ================================================= -->
-
-        <section id="coverage">
-
-            <h2>
-                Покрытие
-            </h2>
-
-            <p>
-                Зона покрытия визуализируется вокруг каждой РЛС
-                полупрозрачной серой областью.
-            </p>
-
-
-            <div class="note">
-
-                Зона на карте является визуализацией радиуса
-                наблюдения. Она не должна восприниматься как
-                точная карта фактической радиолокационной видимости
-                в каждый момент времени.
-
-            </div>
-
-
-            <h3>
-                Почему покрытие не идеально круглое в реальности?
-            </h3>
-
-            <p>
-                Фактическая дальность радиолокационного наблюдения
-                зависит от рельефа, высоты антенны, высоты цели,
-                особенностей распространения радиоволн,
-                технических характеристик РЛС и других факторов.
-            </p>
-
-            <p>
-                Поэтому отображаемый круг используется прежде всего
-                как удобный ориентир положения и зоны ответственности.
-            </p>
-
-        </section>
-
-
-        <!-- =================================================
-             СЛОИ
-             ================================================= -->
-
-        <section id="layers">
-
-            <h2>
-                Слои
-            </h2>
-
-            <p>
-                Интерфейс карты может содержать несколько независимых
-                информационных слоёв. Каждый слой отвечает за отдельный
-                тип данных или объектов.
-            </p>
-
-
-            <div class="card-grid">
-
-                <div class="card">
-
-                    <div class="card-title">
-                        РЛС и покрытие
-                    </div>
-
-                    <p>
-                        Показывает радиолокационные станции
-                        и их визуальные зоны покрытия.
-                    </p>
-
-                </div>
-
-
-                <div class="card">
-
-                    <div class="card-title">
-                        Радарные данные
-                    </div>
-
-                    <p>
-                        Предназначены для отображения
-                        метеорологической информации,
-                        получаемой от радиолокационных систем.
-                    </p>
-
-                </div>
-
-
-                <div class="card">
-
-                    <div class="card-title">
-                        Базовая карта
-                    </div>
-
-                    <p>
-                        Географическая основа, необходимая
-                        для ориентации и привязки данных.
-                    </p>
-
-                </div>
-
-
-                <div class="card">
-
-                    <div class="card-title">
-                        Дополнительные данные
-                    </div>
-
-                    <p>
-                        В зависимости от версии карты могут
-                        присутствовать другие информационные элементы.
-                    </p>
-
-                </div>
-
-            </div>
-
-
-            <div class="note">
-
-                Состав доступных слоёв зависит от текущей
-                версии Quantum Meteo.
-
-            </div>
-
-        </section>
-
-
-        <!-- =================================================
-             УПРАВЛЕНИЕ КАРТОЙ
-             ================================================= -->
-
-        <section id="map">
-
-            <h2>
-                Управление картой
-            </h2>
-
-
-            <h3>
-                Перемещение
-            </h3>
-
-            <p>
-                На телефоне карту можно перемещать одним пальцем.
-                На компьютере используется перетаскивание мышью.
-            </p>
-
-
-            <h3>
-                Масштаб
-            </h3>
-
-            <p>
-                Для изменения масштаба используйте жест
-                сведения/разведения пальцев или стандартные
-                элементы управления Leaflet.
-            </p>
-
-
-            <div class="table-wrap">
-
-                <table>
-
-                    <thead>
-
-                        <tr>
-
-                            <th>
-                                Действие
-                            </th>
-
-                            <th>
-                                Телефон
-                            </th>
-
-                            <th>
-                                Компьютер
-                            </th>
-
-                        </tr>
-
-                    </thead>
-
-                    <tbody>
-
-                        <tr>
-
-                            <td>
-                                Перемещение
-                            </td>
-
-                            <td>
-                                1 палец
-                            </td>
-
-                            <td>
-                                Левая кнопка + перетаскивание
-                            </td>
-
-                        </tr>
-
-
-                        <tr>
-
-                            <td>
-                                Увеличение
-                            </td>
-
-                            <td>
-                                Разведение пальцев
-                            </td>
-
-                            <td>
-                                Колесо вверх
-                            </td>
-
-                        </tr>
-
-
-                        <tr>
-
-                            <td>
-                                Уменьшение
-                            </td>
-
-                            <td>
-                                Сведение пальцев
-                            </td>
-
-                            <td>
-                                Колесо вниз
-                            </td>
-
-                        </tr>
-
-
-                        <tr>
-
-                            <td>
-                                Информация
-                            </td>
-
-                            <td>
-                                Нажатие на объект
-                            </td>
-
-                            <td>
-                                Клик по объекту
-                            </td>
-
-                        </tr>
-
-                    </tbody>
-
-                </table>
-
-            </div>
-
-        </section>
-
-
-        <!-- =================================================
-             ВРЕМЕННАЯ ШКАЛА
-             ================================================= -->
-
-        <section id="timeline">
-
-            <h2>
-                Временная шкала
-            </h2>
-
-            <p>
-                Временная шкала используется для переключения
-                между доступными временными кадрами
-                метеорологических данных.
-            </p>
-
-
-            <ul>
-
-                <li>
-                    перемещение ползунка — выбор кадра;
-                </li>
-
-                <li>
-                    кнопка воспроизведения — последовательный
-                    просмотр кадров;
-                </li>
-
-                <li>
-                    текущее время отображается в соответствующей
-                    области интерфейса;
-                </li>
-
-                <li>
-                    количество доступных кадров зависит
-                    от источника данных.
-                </li>
-
-            </ul>
-
-
-            <div class="note">
-
-                Статические элементы, например положение РЛС,
-                от времени не меняются.
-
-            </div>
-
-        </section>
-
-
-        <!-- =================================================
-             ТОЧКИ
-             ================================================= -->
-
-        <section id="points">
-
-            <h2>
-                Точки и информация
-            </h2>
-
-            <p>
-                Интерактивные точки карты могут реагировать
-                на нажатие. Для РЛС это позволяет быстро
-                посмотреть сведения о конкретной станции.
-            </p>
-
-
-            <h3>
-                Что отображается
-            </h3>
-
-            <ul>
-
-                <li>
-                    название станции;
-                </li>
-
-                <li>
-                    географическая широта;
-                </li>
-
-                <li>
-                    географическая долгота.
-                </li>
-
-            </ul>
-
-
-            <p>
-                Координаты используются для непосредственной
-                географической привязки объекта к карте.
-            </p>
-
-        </section>
-
-
-        <!-- =================================================
-             ЛЕГЕНДА
-             ================================================= -->
-
-        <section id="legend">
-
-            <h2>
-                Легенда
-            </h2>
-
-            <p>
-                Легенда объясняет условные обозначения,
-                используемые на текущей карте.
-            </p>
-
-
-            <div class="table-wrap">
-
-                <table>
-
-                    <thead>
-
-                        <tr>
-
-                            <th>
-                                Обозначение
-                            </th>
-
-                            <th>
-                                Значение
-                            </th>
-
-                        </tr>
-
-                    </thead>
-
-                    <tbody>
-
-                        <tr>
-
-                            <td>
-                                ○ Белая точка
-                            </td>
-
-                            <td>
-                                Радиолокационная станция
-                            </td>
-
-                        </tr>
-
-
-                        <tr>
-
-                            <td>
-                                Серая прозрачная область
-                            </td>
-
-                            <td>
-                                Визуальная зона покрытия РЛС
-                            </td>
-
-                        </tr>
-
-
-                        <tr>
-
-                            <td>
-                                Цветные области радара
-                            </td>
-
-                            <td>
-                                Радиолокационная информация,
-                                если слой доступен
-                            </td>
-
-                        </tr>
-
-                    </tbody>
-
-                </table>
-
-            </div>
-
-        </section>
-
-
-        <!-- =================================================
-             ОГРАНИЧЕНИЯ
-             ================================================= -->
-
-        <section id="limitations">
-
-            <h2>
-                Ограничения
-            </h2>
-
-            <p>
-                Документация описывает интерфейс и визуальные
-                элементы Quantum Meteo. Наличие конкретных
-                метеорологических данных зависит от подключённых
-                источников и текущей версии проекта.
-            </p>
-
-
-            <ul>
-
-                <li>
-                    положение РЛС не означает наличие наблюдаемого
-                    прямо сейчас осадочного очага;
-                </li>
-
-                <li>
-                    круг покрытия не является точной моделью
-                    радиолокационной видимости;
-                </li>
-
-                <li>
-                    отсутствие радиолокационного сигнала на карте
-                    не обязательно означает отсутствие осадков;
-                </li>
-
-                <li>
-                    разные радиолокационные продукты могут иметь
-                    различное пространственное и временное разрешение.
-                </li>
-
-            </ul>
-
-
-            <div class="note">
-
-                Для оперативной оценки опасных явлений следует
-                учитывать несколько источников данных, а не только
-                визуальный слой одной карты.
-
-            </div>
-
-        </section>
-
-
-        <!-- =================================================
-             FOOTER
-             ================================================= -->
-
-        <div class="footer">
-            Quantum Meteo · Documentation
+    </section>
+
+    <section>
+        <h2>Управление картой</h2>
+
+        <ul>
+            <li>Перемещение карты выполняется свайпом.</li>
+            <li>Масштаб изменяется жестом двумя пальцами.</li>
+            <li>На компьютере используются колесо мыши и перетаскивание.</li>
+            <li>Дополнительные элементы управления находятся непосредственно на карте.</li>
+        </ul>
+    </section>
+
+    <section>
+        <h2>Временная шкала</h2>
+
+        <p>
+            Временная шкала используется для переключения доступных
+            временных кадров метеорологических данных.
+        </p>
+
+        <p>
+            При выборе другого кадра карта должна отображать данные,
+            соответствующие выбранному времени.
+        </p>
+
+        <div class="tags">
+            <span class="tag">Время</span>
+            <span class="tag">Кадры</span>
+            <span class="tag">Анимация</span>
         </div>
+    </section>
 
-    </main>
+    <section>
+        <h2>Точки и информация</h2>
 
-</div>
+        <p>
+            Интерактивные объекты карты могут реагировать на нажатие.
+            Для радиолокационных пунктов отображается информационное окно
+            с названием и координатами.
+        </p>
+    </section>
+
+    <section>
+        <h2>Легенда</h2>
+
+        <p>
+            Цветовая шкала конкретного метеорологического слоя зависит
+            от используемого типа данных.
+        </p>
+
+        <p>
+            Для радиолокационной отражаемости обычно используется шкала
+            интенсивности в dBZ. Чем выше значение отражаемости, тем
+            интенсивнее радиолокационный сигнал от гидрометеоров.
+        </p>
+    </section>
+
+    <section>
+        <h2>Ограничения</h2>
+
+        <ul>
+            <li>Положение РЛС не следует воспринимать как точное местоположение каждого радиолокационного оборудования без подтверждения источником.</li>
+            <li>Область покрытия является визуализацией и не гарантирует одинаковое качество данных во всей зоне.</li>
+            <li>Отсутствие отражения на карте не обязательно означает отсутствие осадков.</li>
+            <li>Радиолокационные данные могут иметь задержку или временные пропуски.</li>
+        </ul>
+    </section>
+
+    <section>
+        <h2>Структура проекта</h2>
+
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Файл</th>
+                        <th>Назначение</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    <tr>
+                        <td><code>index.html</code></td>
+                        <td>Основная карта Quantum Meteo.</td>
+                    </tr>
+
+                    <tr>
+                        <td><code>radars.js</code></td>
+                        <td>Радиолокационные пункты и слой покрытия.</td>
+                    </tr>
+
+                    <tr>
+                        <td><code>docs.html</code></td>
+                        <td>Документация проекта.</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+</main>
+
+<footer>
+    Quantum Meteo — документация проекта.
+    <br>
+    Для возврата к карте нажмите «Карта» в верхней части страницы.
+</footer>
 
 </body>
 </html>

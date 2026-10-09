@@ -1,223 +1,345 @@
-/* Radar Cleaner - Чистка радара: только легенда РГМЦ, инпейнтинг артефактов, таймлайн */
-
-(function(){
+(function () {
     "use strict";
-    
+
     const LEGEND = [
         '#9caab1','#a2c6ff','#46ff93','#00c25a','#009800','#ffff80',
         '#3e88ff','#0138ff','#000074','#ffaa7f','#ff557f','#ff0000',
         '#cc6600','#884400','#5f0000','#ffaaff','#ff55ff','#c700c7','#3f3f5f'
     ];
-    
-    const RGB = LEGEND.map(h=>{
-        const r=parseInt(h.slice(1,3),16), g=parseInt(h.slice(3,5),16), b=parseInt(h.slice(5,7),16);
-        return {r,g,b};
-    });
-    
-    const BG = {r:177,g:177,b:177};
+
+    const RGB = LEGEND.map(hex => ({
+        r: parseInt(hex.slice(1, 3), 16),
+        g: parseInt(hex.slice(3, 5), 16),
+        b: parseInt(hex.slice(5, 7), 16)
+    }));
+
+    const BG = { r: 177, g: 177, b: 177 };
     const TOL = 20;
-    
-    let S = {
-        on: false, rid: null, frames: [], idx: 0, 
-        canvas: null, overlay: null, radar: null
+
+    const state = {
+        on: false,
+        rid: null,
+        radar: null,
+        frames: [],
+        idx: 0,
+        overlay: null,
+        map: null,
+        initialized: false
     };
-    
-    function dist(a,b){
-        const dr=a.r-b.r, dg=a.g-b.g, db=a.b-b.b;
-        return Math.sqrt(dr*dr+dg*dg+db*db);
+
+    function dist(a, b) {
+        const dr = a.r - b.r;
+        const dg = a.g - b.g;
+        const db = a.b - b.b;
+        return Math.sqrt(dr * dr + dg * dg + db * db);
     }
-    
-    function ok(r,g,b){
-        for(let i=0;i<RGB.length;i++) if(dist({r,g,b}, RGB[i])<=TOL) return true;
-        return dist({r,g,b}, BG)<=TOL;
-    }
-    
-    function best(r,g,b){
-        let m = RGB[0], d = Infinity;
-        for(let i=0;i<RGB.length;i++){
-            const x = dist({r,g,b}, RGB[i]);
-            if(x<d){d=x; m=RGB[i];}
+
+    function isLegend(r, g, b) {
+        const p = { r, g, b };
+        for (let i = 0; i < RGB.length; i++) {
+            if (dist(p, RGB[i]) <= TOL) return true;
         }
-        return m;
+        return dist(p, BG) <= TOL;
     }
-    
-    function clean(w,h,data){
-        const mask = new Uint8Array(w*h);
-        
-        for(let i=0;i<data.length;i+=4){
-            if(!ok(data[i],data[i+1],data[i+2]) || data[i+3]<200){
-                mask[i/4]=1;
+
+    function best(r, g, b) {
+        let winner = RGB[0];
+        let bestDist = Infinity;
+        const p = { r, g, b };
+        for (let i = 0; i < RGB.length; i++) {
+            const d = dist(p, RGB[i]);
+            if (d < bestDist) {
+                bestDist = d;
+                winner = RGB[i];
             }
         }
-        
-        for(let it=0;it<4;it++){
-            for(let y=0;y<h;y++){
-                for(let x=0;x<w;x++){
-                    const idx = y*w+x;
-                    if(!mask[idx]) continue;
-                    
-                    let sr=0, sg=0, sb=0, cnt=0;
-                    for(let dy=-4;dy<=4;dy++){
-                        for(let dx=-4;dx<=4;dx++){
-                            const nx=x+dx, ny=y+dy;
-                            if(nx<0||nx>=w||ny<0||ny>=h) continue;
-                            const nidx = ny*w+nx;
-                            if(!mask[nidx]){
-                                const i = nidx*4;
-                                sr+=data[i]; sg+=data[i+1]; sb+=data[i+2];
+        return winner;
+    }
+
+    function cleanFrameData(data, width, height) {
+        const mask = new Uint8Array(width * height);
+
+        for (let i = 0; i < data.length; i += 4) {
+            const r = data[i], g = data[i + 1], b = data[i + 2], a = data[i + 3];
+            if (a < 180 || !isLegend(r, g, b)) {
+                mask[i / 4] = 1;
+            }
+        }
+
+        for (let pass = 0; pass < 4; pass++) {
+            for (let y = 0; y < height; y++) {
+                for (let x = 0; x < width; x++) {
+                    const idx = y * width + x;
+                    if (!mask[idx]) continue;
+
+                    let sr = 0, sg = 0, sb = 0, cnt = 0;
+                    for (let dy = -4; dy <= 4; dy++) {
+                        for (let dx = -4; dx <= 4; dx++) {
+                            const nx = x + dx;
+                            const ny = y + dy;
+                            if (nx < 0 || nx >= width || ny < 0 || ny >= height) continue;
+                            const nidx = ny * width + nx;
+                            if (!mask[nidx]) {
+                                const p = nidx * 4;
+                                sr += data[p];
+                                sg += data[p + 1];
+                                sb += data[p + 2];
                                 cnt++;
                             }
                         }
                     }
-                    
-                    if(cnt>0){
-                        const b = best(sr/cnt,sg/cnt,sb/cnt);
-                        const i = idx*4;
-                        data[i]=b.r; data[i+1]=b.g; data[i+2]=b.b; data[i+3]=255;
-                        mask[idx]=0;
+
+                    if (cnt > 0) {
+                        const q = best(sr / cnt, sg / cnt, sb / cnt);
+                        const p = idx * 4;
+                        data[p] = q.r;
+                        data[p + 1] = q.g;
+                        data[p + 2] = q.b;
+                        data[p + 3] = 255;
+                        mask[idx] = 0;
                     }
                 }
             }
         }
+
+        for (let i = 0; i < data.length; i += 4) {
+            const r = data[i], g = data[i + 1], b = data[i + 2];
+            const q = best(r, g, b);
+            data[i] = q.r;
+            data[i + 1] = q.g;
+            data[i + 2] = q.b;
+            data[i + 3] = 255;
+        }
     }
-    
-    async function get(url){
-        const r = await fetch(url);
-        return r.ok ? r : null;
-    }
-    
-    async function load(){
-        const r = await get('/api/radars');
-        return r ? await r.json() : [];
-    }
-    
-    async function frames(rid){
-        const r = await get('/api/frames/'+rid);
-        return r ? await r.json() : [];
-    }
-    
-    async function img(rid, ts){
-        return '/api/img/'+rid+'/'+ts+'?p=4&m=S';
-    }
-    
-    function draw(url, cb){
-        const im = new Image();
-        im.crossOrigin='anonymous';
-        im.onload=()=>{
-            const c = document.createElement('canvas');
-            c.width=im.width; c.height=im.height;
-            const ctx = c.getContext('2d', {willReadFrequently:true});
-            ctx.drawImage(im,0,0);
-            const d = ctx.getImageData(0,0,c.width,c.height);
-            clean(c.width,c.height,d.data);
-            ctx.putImageData(d,0,0);
-            cb(c.toDataURL('image/png'));
+
+    function drawCleanFrame(sourceUrl, callback) {
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        img.onload = function () {
+            const canvas = document.createElement('canvas');
+            canvas.width = img.width;
+            canvas.height = img.height;
+            const ctx = canvas.getContext('2d', { willReadFrequently: true });
+            ctx.drawImage(img, 0, 0);
+            const data = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            cleanFrameData(data.data, canvas.width, canvas.height);
+            ctx.putImageData(data, 0, 0);
+            callback(canvas.toDataURL('image/png'));
         };
-        im.onerror=()=>cb(null);
-        im.src=url;
+        img.onerror = function () {
+            callback(null);
+        };
+        img.src = sourceUrl;
     }
-    
-    function bounds(){
-        if(!S.radar) return [[55,37],[56,38]];
-        const lat = S.radar.lat || 55;
-        const lon = S.radar.lon || 37;
-        const km = S.radar.range_km || 250;
-        const dlat = km/111.32, dlon = km/(111.32*Math.cos(lat*Math.PI/180));
-        return [[lat-dlat, lon-dlon], [lat+dlat, lon+dlon]];
+
+    function currentMap() {
+        if (window.map && window.map instanceof L.Map) return window.map;
+        if (window.L && window.L.map && window.L.map._container) return window.L.map;
+        return null;
     }
-    
-    function render(){
-        if(!S.on || !S.frames.length) return;
-        
-        const url = '/api/img/'+S.rid+'/'+S.frames[S.idx]+'?p=4&m=S';
-        draw(url, (dataUrl)=>{
-            if(!dataUrl || !window.map) return;
-            
-            if(S.overlay) window.map.removeLayer(S.overlay);
-            S.overlay = L.imageOverlay(dataUrl, bounds(), {opacity:0.95, zIndex:500});
-            S.overlay.addTo(window.map);
-            
-            const h = document.getElementById('hrs');
-            if(h){
-                Array.from(h.children).forEach((e,i)=>e.classList.toggle('c',i===S.idx));
-            }
+
+    function getBounds(radar) {
+        if (!radar) {
+            return [[55, 37], [56, 38]];
+        }
+        const lat = Number(radar.lat) || 55;
+        const lon = Number(radar.lon) || 37;
+        const km = Number(radar.range_km) || 250;
+        const dlat = km / 111.32;
+        const dlon = km / (111.32 * Math.cos((lat * Math.PI) / 180));
+        return [
+            [lat - dlat, lon - dlon],
+            [lat + dlat, lon + dlon]
+        ];
+    }
+
+    async function fetchJson(url) {
+        try {
+            const res = await fetch(url, { cache: 'no-store' });
+            if (!res.ok) return [];
+            return await res.json();
+        } catch (e) {
+            return [];
+        }
+    }
+
+    async function loadRadarList() {
+        const list = await fetchJson('/api/radars');
+        return Array.isArray(list) ? list : [];
+    }
+
+    async function loadFrames(rid) {
+        const list = await fetchJson('/api/frames/' + rid);
+        return Array.isArray(list) ? list : [];
+    }
+
+    function updateTimelineSelection() {
+        const hrs = document.getElementById('hrs');
+        if (!hrs) return;
+        Array.from(hrs.children).forEach((el, index) => {
+            el.classList.toggle('c', index === state.idx);
         });
     }
-    
-    function timeline(){
-        const h = document.getElementById('hrs');
-        if(!h) return;
-        h.innerHTML='';
-        S.frames.forEach((ts,i)=>{
-            const e = document.createElement('div');
-            e.textContent = String(i+1).padStart(2,'0');
-            e.className = i===S.idx?'c':'';
-            e.onclick=()=>{S.idx=i; render();};
-            h.appendChild(e);
+
+    function buildTimeline() {
+        const hrs = document.getElementById('hrs');
+        if (!hrs) return;
+        hrs.innerHTML = '';
+
+        state.frames.forEach((ts, index) => {
+            const el = document.createElement('div');
+            el.textContent = String(index + 1).padStart(2, '0');
+            el.title = ts;
+            el.className = (index === state.idx) ? 'c' : '';
+            el.style.cursor = 'pointer';
+            el.addEventListener('click', () => {
+                state.idx = index;
+                renderCurrentFrame();
+            });
+            hrs.appendChild(el);
         });
     }
-    
-    async function on(rid){
-        if(S.on && S.rid===rid){off(); return;}
-        
-        S.on = true;
-        S.rid = rid;
-        S.idx = 0;
-        
-        const btn = document.querySelector('[data-m="S"]');
-        if(btn) btn.classList.add('on');
-        
-        const list = await load();
-        S.radar = list.find(r=>r.id===rid) || list[0];
-        
-        S.frames = await frames(rid);
-        if(!S.frames.length){
-            const msg = document.getElementById('msg');
-            if(msg) msg.textContent='Нет кадров';
+
+    function renderCurrentFrame() {
+        if (!state.on || !state.rid || state.frames.length === 0) return;
+
+        const map = currentMap();
+        if (!map) {
+            setTimeout(renderCurrentFrame, 150);
             return;
         }
-        
-        timeline();
-        render();
+
+        const ts = state.frames[state.idx];
+        const url = '/api/img/' + state.rid + '/' + ts + '?p=4&m=S';
+
+        drawCleanFrame(url, function (dataUrl) {
+            if (!dataUrl) return;
+            if (state.overlay) {
+                map.removeLayer(state.overlay);
+            }
+
+            state.overlay = L.imageOverlay(dataUrl, getBounds(state.radar), {
+                opacity: 0.98,
+                interactive: false,
+                zIndex: 500
+            });
+            state.overlay.addTo(map);
+
+            updateTimelineSelection();
+        });
     }
-    
-    function off(){
-        S.on = false;
-        S.rid = null;
-        S.frames = [];
-        S.idx = 0;
-        
-        if(S.overlay && window.map){
-            window.map.removeLayer(S.overlay);
-            S.overlay = null;
+
+    function turnOff() {
+        state.on = false;
+        state.idx = 0;
+
+        const map = currentMap();
+        if (map && state.overlay) {
+            map.removeLayer(state.overlay);
+            state.overlay = null;
         }
-        
+
         const btn = document.querySelector('[data-m="S"]');
-        if(btn) btn.classList.remove('on');
-        
-        const h = document.getElementById('hrs');
-        if(h) h.innerHTML = '';
+        if (btn) btn.classList.remove('on');
+
+        const hrs = document.getElementById('hrs');
+        if (hrs) hrs.innerHTML = '';
     }
-    
-    function init(){
+
+    async function turnOn(rid) {
+        const list = await loadRadarList();
+        const radar = list.find(r => String(r.id) === String(rid)) || list[0];
+        if (!radar) return;
+
+        state.radar = radar;
+        state.rid = String(radar.id);
+        state.frames = await loadFrames(state.rid);
+        state.idx = 0;
+        state.on = true;
+
         const btn = document.querySelector('[data-m="S"]');
-        if(!btn){setTimeout(init,100); return;}
-        
-        btn.addEventListener('click', async()=>{
-            const list = await load();
-            if(list.length) on(list[0].id);
-        });
-        
-        document.addEventListener('keydown', e=>{
-            if(!S.on || !S.frames.length) return;
-            if(e.key==='ArrowRight'){S.idx=(S.idx+1)%S.frames.length; render();}
-            if(e.key==='ArrowLeft'){S.idx=(S.idx-1+S.frames.length)%S.frames.length; render();}
-        });
+        if (btn) btn.classList.add('on');
+
+        if (!state.frames.length) {
+            const msg = document.getElementById('msg');
+            if (msg) msg.textContent = 'Нет кадров для очистки';
+            return;
+        }
+
+        buildTimeline();
+        renderCurrentFrame();
     }
-    
-    if(document.readyState==='loading'){
-        document.addEventListener('DOMContentLoaded', init);
-    }else{
+
+    function bindSButton() {
+        const btn = document.querySelector('[data-m="S"]');
+        if (!btn) {
+            setTimeout(bindSButton, 100);
+            return;
+        }
+
+        btn.addEventListener('click', async function () {
+            const map = currentMap();
+            if (!map) {
+                console.warn('[RadarCleaner] Map not ready yet. Retry pending.');
+                setTimeout(bindSButton, 100);
+                return;
+            }
+
+            if (state.on) {
+                turnOff();
+                return;
+            }
+
+            const list = await loadRadarList();
+            if (list.length === 0) {
+                console.warn('[RadarCleaner] No radars available.');
+                return;
+            }
+
+            await turnOn(String(list[0].id));
+        });
+
+        document.addEventListener('keydown', function (e) {
+            if (!state.on || !state.frames.length) return;
+            if (e.key === 'ArrowRight') {
+                state.idx = (state.idx + 1) % state.frames.length;
+                renderCurrentFrame();
+            }
+            if (e.key === 'ArrowLeft') {
+                state.idx = (state.idx - 1 + state.frames.length) % state.frames.length;
+                renderCurrentFrame();
+            }
+        });
+
+        state.initialized = true;
+        console.log('[RadarCleaner] ready');
+    }
+
+    function init() {
+        if (!window.L) {
+            setTimeout(init, 150);
+            return;
+        }
+
+        if (!document.querySelector('[data-m="S"]')) {
+            setTimeout(init, 150);
+            return;
+        }
+
+        bindSButton();
+    }
+
+    window.RadarCleaner = {
+        turnOn,
+        turnOff,
+        isOn: () => state.on,
+        getFrameCount: () => state.frames.length,
+        getCurrentFrame: () => state.idx
+    };
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', init, { once: true });
+    } else {
         init();
     }
 })();

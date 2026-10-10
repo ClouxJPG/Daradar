@@ -1,6 +1,7 @@
 /* =========================================================
    Daradar — авторизация и MeteoRadar Login
    Сессия: 12 часов, проверка через /api/auth
+   Добавлено: кнопка выхода из аккаунта
    ========================================================= */
 
 (() => {
@@ -24,6 +25,7 @@
 
   let overlay = null;
   let appStarted = false;
+  let logoutInProgress = false;
 
   const style = document.createElement("style");
 
@@ -310,6 +312,34 @@
       letter-spacing: 1px;
     }
 
+    /* Кнопка выхода */
+    .mr-logout {
+      position: fixed;
+      top: max(12px, env(safe-area-inset-top));
+      right: 14px;
+      z-index: 999998;
+      min-height: 40px;
+      padding: 10px 15px;
+      border: 1px solid #345448;
+      border-radius: 10px;
+      color: #b9f5dc;
+      background: #101d22;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .mr-logout:active {
+      background: #1b352d;
+    }
+
+    .mr-logout:disabled {
+      opacity: .6;
+      cursor: wait;
+    }
+
     @media (max-width: 420px) {
       .mr-card {
         padding: 27px 21px 22px;
@@ -329,6 +359,10 @@
 
   function showLogin(message = "") {
     if (overlay) overlay.remove();
+
+    // Убираем кнопку выхода, если она осталась.
+    const oldLogout = document.getElementById("daradar-logout");
+    if (oldLogout) oldLogout.remove();
 
     overlay = document.createElement("div");
     overlay.className = "mr-overlay";
@@ -400,8 +434,6 @@
     `;
 
     document.body.appendChild(overlay);
-
-    // Показываем панель, но скрываем элементы карты под ней.
     document.body.style.visibility = "visible";
 
     for (const node of originalNodes) {
@@ -476,6 +508,77 @@
     });
   }
 
+  // Создаёт кнопку выхода после запуска карты.
+  function addLogoutButton() {
+    if (document.getElementById("daradar-logout")) return;
+
+    const button = document.createElement("button");
+    button.id = "daradar-logout";
+    button.className = "mr-logout";
+    button.type = "button";
+    button.textContent = "Выйти";
+    button.setAttribute("aria-label", "Выйти из аккаунта");
+
+    button.addEventListener("click", logout);
+
+    document.body.appendChild(button);
+  }
+
+  // Завершает серверную сессию и возвращает экран входа.
+  async function logout() {
+    if (logoutInProgress) return;
+
+    const confirmed = window.confirm("Выйти из аккаунта?");
+    if (!confirmed) return;
+
+    logoutInProgress = true;
+
+    const button = document.getElementById("daradar-logout");
+
+    if (button) {
+      button.disabled = true;
+      button.textContent = "Выходим...";
+    }
+
+    try {
+      const response = await fetch(API, {
+        method: "POST",
+        credentials: "same-origin",
+        cache: "no-store",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ action: "logout" })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok || !data.ok) {
+        throw new Error(data.error || "Не удалось завершить сессию");
+      }
+
+      // Убираем кнопку и показываем форму пароля.
+      if (button) button.remove();
+
+      appStarted = false;
+      showLogin("Вы вышли из аккаунта.");
+
+    } catch (error) {
+      console.error("Daradar logout:", error);
+
+      if (button) {
+        button.disabled = false;
+        button.textContent = "Выйти";
+      }
+
+      window.alert(
+        "Не удалось выйти из аккаунта. Проверь соединение и попробуй снова."
+      );
+    } finally {
+      logoutInProgress = false;
+    }
+  }
+
   async function startApp() {
     if (appStarted) return;
     appStarted = true;
@@ -501,6 +604,10 @@
       await loadScript("./radars.js");
       await loadScript("./docs-button.js");
       await loadScript("/radar-cleaner.js");
+
+      // Кнопка появляется только после успешной загрузки файлов.
+      addLogoutButton();
+
     } catch (error) {
       console.error("Daradar: ошибка запуска приложения", error);
       appStarted = false;

@@ -1,3 +1,9 @@
+/* =========================================================
+   Daradar — авторизация
+   Сессия: 12 часов
+   API: /api/auth
+   ========================================================= */
+
 (() => {
   "use strict";
 
@@ -6,16 +12,16 @@
 
   if (!source) {
     document.body.innerHTML =
-      "<p style='padding:24px;color:white'>Не найден блок app-source в index.html.</p>";
+      "<p style='padding:24px;color:white;background:#080d16'>Ошибка: не найден app-source в index.html.</p>";
     return;
   }
 
-  const originalHTML = source.textContent;
-  document.body.innerHTML = "";
+  const appHTML = source.textContent;
 
   const style = document.createElement("style");
   style.textContent = `
     * { box-sizing: border-box; }
+
     body {
       margin: 0;
       min-height: 100vh;
@@ -23,6 +29,7 @@
       color: #eef4ff;
       font-family: -apple-system, BlinkMacSystemFont, sans-serif;
     }
+
     .auth-wrap {
       min-height: 100vh;
       display: flex;
@@ -30,6 +37,7 @@
       justify-content: center;
       padding: 20px;
     }
+
     .auth-card {
       width: 100%;
       max-width: 380px;
@@ -39,18 +47,20 @@
       border-radius: 18px;
       box-shadow: 0 18px 60px #0006;
     }
+
     .auth-logo {
       font-size: 30px;
       font-weight: 800;
-      letter-spacing: 1px;
       color: #70b7ff;
       text-align: center;
     }
+
     .auth-sub {
       text-align: center;
       color: #9cacc4;
       margin: 8px 0 24px;
     }
+
     .auth-input {
       width: 100%;
       padding: 14px;
@@ -62,7 +72,11 @@
       font-size: 16px;
       outline: none;
     }
-    .auth-input:focus { border-color: #70b7ff; }
+
+    .auth-input:focus {
+      border-color: #70b7ff;
+    }
+
     .auth-button {
       width: 100%;
       padding: 14px;
@@ -74,7 +88,11 @@
       font-size: 16px;
       cursor: pointer;
     }
-    .auth-button:disabled { opacity: .6; }
+
+    .auth-button:disabled {
+      opacity: .6;
+    }
+
     .auth-error {
       min-height: 22px;
       margin-top: 12px;
@@ -90,8 +108,9 @@
     document.body.innerHTML = `
       <main class="auth-wrap">
         <form class="auth-card" id="auth-form">
-          <div class="auth-logo">CLOrad</div>
+          <div class="auth-logo">Daradar</div>
           <div class="auth-sub">Закрытый доступ к радару</div>
+
           <input
             class="auth-input"
             id="auth-password"
@@ -100,9 +119,11 @@
             autocomplete="current-password"
             required
           >
+
           <button class="auth-button" id="auth-submit" type="submit">
             Войти
           </button>
+
           <div class="auth-error" id="auth-error"></div>
         </form>
       </main>
@@ -110,7 +131,9 @@
 
     document.getElementById("auth-error").textContent = message;
 
-    document.getElementById("auth-form").addEventListener("submit", login);
+    document
+      .getElementById("auth-form")
+      .addEventListener("submit", login);
   }
 
   async function login(event) {
@@ -128,7 +151,9 @@
       const response = await fetch(API, {
         method: "POST",
         credentials: "same-origin",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json"
+        },
         body: JSON.stringify({
           action: "login",
           password: input.value
@@ -138,12 +163,12 @@
       const data = await response.json();
 
       if (!response.ok || !data.authenticated) {
-        error.textContent = data.error || "Не удалось войти";
+        error.textContent = data.error || "Неверный пароль";
         return;
       }
 
-      await loadApp();
-    } catch {
+      location.reload();
+    } catch (e) {
       error.textContent = "Ошибка соединения с сервером";
     } finally {
       if (document.getElementById("auth-submit")) {
@@ -158,27 +183,23 @@
       const script = document.createElement("script");
       script.src = src;
       script.onload = resolve;
-      script.onerror = () => reject(new Error("Не удалось загрузить " + src));
+      script.onerror = () => reject(
+        new Error("Не удалось загрузить " + src)
+      );
       document.body.appendChild(script);
     });
   }
 
-  async function loadApp() {
-    document.open();
-    document.write(originalHTML);
-    document.close();
+  async function openApp() {
+    document.body.innerHTML = appHTML;
 
-    await new Promise(resolve => {
-      if (document.readyState === "loading") {
-        document.addEventListener("DOMContentLoaded", resolve, { once: true });
-      } else {
-        resolve();
-      }
-    });
-
-    await loadScript("./radars.js");
-    await loadScript("./docs-button.js");
-    await loadScript("/radar-cleaner.js");
+    try {
+      await loadScript("./radars.js");
+      await loadScript("./docs-button.js");
+      await loadScript("/radar-cleaner.js");
+    } catch (error) {
+      console.error(error);
+    }
   }
 
   async function init() {
@@ -191,7 +212,7 @@
       const data = await response.json();
 
       if (response.ok && data.authenticated) {
-        await loadApp();
+        await openApp();
       } else {
         showLogin();
       }

@@ -1,6 +1,8 @@
 /* =========================================================
-   Quantum — авторизация
-   Чёрно-белый интерфейс
+   Quantum — авторизация и MeteoRadar Login
+   Сессия: 12 часов, проверка через /api/auth
+   Кнопка выхода + защита от повторного запуска карты
+   Контакт для получения ключа: @github_creator
    ========================================================= */
 (() => {
   "use strict";
@@ -9,7 +11,7 @@
   if (!source) {
     document.body.style.visibility = "visible";
     document.body.innerHTML =
-      "<div style='padding:24px;color:#000;background:#fff'>Ошибка: app-source не найден.</div>";
+      "<div style='padding:24px;color:white;background:#080d16'>Ошибка: app-source не найден в index.html.</div>";
     return;
   }
   const appCode = source.textContent;
@@ -32,8 +34,11 @@
       align-items: center;
       justify-content: center;
       padding: 22px 16px;
-      background: #fff;
-      color: #000;
+      background:
+        radial-gradient(ellipse at 50% 40%, #10372e 0%, transparent 43%),
+        radial-gradient(ellipse at 100% 100%, #10283b 0%, transparent 55%),
+        #050b12;
+      color: #e9f4ff;
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     }
     .mr-overlay * {
@@ -43,21 +48,36 @@
       position: fixed;
       inset: -30%;
       pointer-events: none;
-      opacity: .035;
+      opacity: .16;
       background-image:
-        linear-gradient(#000 1px, transparent 1px),
-        linear-gradient(90deg, #000 1px, transparent 1px);
+        linear-gradient(#37b997 1px, transparent 1px),
+        linear-gradient(90deg, #37b997 1px, transparent 1px);
       background-size: 38px 38px;
       transform: perspective(600px) rotateX(8deg);
+      mask-image: linear-gradient(transparent, black 30%, black 75%, transparent);
     }
     .mr-card {
       position: relative;
       width: 100%;
       max-width: 400px;
       padding: 30px 25px 23px;
+      border: 1px solid #31564a;
+      border-radius: 22px;
       overflow: hidden;
-      background: #fff;
-      color: #000;
+      background: linear-gradient(145deg, #14251ff5, #09121bf9);
+      box-shadow: 0 25px 90px #000a, 0 0 40px #00d99a0c;
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+    }
+    .mr-card::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 12%;
+      right: 12%;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, #55ffbd, #65dfff, transparent);
+      box-shadow: 0 0 15px #55ffbd80;
     }
     .mr-brand {
       text-align: center;
@@ -68,26 +88,28 @@
       height: 94px;
       margin: 0 auto 18px;
       overflow: hidden;
+      border: 1px solid #43d9a675;
       border-radius: 50%;
       background:
-        radial-gradient(circle, transparent 24%, #00000012 25%, transparent 26%),
-        radial-gradient(circle, transparent 49%, #00000012 50%, transparent 51%),
-        radial-gradient(circle, transparent 74%, #00000012 75%, transparent 76%),
-        #f5f5f5;
+        radial-gradient(circle, transparent 24%, #3ee7b530 25%, transparent 26%),
+        radial-gradient(circle, transparent 49%, #3ee7b530 50%, transparent 51%),
+        radial-gradient(circle, transparent 74%, #3ee7b530 75%, transparent 76%),
+        #071b18;
+      box-shadow: 0 0 28px #00f0a01a;
     }
     .mr-radar::before {
       content: "";
       position: absolute;
       inset: 0 50%;
       width: 1px;
-      background: #00000018;
+      background: #43e7b545;
     }
     .mr-radar::after {
       content: "";
       position: absolute;
       inset: 50% 0;
       height: 1px;
-      background: #00000018;
+      background: #43e7b545;
     }
     .mr-sweep {
       position: absolute;
@@ -97,29 +119,29 @@
         from 0deg,
         transparent 0deg,
         transparent 280deg,
-        #00000005 315deg,
-        #00000035 359deg,
-        #00000035 360deg
+        #35ffc00c 315deg,
+        #35ffc078 359deg,
+        #35ffc078 360deg
       );
       animation: mr-rotate 4s linear infinite;
     }
-    /* Точка на вращающемся радаре удалена. */
+    /* Убрана светящаяся точка на анимированном радаре. */
     @keyframes mr-rotate {
       to { transform: rotate(360deg); }
     }
     .mr-title {
       margin: 0;
-      color: #000;
+      color: #f0fff9;
       font-size: 30px;
       font-weight: 850;
       letter-spacing: 2px;
     }
     .mr-title span {
-      color: #777;
+      color: #55edb0;
     }
     .mr-subtitle {
       margin-top: 9px;
-      color: #777;
+      color: #8daaa5;
       font-size: 10px;
       font-weight: 750;
       letter-spacing: 2.5px;
@@ -128,24 +150,24 @@
     .mr-divider {
       height: 1px;
       margin: 24px 0 22px;
-      background: #e8e8e8;
+      background: linear-gradient(90deg, transparent, #31594e, transparent);
     }
     .mr-heading {
       margin-bottom: 8px;
-      color: #000;
+      color: #e2f5ee;
       font-size: 15px;
       font-weight: 750;
     }
     .mr-description {
       margin: 0 0 20px;
-      color: #666;
+      color: #82959a;
       font-size: 13px;
       line-height: 1.55;
     }
     .mr-label {
       display: block;
       margin-bottom: 9px;
-      color: #444;
+      color: #b3c9c7;
       font-size: 11px;
       font-weight: 750;
       letter-spacing: 1px;
@@ -156,13 +178,16 @@
       gap: 10px;
       height: 53px;
       padding: 0 13px;
-      background: #f3f3f3;
+      border: 1px solid #29463f;
+      border-radius: 11px;
+      background: #060e14;
     }
     .mr-password:focus-within {
-      background: #ededed;
+      border-color: #42dca5;
+      box-shadow: 0 0 0 3px #42dca510;
     }
     .mr-lock {
-      color: #000;
+      color: #54d9a7;
       font-size: 19px;
     }
     .mr-input {
@@ -172,17 +197,17 @@
       padding: 0;
       outline: none;
       border: 0;
-      color: #000;
+      color: #edfff8;
       background: transparent;
       font-size: 15px;
     }
     .mr-input::placeholder {
-      color: #999;
+      color: #52676b;
     }
     .mr-eye {
       padding: 5px;
       border: 0;
-      color: #555;
+      color: #80a397;
       background: transparent;
       font-size: 17px;
       cursor: pointer;
@@ -195,34 +220,34 @@
       width: 100%;
       min-height: 52px;
       margin-top: 15px;
-      border: 0;
-      border-radius: 0;
-      color: #fff;
-      background: #000;
+      border: 1px solid #7bffd0;
+      border-radius: 11px;
+      color: #04160f;
+      background: linear-gradient(105deg, #52e9ad, #8af6c9);
       font-size: 13px;
       font-weight: 850;
       letter-spacing: .7px;
       cursor: pointer;
     }
-    .mr-button:active {
-      background: #333;
-    }
     .mr-button:disabled {
-      opacity: .6;
+      opacity: .65;
       cursor: wait;
     }
     .mr-error {
       min-height: 20px;
       margin-top: 10px;
-      color: #b00020;
+      color: #ff8585;
       font-size: 12px;
       text-align: center;
     }
+    /* Информация о получении ключа — исходное оформление */
     .mr-key-info {
       margin-top: 12px;
       padding: 12px 10px;
-      background: #f3f3f3;
-      color: #666;
+      border: 1px solid #29463f;
+      border-radius: 10px;
+      background: #081710;
+      color: #82959a;
       font-size: 12px;
       line-height: 1.6;
       text-align: center;
@@ -230,13 +255,12 @@
     .mr-key-info a {
       display: inline-block;
       margin-top: 3px;
-      color: #000;
+      color: #55edb0;
       font-weight: 750;
-      text-decoration: underline;
-      text-underline-offset: 3px;
+      text-decoration: none;
     }
     .mr-key-info a:active {
-      color: #777;
+      color: #8af6c9;
     }
     .mr-status {
       display: flex;
@@ -244,7 +268,7 @@
       justify-content: center;
       gap: 7px;
       margin-top: 13px;
-      color: #777;
+      color: #77958c;
       font-size: 10px;
       letter-spacing: 1px;
     }
@@ -252,18 +276,19 @@
       width: 6px;
       height: 6px;
       border-radius: 50%;
-      background: #000;
+      background: #45e6a8;
+      box-shadow: 0 0 9px #45e6a8;
     }
     .mr-footer {
       margin-top: 22px;
       padding-top: 15px;
-      border-top: 1px solid #e8e8e8;
-      color: #888;
+      border-top: 1px solid #ffffff0b;
+      color: #50656a;
       font-size: 9px;
       text-align: center;
       letter-spacing: 1px;
     }
-    /* Кнопка выхода — немного ниже */
+    /* Изменена только кнопка выхода */
     #mr-logout {
       position: fixed;
       z-index: 99990;
@@ -276,16 +301,17 @@
       padding: 0 14px;
       border: 0;
       border-radius: 0;
-      color: #000;
-      background: #f0f0f0;
+      color: #fff;
+      background: #111;
       box-shadow: none;
       font: 650 12px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
       cursor: pointer;
       -webkit-tap-highlight-color: transparent;
+      transition: background .15s, color .15s;
     }
     #mr-logout:active {
-      color: #fff;
-      background: #000;
+      color: #000;
+      background: #eee;
     }
     #mr-logout:disabled {
       opacity: .6;
@@ -465,7 +491,7 @@
       console.error("Quantum: ошибка запуска приложения", error);
       appStarted = false;
       showLogin(
-        "Не удалось загрузить карту или дополнение. Проверьте файлы проекта."
+        "Не удалось загрузить файл карты или дополнение. Проверьте файлы проекта."
       );
     }
   }

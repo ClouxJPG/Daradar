@@ -1,200 +1,181 @@
 /* =========================================================
    Quantum Meteo — Meteoinfo Phenomena
    Источник: /api/phenomena
-   Включается только в режиме S.
-   Режимы R/H не изменяет.
+   Отображение в режиме S.
+   Режимы R/H не изменяются.
+   Требование:
+   index.html должен содержать:
+   window.quantumMeteoMap = map;
+   сразу после создания карты Leaflet.
    ========================================================= */
 (() => {
   "use strict";
   const SOURCE = "/api/phenomena";
-  /*
-   * Предварительные границы изображения.
-   * Их необходимо проверить по совпадению с городами.
-   */
+  // Предварительные географические границы исходной GIF.
+  // Из-за полей и легенды исходной карты совмещение нужно проверить.
   const BOUNDS = [
     [38.2156, 14.9893],
     [69.6544, 72.9238]
   ];
-  let map = null;
   let overlay = null;
+  let objectUrl = null;
   let loading = false;
   let enabled = false;
   let requestId = 0;
-  function findMap() {
-    if (!window.L || !L.Map) return null;
-    /*
-     * Карта объявлена как локальная const в index.html,
-     * поэтому ищем экземпляр Leaflet по контейнеру.
-     */
-    const instances = L.Map._instances || {};
-    for (const key of Object.keys(instances)) {
-      const candidate = instances[key];
-      if (
-        candidate &&
-        candidate.getContainer &&
-        candidate.getContainer().id === "map"
-      ) {
-        return candidate;
-      }
+  function getMap() {
+    const map = window.quantumMeteoMap;
+    if (
+      map &&
+      typeof map.addLayer === "function" &&
+      typeof map.hasLayer === "function"
+    ) {
+      return map;
     }
     return null;
   }
-  function getMap() {
-    map = findMap();
-    return map;
-  }
   function message(text) {
-    const el = document.getElementById("msg");
-    if (el) el.textContent = text || "";
+    const element = document.getElementById("msg");
+    if (element) {
+      element.textContent = text || "";
+    }
+  }
+  function releaseImage() {
+    if (objectUrl) {
+      URL.revokeObjectURL(objectUrl);
+      objectUrl = null;
+    }
   }
   function removeLayer() {
     requestId++;
     enabled = false;
+    const map = getMap();
     if (map && overlay && map.hasLayer(overlay)) {
       map.removeLayer(overlay);
     }
     overlay = null;
+    loading = false;
+    releaseImage();
   }
   async function showLayer() {
-    if (loading) {
-      enabled = true;
-      return;
-    }
-    map = getMap();
+    enabled = true;
+    const map = getMap();
     if (!map) {
-      message("Не удалось найти карту Leaflet");
+      message("Карта Leaflet ещё не готова");
       return;
     }
     if (overlay && map.hasLayer(overlay)) {
-      enabled = true;
+      message("");
       return;
     }
-    enabled = true;
+    // Не запускаем параллельные загрузки GIF.
+    if (loading) return;
     loading = true;
     const currentRequest = ++requestId;
     message("Загрузка метеоявлений Meteoinfo…");
+    let temporaryUrl = null;
     try {
-      /*
-       * Сначала загружаем GIF, затем добавляем её
-       * на карту. Анимация исходной GIF сохраняется.
-       */
       const response = await fetch(
         SOURCE + "?_=" + Date.now(),
         {
           method: "GET",
-          cache: "no-store"
+          cache: "no-store",
+          credentials: "same-origin"
         }
       );
       if (!response.ok) {
         throw new Error("HTTP " + response.status);
       }
       const blob = await response.blob();
+      // Проверяем содержимое GIF по сигнатуре, а не только MIME.
+      const header = new Uint8Array(
+        await blob.slice(0, 6).arrayBuffer()
+      );
+      const signature = String.fromCharCode(...header);
       if (
-        !blob.type.toLowerCase().includes("gif")
+        signature !== "GIF87a" &&
+        signature !== "GIF89a"
       ) {
         throw new Error(
-          "API не вернул изображение GIF"
+          "Ответ /api/phenomena не является GIF"
         );
       }
-      const url = URL.createObjectURL(blob);
+      temporaryUrl = URL.createObjectURL(blob);
       const image = new Image();
-      image.onload = () => {
-        if (
-          currentRequest !== requestId ||
-          !enabled
-        ) {
-          URL.revokeObjectURL(url);
-          loading = false;
-          return;
+      await new Promise((resolve, reject) => {
+        image.onload = resolve;
+        image.onerror = () => {
+          reject(new Error("Браузер не смог открыть GIF"));
+        };
+        image.src = temporaryUrl;
+      });
+      // Если пользователь уже переключил режим, не добавляем слой.
+      if (currentRequest !== requestId || !enabled) {
+        URL.revokeObjectURL(temporaryUrl);
+        temporaryUrl = null;
+        return;
+      }
+      const currentMap = getMap();
+      if (!currentMap) {
+        throw new Error("Карта Leaflet недоступна");
+      }
+      if (overlay && currentMap.hasLayer(overlay)) {
+        currentMap.removeLayer(overlay);
+      }
+      releaseImage();
+      objectUrl = temporaryUrl;
+      temporaryUrl = null;
+      overlay = L.imageOverlay(
+        objectUrl,
+        BOUNDS,
+        {
+          opacity: 1,
+          interactive: false,
+          className: "quantum-phenomena-overlay",
+          alt: "Метеоявления Meteoinfo"
         }
-        map = getMap();
-        if (!map) {
-          URL.revokeObjectURL(url);
-          loading = false;
-          message("Карта Leaflet недоступна");
-          return;
-        }
-        if (overlay && map.hasLayer(overlay)) {
-          map.removeLayer(overlay);
-        }
-        overlay = L.imageOverlay(
-          url,
-          BOUNDS,
-          {
-            opacity: 1,
-            interactive: false,
-            crossOrigin: false,
-            className: "quantum-phenomena-overlay",
-            alt: "Метеоявления Meteoinfo"
-          }
-        );
-        overlay.addTo(map);
-        overlay.setZIndex(450);
-        /*
-         * Не отзываем URL сразу после загрузки:
-         * браузеру он нужен для показа анимированной GIF.
-         */
-        overlay.once("remove", () => {
-          URL.revokeObjectURL(url);
-        });
-        loading = false;
-        message("");
-      };
-      image.onerror = () => {
-        URL.revokeObjectURL(url);
-        loading = false;
-        if (currentRequest === requestId) {
-          message("Не удалось декодировать GIF Meteoinfo");
-        }
-      };
-      image.src = url;
+      );
+      overlay.addTo(currentMap);
+      overlay.setZIndex(450);
+      message("");
     } catch (error) {
-      loading = false;
+      console.error(
+        "[Quantum Meteo] Ошибка метеоявлений:",
+        error
+      );
+      if (temporaryUrl) {
+        URL.revokeObjectURL(temporaryUrl);
+      }
       if (currentRequest === requestId) {
-        console.error(
-          "[Quantum Meteo] Phenomena:",
-          error
-        );
         message(
           "Ошибка метеоявлений: " +
           (error.message || "неизвестная ошибка")
         );
       }
+    } finally {
+      if (currentRequest === requestId) {
+        loading = false;
+      }
     }
   }
   function handleModeClick(event) {
-    const button = event.target.closest(
-      ".st .b[data-m]"
-    );
+    const button = event.target.closest(".st .b[data-m]");
     if (!button) return;
     if (button.dataset.m === "S") {
-      /*
-       * Переключаем режим на S и загружаем GIF.
-       * Таймлайн и существующие R/H обработчики
-       * не заменяются.
-       */
+      // Не отменяем существующий обработчик режима S.
       showLayer();
     } else {
+      // При переходе в R или H убираем слой метеоявлений.
       removeLayer();
       message("");
     }
   }
   function init() {
-    /*
-     * Capture нужен, чтобы обработать нажатие,
-     * не заменяя существующий обработчик кнопки.
-     */
     document.addEventListener(
       "click",
       handleModeClick,
       true
     );
-    /*
-     * Удаляем GIF при выходе со страницы.
-     */
-    window.addEventListener("pagehide", () => {
-      removeLayer();
-    });
+    window.addEventListener("pagehide", removeLayer);
   }
   if (document.readyState === "loading") {
     document.addEventListener(

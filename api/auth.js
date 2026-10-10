@@ -1,40 +1,20 @@
 const crypto = require("crypto");
-const fs = require("fs");
-const path = require("path");
 const SESSION_HOURS = 12;
 const COOKIE_NAME = "daradar_session";
 function secret() {
   return process.env.AUTH_SECRET || "";
 }
-// Чтение пользователей из U1.js — U20.js
 function users() {
   const result = {};
-  // Совместимость со старой системой пользователей.
-  try {
-    Object.assign(
-      result,
-      JSON.parse(process.env.DARADAR_USERS_JSON || "{}")
-    );
-  } catch {
-    // Некорректный JSON не останавливает авторизацию.
-  }
   for (let i = 1; i <= 20; i++) {
     const id = `U${i}`;
-    const file = path.join(process.cwd(), `${id}.js`);
-    try {
-      if (!fs.existsSync(file)) continue;
-      // Каждый файл должен экспортировать объект через module.exports.
-      const user = require(file);
-      if (
-        user &&
-        typeof user.name === "string" &&
-        typeof user.password === "string" &&
-        typeof user.active === "boolean"
-      ) {
-        result[id] = user;
-      }
-    } catch (error) {
-      console.error(`Ошибка чтения ${id}.js`);
+    const password = process.env[id];
+    if (typeof password === "string" && password.length > 0) {
+      result[id] = {
+        name: id,
+        password,
+        active: true
+      };
     }
   }
   return result;
@@ -73,7 +53,6 @@ function readSession(token) {
     if (!data.id || !data.exp || data.exp < Date.now()) {
       return null;
     }
-    // Администратор авторизуется отдельным паролем.
     if (data.id === "__admin__") {
       if (
         data.role !== "admin" ||
@@ -88,7 +67,6 @@ function readSession(token) {
         exp: data.exp
       };
     }
-    // Аккаунты Supabase сохраняют прежнюю совместимость.
     if (String(data.id).startsWith("sb_")) {
       return {
         id: String(data.id),
@@ -97,12 +75,11 @@ function readSession(token) {
         exp: data.exp
       };
     }
-    // Проверяем, что пользователь всё ещё существует и активен.
     const user = users()[data.id];
     if (!user || user.active !== true) return null;
     return {
       id: data.id,
-      name: user.name || data.id,
+      name: user.name,
       role: "user",
       exp: data.exp
     };
@@ -142,14 +119,14 @@ function logEvent(event, id) {
     time: new Date().toISOString()
   }));
 }
-async function supabaseRequest(pathname) {
+async function supabaseRequest(path) {
   const url = process.env.SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!url || !key) {
     throw new Error("Supabase is not configured");
   }
   const response = await fetch(
-    `${url.replace(/\/+$/, "")}/rest/v1/${pathname}`,
+    `${url.replace(/\/+$/, "")}/rest/v1/${path}`,
     {
       headers: {
         apikey: key,
@@ -237,8 +214,10 @@ module.exports = async function handler(req, res) {
       authenticated: false
     });
   }
-  if (body.action !== "login" ||
-      typeof body.password !== "string") {
+  if (
+    body.action !== "login" ||
+    typeof body.password !== "string"
+  ) {
     return send(res, 400, {
       ok: false,
       error: "Некорректный запрос"
@@ -251,7 +230,7 @@ module.exports = async function handler(req, res) {
       error: "Некорректный пароль"
     });
   }
-  // Существующий вход администратора сохраняется.
+  // Вход администратора сохраняется.
   const adminPassword = process.env.DARADAR_ADMIN_PASSWORD;
   if (adminPassword && safeEqual(password, adminPassword)) {
     const token = createSession(
@@ -276,7 +255,7 @@ module.exports = async function handler(req, res) {
         SESSION_HOURS * 60 * 60 * 1000
     });
   }
-  // Существующий вход Supabase сохраняется.
+  // Вход через Supabase сохраняется.
   const username = typeof body.username === "string"
     ? body.username.trim()
     : "";
@@ -333,20 +312,14 @@ module.exports = async function handler(req, res) {
       });
     }
   }
-  // Вход по паролю из U1.js — U20.js
+  // Проверка паролей из переменных U1 — U20.
   const allUsers = users();
   for (const [id, user] of Object.entries(allUsers)) {
     if (
-      user &&
       user.active === true &&
-      typeof user.password === "string" &&
       safeEqual(password, user.password)
     ) {
-      const token = createSession(
-        id,
-        user.name || id,
-        "user"
-      );
+      const token = createSession(id, user.name, "user");
       res.setHeader(
         "Set-Cookie",
         cookieHeader(token, SESSION_HOURS * 60 * 60)
@@ -357,7 +330,7 @@ module.exports = async function handler(req, res) {
         authenticated: true,
         user: {
           id,
-          name: user.name || id,
+          name: user.name,
           role: "user"
         },
         expiresAt: Date.now() +

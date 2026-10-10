@@ -1,330 +1,467 @@
 /* =========================================================
-   Daradar — авторизация, выход и админ-панель
-   Вход: только пароль, без поля логина
+   Daradar — авторизация и MeteoRadar Login
+   Сессия: 12 часов, проверка через /api/auth
    ========================================================= */
 
 (() => {
   "use strict";
 
   const API = "/api/auth";
-  const ADMIN_API = "/api/admin";
-
   const source = document.getElementById("app-source");
-  const appCode = source ? source.textContent : "";
 
+  if (!source) {
+    document.body.style.visibility = "visible";
+    document.body.innerHTML =
+      "<div style='padding:24px;color:white;background:#080d16'>Ошибка: app-source не найден в index.html.</div>";
+    return;
+  }
+
+  const appCode = source.textContent;
+  const originalNodes = [...document.body.children];
+  const originalVisibility = new Map(
+    originalNodes.map(node => [node, node.style.visibility])
+  );
+
+  let overlay = null;
   let appStarted = false;
-  let currentUser = null;
-  let adminOverlay = null;
 
   const style = document.createElement("style");
+
   style.textContent = `
-    #daradarLoginOverlay,
-    #daradarAdminOverlay {
+    .mr-overlay {
       position: fixed;
       inset: 0;
       z-index: 999999;
+      overflow-y: auto;
       display: flex;
       align-items: center;
       justify-content: center;
-      padding: 20px;
-      background: #080d18;
-      color: #edf4ff;
+      padding: 22px 16px;
+      background:
+        radial-gradient(ellipse at 50% 40%, #10372e 0%, transparent 43%),
+        radial-gradient(ellipse at 100% 100%, #10283b 0%, transparent 55%),
+        #050b12;
+      color: #e9f4ff;
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     }
 
-    .dd-panel {
+    .mr-overlay * {
       box-sizing: border-box;
+    }
+
+    .mr-grid {
+      position: fixed;
+      inset: -30%;
+      pointer-events: none;
+      opacity: .16;
+      background-image:
+        linear-gradient(#37b997 1px, transparent 1px),
+        linear-gradient(90deg, #37b997 1px, transparent 1px);
+      background-size: 38px 38px;
+      transform: perspective(600px) rotateX(8deg);
+      mask-image: linear-gradient(transparent, black 30%, black 75%, transparent);
+    }
+
+    .mr-card {
+      position: relative;
       width: 100%;
-      max-width: 390px;
-      padding: 24px;
-      border: 1px solid #263650;
-      border-radius: 18px;
-      background: #111b2b;
-      box-shadow: 0 20px 70px #0008;
+      max-width: 400px;
+      padding: 30px 25px 23px;
+      border: 1px solid #31564a;
+      border-radius: 22px;
+      overflow: hidden;
+      background: linear-gradient(145deg, #14251ff5, #09121bf9);
+      box-shadow: 0 25px 90px #000a, 0 0 40px #00d99a0c;
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
     }
 
-    .dd-title {
-      margin: 0 0 8px;
-      font-size: 24px;
-      font-weight: 800;
+    .mr-card::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 12%;
+      right: 12%;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, #55ffbd, #65dfff, transparent);
+      box-shadow: 0 0 15px #55ffbd80;
     }
 
-    .dd-muted {
-      color: #91a5c2;
+    .mr-brand {
+      text-align: center;
+    }
+
+    .mr-radar {
+      position: relative;
+      width: 94px;
+      height: 94px;
+      margin: 0 auto 18px;
+      overflow: hidden;
+      border: 1px solid #43d9a675;
+      border-radius: 50%;
+      background:
+        radial-gradient(circle, transparent 24%, #3ee7b530 25%, transparent 26%),
+        radial-gradient(circle, transparent 49%, #3ee7b530 50%, transparent 51%),
+        radial-gradient(circle, transparent 74%, #3ee7b530 75%, transparent 76%),
+        #071b18;
+      box-shadow: 0 0 28px #00f0a01a;
+    }
+
+    .mr-radar::before {
+      content: "";
+      position: absolute;
+      inset: 0 50%;
+      width: 1px;
+      background: #43e7b545;
+    }
+
+    .mr-radar::after {
+      content: "";
+      position: absolute;
+      inset: 50% 0;
+      height: 1px;
+      background: #43e7b545;
+    }
+
+    .mr-sweep {
+      position: absolute;
+      inset: 0;
+      border-radius: 50%;
+      background: conic-gradient(
+        from 0deg,
+        transparent 0deg,
+        transparent 280deg,
+        #35ffc00c 315deg,
+        #35ffc078 359deg,
+        #35ffc078 360deg
+      );
+      animation: mr-rotate 4s linear infinite;
+    }
+
+    .mr-sweep::after {
+      content: "";
+      position: absolute;
+      top: 25%;
+      left: 68%;
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      background: #9bffd6;
+      box-shadow: 0 0 10px #9bffd6;
+    }
+
+    @keyframes mr-rotate {
+      to { transform: rotate(360deg); }
+    }
+
+    .mr-title {
+      margin: 0;
+      color: #f0fff9;
+      font-size: 30px;
+      font-weight: 850;
+      letter-spacing: 2px;
+    }
+
+    .mr-title span {
+      color: #55edb0;
+    }
+
+    .mr-subtitle {
+      margin-top: 9px;
+      color: #8daaa5;
+      font-size: 10px;
+      font-weight: 750;
+      letter-spacing: 2.5px;
+      text-transform: uppercase;
+    }
+
+    .mr-divider {
+      height: 1px;
+      margin: 24px 0 22px;
+      background: linear-gradient(90deg, transparent, #31594e, transparent);
+    }
+
+    .mr-heading {
+      margin-bottom: 8px;
+      color: #e2f5ee;
+      font-size: 15px;
+      font-weight: 750;
+    }
+
+    .mr-description {
+      margin: 0 0 20px;
+      color: #82959a;
       font-size: 13px;
-      line-height: 1.5;
+      line-height: 1.55;
     }
 
-    .dd-input, .dd-select {
-      box-sizing: border-box;
+    .mr-label {
+      display: block;
+      margin-bottom: 9px;
+      color: #b3c9c7;
+      font-size: 11px;
+      font-weight: 750;
+      letter-spacing: 1px;
+    }
+
+    .mr-password {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      height: 53px;
+      padding: 0 13px;
+      border: 1px solid #29463f;
+      border-radius: 11px;
+      background: #060e14;
+    }
+
+    .mr-password:focus-within {
+      border-color: #42dca5;
+      box-shadow: 0 0 0 3px #42dca510;
+    }
+
+    .mr-lock {
+      color: #54d9a7;
+      font-size: 19px;
+    }
+
+    .mr-input {
       width: 100%;
-      min-height: 44px;
-      margin-top: 10px;
-      padding: 11px 12px;
-      border: 1px solid #344966;
-      border-radius: 10px;
+      min-width: 0;
+      height: 100%;
+      padding: 0;
       outline: none;
-      background: #0b1422;
-      color: #fff;
+      border: 0;
+      color: #edfff8;
+      background: transparent;
       font-size: 15px;
     }
 
-    .dd-input:focus, .dd-select:focus {
-      border-color: #4895ff;
+    .mr-input::placeholder {
+      color: #52676b;
     }
 
-    .dd-button {
-      min-height: 40px;
-      padding: 9px 13px;
-      border: 1px solid #345985;
-      border-radius: 10px;
-      background: #183b66;
-      color: #fff;
-      font-size: 14px;
-      font-weight: 650;
+    .mr-eye {
+      padding: 5px;
+      border: 0;
+      color: #80a397;
+      background: transparent;
+      font-size: 17px;
       cursor: pointer;
     }
 
-    .dd-button:disabled {
-      opacity: .55;
+    .mr-button {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      width: 100%;
+      min-height: 52px;
+      margin-top: 15px;
+      border: 1px solid #7bffd0;
+      border-radius: 11px;
+      color: #04160f;
+      background: linear-gradient(105deg, #52e9ad, #8af6c9);
+      font-size: 13px;
+      font-weight: 850;
+      letter-spacing: .7px;
+      cursor: pointer;
+    }
+
+    .mr-button:disabled {
+      opacity: .65;
       cursor: wait;
     }
 
-    .dd-primary {
-      width: 100%;
-      margin-top: 14px;
-      background: #2676e8;
-      border-color: #2676e8;
-    }
-
-    .dd-error {
-      margin-top: 12px;
-      color: #ff8888;
-      font-size: 13px;
-      white-space: pre-wrap;
-    }
-
-    #daradarUserControls {
-      position: fixed;
-      z-index: 10010;
-      top: calc(62px + env(safe-area-inset-top));
-      right: calc(10px + env(safe-area-inset-right));
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      max-width: calc(100vw - 20px);
-    }
-
-    #daradarUserControls .dd-button {
-      min-height: 36px;
-      padding: 7px 10px;
-      font-size: 12px;
-      background: #111d2d;
-      border-color: #334c6b;
-    }
-
-    #daradarAdminOverlay {
-      overflow: auto;
-      align-items: flex-start;
-      padding-top: max(20px, env(safe-area-inset-top));
-      padding-bottom: max(20px, env(safe-area-inset-bottom));
-      background: #060b13ed;
-    }
-
-    .dd-admin-panel {
-      width: 100%;
-      max-width: 680px;
-      margin: auto;
-      padding: 20px;
-      border: 1px solid #293c56;
-      border-radius: 16px;
-      background: #101a29;
-      box-sizing: border-box;
-    }
-
-    .dd-admin-head {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-      margin-bottom: 14px;
-    }
-
-    .dd-admin-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 8px;
-    }
-
-    .dd-admin-grid .dd-input,
-    .dd-admin-grid .dd-select {
-      margin: 0;
-      min-width: 0;
-    }
-
-    .dd-admin-create {
+    .mr-error {
+      min-height: 20px;
       margin-top: 10px;
-    }
-
-    .dd-user-row {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 10px;
-      padding: 12px 0;
-      border-top: 1px solid #28384e;
-    }
-
-    .dd-user-info {
-      min-width: 0;
-      overflow-wrap: anywhere;
-    }
-
-    .dd-user-name {
-      font-weight: 700;
-      font-size: 14px;
-    }
-
-    .dd-user-meta {
-      margin-top: 4px;
-      color: #91a5c2;
+      color: #ff8585;
       font-size: 12px;
+      text-align: center;
     }
 
-    @media (max-width: 440px) {
-      #daradarUserControls {
-        top: calc(58px + env(safe-area-inset-top));
+    .mr-status {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      margin-top: 13px;
+      color: #77958c;
+      font-size: 10px;
+      letter-spacing: 1px;
+    }
+
+    .mr-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: #45e6a8;
+      box-shadow: 0 0 9px #45e6a8;
+    }
+
+    .mr-footer {
+      margin-top: 22px;
+      padding-top: 15px;
+      border-top: 1px solid #ffffff0b;
+      color: #50656a;
+      font-size: 9px;
+      text-align: center;
+      letter-spacing: 1px;
+    }
+
+    @media (max-width: 420px) {
+      .mr-card {
+        padding: 27px 21px 22px;
       }
 
-      #daradarUserControls .dd-button {
-        padding: 6px 8px;
-        font-size: 11px;
+      .mr-title {
+        font-size: 28px;
       }
+    }
 
-      .dd-admin-grid {
-        grid-template-columns: 1fr;
-      }
+    @media (prefers-reduced-motion: reduce) {
+      .mr-sweep { animation: none; }
     }
   `;
+
   document.head.appendChild(style);
 
-  function makeButton(label, onClick) {
-    const button = document.createElement("button");
-    button.type = "button";
-    button.className = "dd-button";
-    button.textContent = label;
-    button.addEventListener("click", onClick);
-    return button;
-  }
-
-  function makeError(className = "dd-error") {
-    const node = document.createElement("div");
-    node.className = className;
-    return node;
-  }
-
-  function hideApp() {
-    document.querySelectorAll("body > *").forEach((node) => {
-      if (node.id !== "daradarLoginOverlay" && node.tagName !== "SCRIPT") {
-        node.dataset.ddPreviousDisplay = node.style.display;
-        node.style.display = "none";
-      }
-    });
-  }
-
-  function restoreApp() {
-    document.querySelectorAll("[data-dd-previous-display]").forEach((node) => {
-      node.style.display = node.dataset.ddPreviousDisplay || "";
-      delete node.dataset.ddPreviousDisplay;
-    });
-
-    document.querySelectorAll("body > *").forEach((node) => {
-      if (node.dataset.ddPreviousDisplay !== undefined) {
-        node.style.display = node.dataset.ddPreviousDisplay;
-        delete node.dataset.ddPreviousDisplay;
-      }
-    });
-  }
-
   function showLogin(message = "") {
-    let overlay = document.getElementById("daradarLoginOverlay");
-
     if (overlay) overlay.remove();
 
-    hideApp();
-
     overlay = document.createElement("div");
-    overlay.id = "daradarLoginOverlay";
+    overlay.className = "mr-overlay";
 
-    const panel = document.createElement("form");
-    panel.className = "dd-panel";
+    overlay.innerHTML = `
+      <div class="mr-grid"></div>
 
-    const title = document.createElement("h1");
-    title.className = "dd-title";
-    title.textContent = "Daradar";
+      <section class="mr-card">
+        <header class="mr-brand">
+          <div class="mr-radar" aria-hidden="true">
+            <div class="mr-sweep"></div>
+          </div>
 
-    const subtitle = document.createElement("div");
-    subtitle.className = "dd-muted";
-    subtitle.textContent = "Введите пароль для входа.";
+          <h1 class="mr-title">DARA<span>DAR</span></h1>
+          <div class="mr-subtitle">Weather Radar System</div>
+        </header>
 
-    const password = document.createElement("input");
-    password.className = "dd-input";
-    password.type = "password";
-    password.placeholder = "Пароль";
-    password.autocomplete = "current-password";
-    password.required = true;
+        <div class="mr-divider"></div>
 
-    const submit = document.createElement("button");
-    submit.className = "dd-button dd-primary";
-    submit.type = "submit";
-    submit.textContent = "Войти";
+        <div class="mr-heading">Закрытый доступ</div>
 
-    const error = makeError();
-    error.textContent = message;
+        <p class="mr-description">
+          Введите персональный пароль, чтобы открыть
+          метеорологическую радиолокационную карту.
+        </p>
 
-    panel.append(title, subtitle, password, submit, error);
-    overlay.appendChild(panel);
+        <form id="mr-form">
+          <label class="mr-label" for="mr-password">
+            ПАРОЛЬ ДОСТУПА
+          </label>
+
+          <div class="mr-password">
+            <span class="mr-lock" aria-hidden="true">⌑</span>
+
+            <input
+              class="mr-input"
+              id="mr-password"
+              type="password"
+              placeholder="Введите ваш пароль"
+              autocomplete="current-password"
+              required
+            >
+
+            <button
+              class="mr-eye"
+              id="mr-eye"
+              type="button"
+              aria-label="Показать пароль"
+            >◉</button>
+          </div>
+
+          <button class="mr-button" id="mr-submit" type="submit">
+            <span id="mr-submit-text">ОТКРЫТЬ КАРТУ</span>
+            <span aria-hidden="true">→</span>
+          </button>
+
+          <div class="mr-error" id="mr-error" role="status"></div>
+        </form>
+
+        <div class="mr-status">
+          <span class="mr-dot"></span>
+          СИСТЕМА ДОСТУПА
+        </div>
+
+        <div class="mr-footer">
+          DARADAR · METEOROLOGICAL MONITORING
+        </div>
+      </section>
+    `;
+
     document.body.appendChild(overlay);
 
-    panel.addEventListener("submit", async (event) => {
-      event.preventDefault();
+    // Показываем панель, но скрываем элементы карты под ней.
+    document.body.style.visibility = "visible";
 
-      submit.disabled = true;
-      submit.textContent = "Проверка…";
-      error.textContent = "";
+    for (const node of originalNodes) {
+      node.style.visibility = "hidden";
+    }
 
-      try {
-        const response = await fetch(API, {
-          method: "POST",
-          credentials: "same-origin",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            action: "login",
-            password: password.value
-          })
-        });
+    overlay.style.visibility = "visible";
 
-        const data = await response.json().catch(() => ({}));
+    document.getElementById("mr-eye").addEventListener("click", () => {
+      const input = document.getElementById("mr-password");
+      const visible = input.type === "text";
 
-        if (!response.ok || !data.ok) {
-          throw new Error(data.error || "Неверный пароль.");
-        }
-
-        currentUser = data.user || null;
-        overlay.remove();
-        restoreApp();
-        await startApp();
-      } catch (err) {
-        error.textContent = err.message || "Не удалось войти.";
-        password.value = "";
-        password.focus();
-      } finally {
-        submit.disabled = false;
-        submit.textContent = "Войти";
-      }
+      input.type = visible ? "password" : "text";
+      document.getElementById("mr-eye").textContent =
+        visible ? "◉" : "◎";
     });
 
-    setTimeout(() => password.focus(), 100);
+    document.getElementById("mr-form").addEventListener("submit", login);
+    document.getElementById("mr-error").textContent = message;
+  }
+
+  async function login(event) {
+    event.preventDefault();
+
+    const input = document.getElementById("mr-password");
+    const button = document.getElementById("mr-submit");
+    const buttonText = document.getElementById("mr-submit-text");
+    const error = document.getElementById("mr-error");
+
+    button.disabled = true;
+    buttonText.textContent = "ПРОВЕРКА ПАРОЛЯ...";
+    error.textContent = "";
+
+    try {
+      const response = await fetch(API, {
+        method: "POST",
+        credentials: "same-origin",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "login",
+          password: input.value
+        })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok || !data.authenticated) {
+        error.textContent = data.error || "Неверный пароль";
+        return;
+      }
+
+      await startApp();
+    } catch (e) {
+      error.textContent = "Ошибка соединения с сервером";
+    } finally {
+      if (button.isConnected) {
+        button.disabled = false;
+        buttonText.textContent = "ОТКРЫТЬ КАРТУ";
+      }
+    }
   }
 
   function loadScript(src) {
@@ -332,322 +469,61 @@
       const script = document.createElement("script");
       script.src = src;
       script.onload = resolve;
-      script.onerror = () => reject(new Error("Не удалось загрузить " + src));
+      script.onerror = () => reject(
+        new Error("Не удалось загрузить " + src)
+      );
       document.body.appendChild(script);
     });
   }
 
   async function startApp() {
-    if (appStarted) {
-      addUserControls();
-      return;
-    }
-
+    if (appStarted) return;
     appStarted = true;
 
-    try {
-      if (appCode.trim()) {
-        const script = document.createElement("script");
-        script.textContent = appCode;
-        document.body.appendChild(script);
-      }
+    if (overlay) {
+      overlay.remove();
+      overlay = null;
+    }
 
+    document.body.style.visibility = "visible";
+
+    for (const node of originalNodes) {
+      node.style.visibility = originalVisibility.get(node) || "";
+    }
+
+    try {
+      // Выполняем исходный код карты, не удаляя DOM.
+      const script = document.createElement("script");
+      script.textContent = appCode;
+      document.body.appendChild(script);
+
+      // Дополнительные файлы проекта.
       await loadScript("./radars.js");
       await loadScript("./docs-button.js");
       await loadScript("/radar-cleaner.js");
-
-      addUserControls();
-    } catch (err) {
+    } catch (error) {
+      console.error("Daradar: ошибка запуска приложения", error);
       appStarted = false;
-      console.error("[Daradar]", err);
-      alert("Ошибка загрузки приложения: " + err.message);
+      showLogin("Не удалось загрузить карту. Проверьте файлы проекта.");
     }
-  }
-
-  function addUserControls() {
-    let controls = document.getElementById("daradarUserControls");
-
-    if (controls) controls.remove();
-
-    controls = document.createElement("div");
-    controls.id = "daradarUserControls";
-
-    if (currentUser && currentUser.role === "admin") {
-      controls.appendChild(
-        makeButton("Админ-панель", openAdminPanel)
-      );
-    }
-
-    controls.appendChild(makeButton("Выйти", logout));
-    document.body.appendChild(controls);
-  }
-
-  async function logout() {
-    try {
-      const response = await fetch(API, {
-        method: "POST",
-        credentials: "same-origin",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "logout" })
-      });
-
-      if (!response.ok) {
-        throw new Error("Сервер не подтвердил выход.");
-      }
-
-      window.location.reload();
-    } catch (err) {
-      alert("Не удалось выйти: " + err.message);
-    }
-  }
-
-  async function adminRequest(method = "GET", body = null) {
-    const options = {
-      method,
-      credentials: "same-origin",
-      headers: {}
-    };
-
-    if (body !== null) {
-      options.headers["Content-Type"] = "application/json";
-      options.body = JSON.stringify(body);
-    }
-
-    const response = await fetch(ADMIN_API, options);
-    const data = await response.json().catch(() => ({}));
-
-    if (!response.ok || data.ok === false) {
-      throw new Error(data.error || "Ошибка запроса к админ-панели.");
-    }
-
-    return data;
-  }
-
-  async function openAdminPanel() {
-    if (!currentUser || currentUser.role !== "admin") {
-      alert("Нет прав администратора.");
-      return;
-    }
-
-    if (adminOverlay) adminOverlay.remove();
-
-    adminOverlay = document.createElement("div");
-    adminOverlay.id = "daradarAdminOverlay";
-
-    const panel = document.createElement("div");
-    panel.className = "dd-admin-panel";
-
-    const header = document.createElement("div");
-    header.className = "dd-admin-head";
-
-    const title = document.createElement("h2");
-    title.className = "dd-title";
-    title.style.fontSize = "22px";
-    title.textContent = "Админ-панель";
-
-    const close = makeButton("Закрыть", () => {
-      adminOverlay.remove();
-      adminOverlay = null;
-    });
-
-    header.append(title, close);
-
-    const description = document.createElement("div");
-    description.className = "dd-muted";
-    description.textContent =
-      "Создание пользователей и управление доступом.";
-
-    const formTitle = document.createElement("h3");
-    formTitle.textContent = "Создать пользователя";
-    formTitle.style.margin = "22px 0 10px";
-
-    const form = document.createElement("form");
-    const grid = document.createElement("div");
-    grid.className = "dd-admin-grid";
-
-    const username = document.createElement("input");
-    username.className = "dd-input";
-    username.placeholder = "Логин";
-    username.autocomplete = "off";
-    username.required = true;
-
-    const displayName = document.createElement("input");
-    displayName.className = "dd-input";
-    displayName.placeholder = "Имя пользователя";
-    displayName.required = true;
-
-    const password = document.createElement("input");
-    password.className = "dd-input";
-    password.type = "password";
-    password.placeholder = "Пароль (10+ символов)";
-    password.autocomplete = "new-password";
-    password.minLength = 10;
-    password.required = true;
-
-    const role = document.createElement("select");
-    role.className = "dd-select";
-    role.innerHTML =
-      '<option value="user">Пользователь</option>' +
-      '<option value="admin">Администратор</option>';
-
-    grid.append(username, displayName, password, role);
-
-    const create = document.createElement("button");
-    create.className = "dd-button dd-primary dd-admin-create";
-    create.type = "submit";
-    create.textContent = "Создать пользователя";
-
-    const formError = makeError();
-    const formSuccess = makeError();
-    formSuccess.style.color = "#7ee0a3";
-
-    form.append(grid, create, formError, formSuccess);
-
-    const usersTitle = document.createElement("h3");
-    usersTitle.textContent = "Пользователи";
-    usersTitle.style.margin = "24px 0 8px";
-
-    const usersList = document.createElement("div");
-    const listMessage = makeError();
-    listMessage.style.color = "#91a5c2";
-
-    panel.append(
-      header,
-      description,
-      formTitle,
-      form,
-      usersTitle,
-      listMessage,
-      usersList
-    );
-
-    adminOverlay.appendChild(panel);
-    document.body.appendChild(adminOverlay);
-
-    async function refreshUsers() {
-      listMessage.textContent = "Загрузка пользователей…";
-      usersList.replaceChildren();
-
-      try {
-        const data = await adminRequest("GET");
-        const users = Array.isArray(data.users) ? data.users : [];
-
-        listMessage.textContent = users.length
-          ? "Всего пользователей: " + users.length
-          : "Пользователей пока нет.";
-
-        users.forEach((user) => {
-          const row = document.createElement("div");
-          row.className = "dd-user-row";
-
-          const info = document.createElement("div");
-          info.className = "dd-user-info";
-
-          const name = document.createElement("div");
-          name.className = "dd-user-name";
-          name.textContent =
-            user.display_name || user.username || "Без имени";
-
-          const meta = document.createElement("div");
-          meta.className = "dd-user-meta";
-
-          const active = user.active === true;
-          const roleLabel = user.role === "admin"
-            ? "Администратор"
-            : "Пользователь";
-
-          meta.textContent =
-            (user.username ? "Логин: " + user.username + " · " : "") +
-            roleLabel + " · " +
-            (active ? "Активен" : "Отключён");
-
-          info.append(name, meta);
-
-          const toggle = makeButton(
-            active ? "Отключить" : "Включить",
-            async () => {
-              toggle.disabled = true;
-
-              try {
-                await adminRequest("POST", {
-                  action: "set-active",
-                  id: user.id,
-                  active: !active
-                });
-
-                await refreshUsers();
-              } catch (err) {
-                alert(err.message);
-                toggle.disabled = false;
-              }
-            }
-          );
-
-          row.append(info, toggle);
-          usersList.appendChild(row);
-        });
-      } catch (err) {
-        listMessage.textContent = "Ошибка: " + err.message;
-      }
-    }
-
-    form.addEventListener("submit", async (event) => {
-      event.preventDefault();
-
-      create.disabled = true;
-      create.textContent = "Создание…";
-      formError.textContent = "";
-      formSuccess.textContent = "";
-
-      try {
-        await adminRequest("POST", {
-          action: "create",
-          username: username.value.trim(),
-          display_name: displayName.value.trim(),
-          password: password.value,
-          role: role.value
-        });
-
-        form.reset();
-        formSuccess.textContent = "Пользователь создан.";
-        await refreshUsers();
-      } catch (err) {
-        formError.textContent = err.message;
-      } finally {
-        create.disabled = false;
-        create.textContent = "Создать пользователя";
-      }
-    });
-
-    adminOverlay.addEventListener("click", (event) => {
-      if (event.target === adminOverlay) {
-        adminOverlay.remove();
-        adminOverlay = null;
-      }
-    });
-
-    await refreshUsers();
   }
 
   async function init() {
     try {
       const response = await fetch(API, {
-        method: "GET",
         credentials: "same-origin",
         cache: "no-store"
       });
 
-      const data = await response.json().catch(() => ({}));
+      const data = await response.json();
 
       if (response.ok && data.authenticated) {
-        currentUser = data.user || null;
         await startApp();
       } else {
         showLogin();
       }
-    } catch (err) {
-      console.error("[Daradar auth]", err);
-      showLogin("Не удалось проверить сессию. Попробуйте войти ещё раз.");
+    } catch {
+      showLogin("Сервер авторизации недоступен. Проверьте настройки Vercel.");
     }
   }
 

@@ -125,7 +125,7 @@
       );
       animation: mr-rotate 4s linear infinite;
     }
-    /* Убрана светящаяся точка на анимированном радаре. */
+    /* Светящаяся точка радара удалена. */
     @keyframes mr-rotate {
       to { transform: rotate(360deg); }
     }
@@ -288,7 +288,7 @@
       text-align: center;
       letter-spacing: 1px;
     }
-    /* Изменена только кнопка выхода */
+    /* Кнопка выхода: белый фон, чёрный текст, без обводки */
     #mr-logout {
       position: fixed;
       z-index: 99990;
@@ -299,23 +299,24 @@
       justify-content: center;
       min-height: 36px;
       padding: 0 14px;
-      border: 0;
-      border-radius: 0;
-      color: #fff;
-      background: #111;
+      border: none;
+      border-radius: 7px;
+      outline: none;
+      color: #000;
+      background: #fff;
       box-shadow: none;
       font: 650 12px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
       cursor: pointer;
       -webkit-tap-highlight-color: transparent;
-      transition: background .15s, color .15s;
+      transition: none;
     }
     #mr-logout:active {
       color: #000;
-      background: #eee;
+      background: #eaeaea;
     }
     #mr-logout:disabled {
-      opacity: .6;
-      cursor: wait;
+      opacity: 1;
+      cursor: pointer;
     }
     @media (max-width: 420px) {
       .mr-card {
@@ -499,7 +500,7 @@
     if (logoutInProgress) return;
     logoutInProgress = true;
     logoutButton.disabled = true;
-    logoutButton.textContent = "Выход...";
+    /* Надпись «Выйти» не меняется при нажатии. */
     try {
       const response = await fetch(API, {
         method: "POST",
@@ -515,14 +516,10 @@
       showLogin();
     } catch (error) {
       console.error("Quantum logout:", error);
-      logoutButton.textContent = "Ошибка выхода";
       alert("Не удалось выйти. Проверь подключение и попробуй ещё раз.");
     } finally {
       logoutInProgress = false;
       logoutButton.disabled = false;
-      if (!overlay) {
-        logoutButton.textContent = "Выйти";
-      }
     }
   }
   async function init() {

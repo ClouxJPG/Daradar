@@ -483,6 +483,7 @@
         script.textContent = appCode;
         document.body.appendChild(script);
         await loadScript("./radars.js");
+        await loadScript("./phenomena.js"); 
         await loadScript("./docs-button.js");
         await loadScript("/radar-cleaner.js");
         appInitialized = true;

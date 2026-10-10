@@ -17,14 +17,14 @@ function users() {
       };
     }
   }
-  // Диагностика без раскрытия паролей.
-  console.log("AUTH_DIAGNOSTICS", JSON.stringify({
-    configuredUsers: Object.keys(result),
-    u1Exists: typeof process.env.U1 === "string",
-    u1Length: (process.env.U1 || "").length,
-    environment: process.env.VERCEL_ENV || "unknown"
-  }));
   return result;
+}
+function logEvent(event, id = null) {
+  console.log(JSON.stringify({
+    event,
+    userId: id,
+    time: new Date().toISOString()
+  }));
 }
 function sign(value) {
   return crypto
@@ -83,7 +83,7 @@ function readSession(token) {
       };
     }
     const user = users()[data.id];
-    if (!user || user.active !== true) return null;
+    if (!user || !user.active) return null;
     return {
       id: data.id,
       name: user.name,
@@ -206,6 +206,10 @@ module.exports = async function handler(req, res) {
   }
   body = body || {};
   if (body.action === "logout") {
+    const session = readSession(cookies[COOKIE_NAME]);
+    if (session) {
+      logEvent("logout", session.id);
+    }
     res.setHeader("Set-Cookie", cookieHeader("", 0));
     return send(res, 200, {
       ok: true,
@@ -228,7 +232,7 @@ module.exports = async function handler(req, res) {
       error: "Некорректный пароль"
     });
   }
-  // Вход администратора.
+  // Администратор
   const adminPassword = process.env.DARADAR_ADMIN_PASSWORD;
   if (adminPassword && safeEqual(password, adminPassword)) {
     const token = createSession(
@@ -240,6 +244,7 @@ module.exports = async function handler(req, res) {
       "Set-Cookie",
       cookieHeader(token, SESSION_HOURS * 60 * 60)
     );
+    logEvent("admin_login_success", "__admin__");
     return send(res, 200, {
       ok: true,
       authenticated: true,
@@ -252,12 +257,13 @@ module.exports = async function handler(req, res) {
         SESSION_HOURS * 60 * 60 * 1000
     });
   }
-  // Вход через Supabase, если передан логин.
+  // Supabase
   const username = typeof body.username === "string"
     ? body.username.trim()
     : "";
   if (username) {
     if (!/^[a-zA-Z0-9_.-]{3,32}$/.test(username)) {
+      logEvent("login_failed", null);
       return send(res, 401, {
         ok: false,
         error: "Неверный логин или пароль"
@@ -273,6 +279,7 @@ module.exports = async function handler(req, res) {
         user.active !== true ||
         !verifyPassword(password, user.password_hash)
       ) {
+        logEvent("login_failed", null);
         return send(res, 401, {
           ok: false,
           error: "Неверный логин или пароль"
@@ -289,6 +296,7 @@ module.exports = async function handler(req, res) {
         "Set-Cookie",
         cookieHeader(token, SESSION_HOURS * 60 * 60)
       );
+      logEvent("login_success", id);
       return send(res, 200, {
         ok: true,
         authenticated: true,
@@ -307,15 +315,16 @@ module.exports = async function handler(req, res) {
       });
     }
   }
-  // Вход по паролям из переменных Vercel U1–U20.
+  // Пользователи U1–U20
   const allUsers = users();
   for (const [id, user] of Object.entries(allUsers)) {
-    if (user.active === true && safeEqual(password, user.password)) {
+    if (user.active && safeEqual(password, user.password)) {
       const token = createSession(id, user.name, "user");
       res.setHeader(
         "Set-Cookie",
         cookieHeader(token, SESSION_HOURS * 60 * 60)
       );
+      logEvent("login_success", id);
       return send(res, 200, {
         ok: true,
         authenticated: true,
@@ -329,6 +338,7 @@ module.exports = async function handler(req, res) {
       });
     }
   }
+  logEvent("login_failed", null);
   return send(res, 401, {
     ok: false,
     error: "Неверный логин или пароль"

@@ -1,35 +1,10 @@
-
-/* =========================================================
-   Quantum Meteo — Meteoinfo Phenomena API
-   GET /api/phenomena
-
-   Сервер:
-   - декодирование анимированного GIF;
-   - очистка каждого кадра через sharp;
-   - прозрачные PNG вместо исходной карты;
-   - удаление легенды и логотипов;
-   - кеширование результата на 60 секунд.
-   ========================================================= */
-
-const SOURCE =
-  "https://meteoinfo.ru/hmc-output/rmap/phenomena.gif";
-
+const SOURCE = "https://meteoinfo.ru/hmc-output/rmap/phenomena.gif";
 const CACHE_MS = 60_000;
 const MAX_FRAMES = 30;
 
-let cachedResult = null;
-let cachedAt = 0;
+let cache = null;
+let cacheTime = 0;
 let pending = null;
-
-function sendJson(res, status, body) {
-  res.setHeader(
-    "Content-Type",
-    "application/json; charset=utf-8"
-  );
-  res.setHeader("X-Content-Type-Options", "nosniff");
-  res.setHeader("Cache-Control", "no-store");
-  return res.status(status).json(body);
-}
 
 function keepRadarPixel(r, g, b) {
   const max = Math.max(r, g, b);
@@ -51,243 +26,202 @@ function keepRadarPixel(r, g, b) {
     hue = 60 * ((r - g) / delta + 4);
   }
 
-  hue = (hue + 360) % 360;
+  if (hue < 0) hue += 360;
 
   return (
     (hue >= 75 && hue <= 175) ||
     (hue > 175 && hue <= 225) ||
     (hue > 225 && hue <= 260) ||
     (hue >= 35 && hue < 75) ||
-    (hue >= 0 && hue < 35) ||
-    (hue > 260 && hue <= 330)
+    hue < 35 ||
+    (hue >= 260 && hue <= 330)
   );
 }
 
-async function fetchGif() {
+function cleanFrame(raw, width, height) {
+  const output = Buffer.alloc(width * height * 4);
+
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const i = (y * width + x) * 4;
+      const r = raw[i];
+      const g = raw[i + 1];
+      const b = raw[i + 2];
+      const a = raw[i + 3];
+
+      // Удаляем легенду слева сверху.
+      if (x < 138 && y < 350) continue;
+
+      // Удаляем логотипы слева снизу.
+      if (x < 115 && y > 1040) continue;
+
+      if (!a || !keepRadarPixel(r, g, b)) continue;
+
+      output[i] = r;
+      output[i + 1] = g;
+      output[i + 2] = b;
+      output[i + 3] = a;
+    }
+  }
+
+  return output;
+}
+
+async function fetchSource() {
   const response = await fetch(SOURCE, {
     headers: {
       "User-Agent": "Mozilla/5.0 (compatible; QuantumMeteo/1.0)",
-      "Accept": "image/gif,image/*;q=0.9,*/*;q=0.5"
+      Accept: "image/gif,image/*,*/*;q=0.8"
     },
-    signal: AbortSignal.timeout(15000)
+    signal: AbortSignal.timeout(20000)
   });
 
   if (!response.ok) {
-    throw new Error("Meteoinfo HTTP " + response.status);
+    throw new Error(`Meteoinfo вернул HTTP ${response.status}`);
   }
 
   const buffer = Buffer.from(await response.arrayBuffer());
-  const signature = buffer.toString("ascii", 0, 6);
 
   if (
-    buffer.length < 100 ||
-    (signature !== "GIF87a" && signature !== "GIF89a")
+    buffer.length < 10 ||
+    buffer[0] !== 0x47 ||
+    buffer[1] !== 0x49 ||
+    buffer[2] !== 0x46
   ) {
-    throw new Error("Meteoinfo did not return a valid GIF");
+    throw new Error("Источник не вернул GIF");
   }
 
   return buffer;
 }
 
-async function processGif() {
-  const sharp = require("sharp");
-  const input = await fetchGif();
-
+async function processGif(sharp, input) {
   const metadata = await sharp(input, {
     animated: true,
     pages: -1,
-    failOn: "error"
+    failOn: "none"
   }).metadata();
 
   const width = metadata.width;
-  const frameHeight = metadata.pageHeight || metadata.height;
-  const frameCount = metadata.pages;
+  const height = metadata.pageHeight || metadata.height;
+  const pageCount = Math.min(
+    Math.max(1, metadata.pages || 1),
+    MAX_FRAMES
+  );
 
-  if (
-    !width ||
-    !frameHeight ||
-    !frameCount ||
-    frameCount > MAX_FRAMES
-  ) {
-    throw new Error(
-      "Invalid GIF metadata: " +
-      JSON.stringify({
-        width,
-        height: metadata.height,
-        pageHeight: metadata.pageHeight,
-        pages: frameCount
-      })
-    );
+  if (!width || !height || width < 100 || height < 100) {
+    throw new Error("Некорректный размер GIF");
   }
 
-  /*
-   * Декодируем GIF целиком один раз.
-   * В sharp анимированные страницы образуют вертикальный
-   * буфер: ширина × (высота кадра × количество кадров).
-   */
-  const decoded = await sharp(input, {
-    animated: true,
-    pages: -1,
-    failOn: "error"
-  })
-    .ensureAlpha()
-    .raw()
-    .toBuffer({ resolveWithObject: true });
+  const delays = Array.isArray(metadata.delay)
+    ? metadata.delay
+    : [];
 
-  const channels = decoded.info.channels;
-  const decodedWidth = decoded.info.width;
-  const totalHeight = decoded.info.height;
+  const frames = [];
 
-  if (
-    channels !== 4 ||
-    decodedWidth !== width ||
-    totalHeight < frameHeight * frameCount
-  ) {
-    throw new Error(
-      "Unexpected decoded GIF layout: " +
-      JSON.stringify({
-        decodedWidth,
-        totalHeight,
-        channels,
-        width,
-        frameHeight,
-        frameCount
+  for (let index = 0; index < pageCount; index++) {
+    try {
+      const raw = await sharp(input, {
+        page: index,
+        pages: 1,
+        failOn: "none"
       })
-    );
-  }
+        .ensureAlpha()
+        .raw()
+        .toBuffer({ resolveWithObject: true });
 
-  const outputFrames = [];
-  const frameBytes = width * frameHeight * 4;
-
-  for (let frameIndex = 0; frameIndex < frameCount; frameIndex++) {
-    const start = frameIndex * frameBytes;
-    const end = start + frameBytes;
-
-    if (end > decoded.data.length) {
-      throw new Error("Incomplete GIF frame " + frameIndex);
-    }
-
-    const pixels = Buffer.from(decoded.data.subarray(start, end));
-
-    for (let i = 0; i < pixels.length; i += 4) {
-      const pixel = i / 4;
-      const x = pixel % width;
-      const y = Math.floor(pixel / width);
-
-      /*
-       * Удаляем легенду и подписи в левом верхнем углу,
-       * не меняя размеры изображения.
-       */
-      const isLegend = x < 138 && y < 350;
-
-      /*
-       * Удаляем логотипы в левом нижнем углу.
-       */
-      const isLogo = x < 115 && y > 1040;
-
-      if (isLegend || isLogo) {
-        pixels[i + 3] = 0;
+      if (
+        raw.info.width !== width ||
+        raw.info.height !== height ||
+        raw.data.length < width * height * 4
+      ) {
         continue;
       }
 
-      if (
-        !keepRadarPixel(
-          pixels[i],
-          pixels[i + 1],
-          pixels[i + 2]
-        )
-      ) {
-        pixels[i + 3] = 0;
-      }
-    }
+      const cleaned = cleanFrame(raw.data, width, height);
 
-    const png = await sharp(pixels, {
-      raw: {
-        width,
-        height: frameHeight,
-        channels: 4
-      }
-    })
-      .png({
-        compressionLevel: 6,
-        adaptiveFiltering: false
+      const png = await sharp(cleaned, {
+        raw: {
+          width,
+          height,
+          channels: 4
+        }
       })
-      .toBuffer();
+        .png()
+        .toBuffer();
 
-    outputFrames.push({
-      index: frameIndex,
-      delay: 500,
-      png: png.toString("base64")
-    });
+      const delay = Number(delays[index]);
+
+      frames.push({
+        index,
+        delay: Number.isFinite(delay) && delay > 0 ? delay : 700,
+        png: png.toString("base64")
+      });
+    } catch (error) {
+      console.error(
+        `Quantum Meteo: кадр ${index} пропущен`,
+        error.message
+      );
+    }
+  }
+
+  if (!frames.length) {
+    throw new Error("Не удалось декодировать кадры GIF");
   }
 
   return {
-    ok: true,
     width,
-    height: frameHeight,
-    frameCount: outputFrames.length,
-
-    /*
-     * Сохраняем существующие границы слоя.
-     * Для точного географического совмещения нужно знать
-     * фактическую проекцию исходной карты Meteoinfo.
-     */
+    height,
+    loop: metadata.loop ?? 0,
+    frames,
     bounds: {
       south: 38.2156,
       west: 14.9893,
       north: 69.6544,
       east: 72.9238
     },
-
-    frames: outputFrames,
-    source: "meteoinfo.ru"
+    updatedAt: new Date().toISOString()
   };
 }
 
 module.exports = async function handler(req, res) {
-  res.setHeader("X-Content-Type-Options", "nosniff");
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Cache-Control", "no-store");
 
-  if (req.method !== "GET" && req.method !== "HEAD") {
-    res.setHeader("Allow", "GET, HEAD");
-
-    return sendJson(res, 405, {
-      ok: false,
-      error: "Method not allowed"
-    });
+  if (req.method !== "GET") {
+    res.setHeader("Allow", "GET");
+    return res.status(405).json({ error: "Method not allowed" });
   }
 
+  if (cache && Date.now() - cacheTime < CACHE_MS) {
+    return res.status(200).json(cache);
+  }
+
+  if (pending) {
+    try {
+      return res.status(200).json(await pending);
+    } catch (error) {
+      return res.status(502).json({ error: error.message });
+    }
+  }
+
+  pending = (async () => {
+    const sharp = require("sharp");
+    const input = await fetchSource();
+    return processGif(sharp, input);
+  })();
+
   try {
-    if (cachedResult && Date.now() - cachedAt < CACHE_MS) {
-      if (req.method === "HEAD") {
-        res.setHeader("Content-Type", "application/json");
-        return res.status(200).end();
-      }
-
-      return sendJson(res, 200, cachedResult);
-    }
-
-    if (!pending) {
-      pending = processGif();
-    }
-
     const result = await pending;
+    cache = result;
+    cacheTime = Date.now();
 
-    cachedResult = result;
-    cachedAt = Date.now();
-
-    if (req.method === "HEAD") {
-      res.setHeader("Content-Type", "application/json");
-      return res.status(200).end();
-    }
-
-    return sendJson(res, 200, result);
+    return res.status(200).json(result);
   } catch (error) {
-    console.error("[Quantum Meteo Phenomena API]", error);
+    console.error("Quantum Meteo phenomena API:", error);
 
-    return sendJson(res, 502, {
-      ok: false,
+    return res.status(502).json({
       error: "Не удалось обработать GIF Meteoinfo",
-      details: error.message || "Unknown error"
+      details: error.message
     });
   } finally {
     pending = null;

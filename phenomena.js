@@ -1,70 +1,98 @@
-
 /* =========================================================
-   Quantum Meteo — Meteoinfo Phenomena
+   Quantum Meteo — Phenomena overlay
    Источник: /api/phenomena
-   Режим: S
 
-   - Прозрачные PNG-кадры с сервера.
-   - Переключение кадров по таймеру.
-   - Без Canvas и сглаживания GIF.
-   - Географическая привязка через Leaflet.
-   - Удаление слоя при переключении в R/H.
+   - index.html не изменяется
+   - кадры GIF переключаются по их длительности
+   - сглаживание не применяется
+   - режимы R/H не затрагиваются
    ========================================================= */
 
-(() => {
+(function () {
   "use strict";
 
   const API = "/api/phenomena";
-  const FRAME_FALLBACK_MS = 500;
+  const GLOBAL_KEY = "__quantumPhenomenaLayer";
+
+  const BOUNDS_FALLBACK = [
+    [38.2156, 14.9893],
+    [69.6544, 72.9238]
+  ];
 
   let map = null;
   let layer = null;
-  let frameTimer = null;
   let frames = [];
   let frameIndex = 0;
-  let enabled = false;
+  let timer = null;
   let loading = false;
+  let active = false;
   let requestId = 0;
-  let currentBounds = null;
 
   function getMap() {
-    const candidate = window.quantumMeteoMap;
-
-    return candidate &&
-      typeof candidate.addLayer === "function" &&
-      typeof candidate.hasLayer === "function"
-      ? candidate
-      : null;
+    return window.quantumMeteoMap || window.map || null;
   }
 
-  function showMessage(text) {
-    const element = document.getElementById("msg");
-    if (element) element.textContent = text || "";
+  function getMode() {
+    const selectors = [
+      "[data-mode].active",
+      "[data-mode][aria-pressed='true']",
+      ".mode-button.active",
+      ".mode-btn.active"
+    ];
+
+    for (const selector of selectors) {
+      const element = document.querySelector(selector);
+      if (!element) continue;
+
+      const value = (
+        element.dataset.mode ||
+        element.textContent ||
+        ""
+      ).trim().toUpperCase();
+
+      if (value === "S" || value === "R" || value === "H") {
+        return value;
+      }
+    }
+
+    return null;
   }
 
-  function stopFrameTimer() {
-    if (frameTimer !== null) {
-      clearTimeout(frameTimer);
-      frameTimer = null;
+  function stopAnimation() {
+    if (timer !== null) {
+      clearTimeout(timer);
+      timer = null;
     }
   }
 
   function removeLayer() {
-    requestId++;
-    enabled = false;
-    loading = false;
-
-    stopFrameTimer();
+    stopAnimation();
 
     if (map && layer && map.hasLayer(layer)) {
       map.removeLayer(layer);
     }
 
     layer = null;
-    frames = [];
-    frameIndex = 0;
-    currentBounds = null;
-    map = getMap();
+    active = false;
+  }
+
+  function getBounds(data) {
+    const b = data && data.bounds;
+
+    if (
+      b &&
+      Number.isFinite(b.south) &&
+      Number.isFinite(b.west) &&
+      Number.isFinite(b.north) &&
+      Number.isFinite(b.east)
+    ) {
+      return [
+        [b.south, b.west],
+        [b.north, b.east]
+      ];
+    }
+
+    return BOUNDS_FALLBACK;
   }
 
   function frameUrl(frame) {
@@ -72,172 +100,164 @@
   }
 
   function showFrame(index) {
-    if (!enabled || !map || !frames.length || !layer) return;
+    if (!map || !layer || !frames.length || !active) return;
 
-    frameIndex = index % frames.length;
+    frameIndex = ((index % frames.length) + frames.length) % frames.length;
 
     const frame = frames[frameIndex];
-    const url = frameUrl(frame);
 
-    /*
-     * Переиспользуем один ImageOverlay.
-     * Это предотвращает накопление слоёв на карте.
-     */
-    layer.setUrl(url);
-
-    const delay = Math.max(
-      100,
-      Number(frame.delay) || FRAME_FALLBACK_MS
-    );
-
-    stopFrameTimer();
-
-    if (frames.length > 1) {
-      frameTimer = setTimeout(() => {
-        if (!enabled) return;
-        showFrame((frameIndex + 1) % frames.length);
-      }, delay);
-    }
-  }
-
-  async function showLayer() {
-    if (loading) {
-      enabled = true;
+    if (!frame || !frame.png) {
+      scheduleNext();
       return;
     }
+
+    layer.setUrl(frameUrl(frame));
+    scheduleNext();
+  }
+
+  function scheduleNext() {
+    stopAnimation();
+
+    if (!active || !frames.length) return;
+
+    const frame = frames[frameIndex];
+    const delay = Math.max(
+      100,
+      Math.min(10000, Number(frame && frame.delay) || 700)
+    );
+
+    timer = setTimeout(function () {
+      if (active) showFrame(frameIndex + 1);
+    }, delay);
+  }
+
+  async function load() {
+    if (loading || active) return;
 
     map = getMap();
 
-    if (!map || !window.L) {
-      showMessage("Карта Leaflet недоступна");
-      return;
-    }
+    if (!map || typeof L === "undefined") return;
 
-    if (layer && map.hasLayer(layer)) {
-      enabled = true;
-      return;
-    }
-
-    enabled = true;
     loading = true;
-
-    const currentRequest = ++requestId;
-    showMessage("Загрузка метеоявлений…");
+    const thisRequest = ++requestId;
 
     try {
-      const response = await fetch(
-        API + "?_=" + Date.now(),
-        {
-          cache: "no-store",
-          credentials: "same-origin"
-        }
-      );
+      const response = await fetch(API, {
+        cache: "no-store"
+      });
 
       if (!response.ok) {
-        throw new Error("HTTP " + response.status);
+        throw new Error("API HTTP " + response.status);
       }
 
       const data = await response.json();
 
-      if (!data.ok || !Array.isArray(data.frames) || !data.frames.length) {
-        throw new Error("Сервер не вернул PNG-кадры");
+      if (thisRequest !== requestId) return;
+
+      if (!Array.isArray(data.frames) || data.frames.length === 0) {
+        throw new Error("API не вернул кадры GIF");
       }
 
-      if (currentRequest !== requestId || !enabled) return;
-
-      const boundsData = data.bounds;
-
-      if (
-        !boundsData ||
-        !Number.isFinite(boundsData.south) ||
-        !Number.isFinite(boundsData.west) ||
-        !Number.isFinite(boundsData.north) ||
-        !Number.isFinite(boundsData.east)
-      ) {
-        throw new Error("Некорректные границы изображения");
-      }
-
-      currentBounds = [
-        [boundsData.south, boundsData.west],
-        [boundsData.north, boundsData.east]
-      ];
-
-      frames = data.frames.filter(
-        frame =>
-          frame &&
-          typeof frame.png === "string" &&
-          frame.png.length > 0
-      );
+      frames = data.frames.filter(function (frame) {
+        return frame && typeof frame.png === "string";
+      });
 
       if (!frames.length) {
-        throw new Error("Нет пригодных PNG-кадров");
+        throw new Error("Нет корректных PNG-кадров");
       }
 
-      frameIndex = 0;
-
-      layer = window.L.imageOverlay(
+      layer = L.imageOverlay(
         frameUrl(frames[0]),
-        currentBounds,
+        getBounds(data),
         {
           opacity: 1,
           interactive: false,
-          className: "quantum-phenomena-frame"
+          className: "quantum-phenomena-overlay"
         }
       );
 
       layer.addTo(map);
+      active = true;
+      frameIndex = 0;
 
-      showMessage("");
-      showFrame(0);
+      scheduleNext();
+
+      console.info(
+        "Quantum Meteo: загружено кадров phenomena:",
+        frames.length
+      );
     } catch (error) {
-      console.error("[Quantum Meteo] Phenomena:", error);
-
-      if (currentRequest === requestId) {
-        removeLayer();
-        showMessage(
-          "Ошибка метеоявлений: " +
-          (error.message || "неизвестная ошибка")
-        );
-      }
+      console.error("Quantum Meteo phenomena:", error);
+      removeLayer();
     } finally {
-      if (currentRequest === requestId) {
-        loading = false;
-      }
+      loading = false;
     }
   }
 
-  function handleModeClick(event) {
-    const target = event.target;
+  function syncMode() {
+    map = getMap();
 
-    if (!target || typeof target.closest !== "function") return;
+    if (!map) return;
 
-    const button = target.closest(".st .b[data-m]");
-    if (!button) return;
+    const mode = getMode();
 
-    if (button.dataset.m === "S") {
-      setTimeout(() => {
-        if (button.isConnected && button.dataset.m === "S") {
-          showLayer();
-        }
-      }, 0);
-    } else {
+    if (mode && mode !== "S") {
       removeLayer();
-      showMessage("");
+      return;
     }
+
+    if (mode === "S") {
+      load();
+    }
+  }
+
+  function installStyles() {
+    if (document.getElementById("quantum-phenomena-style")) return;
+
+    const style = document.createElement("style");
+    style.id = "quantum-phenomena-style";
+    style.textContent = `
+      .quantum-phenomena-overlay {
+        image-rendering: pixelated !important;
+        image-rendering: crisp-edges !important;
+      }
+    `;
+
+    document.head.appendChild(style);
   }
 
   function init() {
-    document.addEventListener("click", handleModeClick, false);
+    installStyles();
 
-    window.addEventListener("pagehide", () => {
-      removeLayer();
+    map = getMap();
+
+    if (!map) {
+      setTimeout(init, 300);
+      return;
+    }
+
+    document.addEventListener("click", function () {
+      setTimeout(syncMode, 50);
     });
+
+    setInterval(syncMode, 1000);
+
+    syncMode();
   }
 
+  window[GLOBAL_KEY] = {
+    reload: function () {
+      removeLayer();
+      frames = [];
+      loading = false;
+      syncMode();
+    },
+    remove: removeLayer,
+    sync: syncMode
+  };
+
   if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", init, {
-      once: true
-    });
+    document.addEventListener("DOMContentLoaded", init, { once: true });
   } else {
     init();
   }

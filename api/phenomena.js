@@ -3,18 +3,18 @@
    Quantum Meteo — Meteoinfo Phenomena API
    GET /api/phenomena
 
-   - Серверная обработка GIF через sharp
-   - Отдельные PNG-кадры
-   - Удаление фона и сохранение цветных явлений
-   - Удаление легенды и логотипов
-   - Исходный размер кадра сохраняется
+   Сервер:
+   - декодирование анимированного GIF;
+   - очистка каждого кадра через sharp;
+   - прозрачные PNG вместо исходной карты;
+   - удаление легенды и логотипов;
+   - кеширование результата на 60 секунд.
    ========================================================= */
 
 const SOURCE =
   "https://meteoinfo.ru/hmc-output/rmap/phenomena.gif";
 
 const CACHE_MS = 60_000;
-const FRAME_DELAY = 500;
 const MAX_FRAMES = 30;
 
 let cachedResult = null;
@@ -22,7 +22,10 @@ let cachedAt = 0;
 let pending = null;
 
 function sendJson(res, status, body) {
-  res.setHeader("Content-Type", "application/json; charset=utf-8");
+  res.setHeader(
+    "Content-Type",
+    "application/json; charset=utf-8"
+  );
   res.setHeader("X-Content-Type-Options", "nosniff");
   res.setHeader("Cache-Control", "no-store");
   return res.status(status).json(body);
@@ -33,22 +36,14 @@ function keepRadarPixel(r, g, b) {
   const min = Math.min(r, g, b);
   const delta = max - min;
 
-  if (max < 45 || delta < 24) {
-    return false;
-  }
+  if (max < 45 || delta < 24) return false;
 
-  const saturation =
-    max === 0 ? 0 : (delta / max) * 255;
-
-  if (saturation < 50) {
-    return false;
-  }
+  const saturation = (delta / max) * 255;
+  if (saturation < 50) return false;
 
   let hue;
 
-  if (delta === 0) {
-    hue = 0;
-  } else if (max === r) {
+  if (max === r) {
     hue = 60 * (((g - b) / delta) % 6);
   } else if (max === g) {
     hue = 60 * ((b - r) / delta + 2);
@@ -60,16 +55,16 @@ function keepRadarPixel(r, g, b) {
 
   return (
     (hue >= 75 && hue <= 175) ||
-    (hue >= 175 && hue <= 225) ||
-    (hue >= 225 && hue <= 260) ||
+    (hue > 175 && hue <= 225) ||
+    (hue > 225 && hue <= 260) ||
     (hue >= 35 && hue < 75) ||
     (hue >= 0 && hue < 35) ||
-    (hue >= 260 && hue <= 330)
+    (hue > 260 && hue <= 330)
   );
 }
 
-async function fetchSource() {
-  const upstream = await fetch(SOURCE, {
+async function fetchGif() {
+  const response = await fetch(SOURCE, {
     headers: {
       "User-Agent": "Mozilla/5.0 (compatible; QuantumMeteo/1.0)",
       "Accept": "image/gif,image/*;q=0.9,*/*;q=0.5"
@@ -77,27 +72,26 @@ async function fetchSource() {
     signal: AbortSignal.timeout(15000)
   });
 
-  if (!upstream.ok) {
-    throw new Error("Meteoinfo HTTP " + upstream.status);
+  if (!response.ok) {
+    throw new Error("Meteoinfo HTTP " + response.status);
   }
 
-  const input = Buffer.from(await upstream.arrayBuffer());
+  const buffer = Buffer.from(await response.arrayBuffer());
+  const signature = buffer.toString("ascii", 0, 6);
 
   if (
-    input.length < 100 ||
-    !["GIF87a", "GIF89a"].includes(
-      input.toString("ascii", 0, 6)
-    )
+    buffer.length < 100 ||
+    (signature !== "GIF87a" && signature !== "GIF89a")
   ) {
     throw new Error("Meteoinfo did not return a valid GIF");
   }
 
-  return input;
+  return buffer;
 }
 
 async function processGif() {
   const sharp = require("sharp");
-  const input = await fetchSource();
+  const input = await fetchGif();
 
   const metadata = await sharp(input, {
     animated: true,
@@ -106,94 +100,110 @@ async function processGif() {
   }).metadata();
 
   const width = metadata.width;
-  const height = metadata.pageHeight || metadata.height;
-  const pages = metadata.pages;
+  const frameHeight = metadata.pageHeight || metadata.height;
+  const frameCount = metadata.pages;
 
   if (
     !width ||
-    !height ||
-    !pages ||
-    pages < 1 ||
-    pages > MAX_FRAMES
+    !frameHeight ||
+    !frameCount ||
+    frameCount > MAX_FRAMES
   ) {
     throw new Error(
-      "Unexpected GIF metadata: " +
+      "Invalid GIF metadata: " +
       JSON.stringify({
         width,
-        height,
-        pages,
-        pageHeight: metadata.pageHeight
+        height: metadata.height,
+        pageHeight: metadata.pageHeight,
+        pages: frameCount
+      })
+    );
+  }
+
+  /*
+   * Декодируем GIF целиком один раз.
+   * В sharp анимированные страницы образуют вертикальный
+   * буфер: ширина × (высота кадра × количество кадров).
+   */
+  const decoded = await sharp(input, {
+    animated: true,
+    pages: -1,
+    failOn: "error"
+  })
+    .ensureAlpha()
+    .raw()
+    .toBuffer({ resolveWithObject: true });
+
+  const channels = decoded.info.channels;
+  const decodedWidth = decoded.info.width;
+  const totalHeight = decoded.info.height;
+
+  if (
+    channels !== 4 ||
+    decodedWidth !== width ||
+    totalHeight < frameHeight * frameCount
+  ) {
+    throw new Error(
+      "Unexpected decoded GIF layout: " +
+      JSON.stringify({
+        decodedWidth,
+        totalHeight,
+        channels,
+        width,
+        frameHeight,
+        frameCount
       })
     );
   }
 
   const outputFrames = [];
+  const frameBytes = width * frameHeight * 4;
 
-  for (let page = 0; page < pages; page++) {
-    const frameResult = await sharp(input, {
-      page,
-      pages: 1,
-      failOn: "error"
-    })
-      .ensureAlpha()
-      .raw()
-      .toBuffer({ resolveWithObject: true });
+  for (let frameIndex = 0; frameIndex < frameCount; frameIndex++) {
+    const start = frameIndex * frameBytes;
+    const end = start + frameBytes;
 
-    const frameWidth = frameResult.info.width;
-    const frameHeight = frameResult.info.height;
-    const channels = frameResult.info.channels;
-
-    if (
-      frameWidth !== width ||
-      frameHeight !== height ||
-      channels !== 4
-    ) {
-      throw new Error(
-        "Unexpected dimensions for frame " + page +
-        ": " + frameWidth + "x" + frameHeight +
-        ", channels=" + channels
-      );
+    if (end > decoded.data.length) {
+      throw new Error("Incomplete GIF frame " + frameIndex);
     }
 
-    const pixels = Buffer.from(frameResult.data);
+    const pixels = Buffer.from(decoded.data.subarray(start, end));
 
     for (let i = 0; i < pixels.length; i += 4) {
       const pixel = i / 4;
-      const x = pixel % frameWidth;
-      const y = Math.floor(pixel / frameWidth);
+      const x = pixel % width;
+      const y = Math.floor(pixel / width);
 
       /*
-       * Легенда в левом верхнем углу.
-       * Маска применяется к исходному кадру 1200×1200.
+       * Удаляем легенду и подписи в левом верхнем углу,
+       * не меняя размеры изображения.
        */
-      const isLegend =
-        x < 138 &&
-        y < 350;
+      const isLegend = x < 138 && y < 350;
 
       /*
-       * Логотипы и эмблемы в левом нижнем углу.
+       * Удаляем логотипы в левом нижнем углу.
        */
-      const isLogo =
-        x < 115 &&
-        y > 1040;
+      const isLogo = x < 115 && y > 1040;
 
       if (isLegend || isLogo) {
         pixels[i + 3] = 0;
         continue;
       }
 
-      const r = pixels[i];
-      const g = pixels[i + 1];
-      const b = pixels[i + 2];
-
-      if (!keepRadarPixel(r, g, b)) {
+      if (
+        !keepRadarPixel(
+          pixels[i],
+          pixels[i + 1],
+          pixels[i + 2]
+        )
+      ) {
         pixels[i + 3] = 0;
       }
     }
 
     const png = await sharp(pixels, {
       raw: {
-        width: frameWidth,
+        width,
         height: frameHeight,
         channels: 4
       }
@@ -205,7 +215,8 @@ async function processGif() {
       .toBuffer();
 
     outputFrames.push({
-      delay: FRAME_DELAY,
+      index: frameIndex,
+      delay: 500,
       png: png.toString("base64")
     });
   }
@@ -213,14 +224,21 @@ async function processGif() {
   return {
     ok: true,
     width,
-    height,
+    height: frameHeight,
     frameCount: outputFrames.length,
+
+    /*
+     * Сохраняем существующие границы слоя.
+     * Для точного географического совмещения нужно знать
+     * фактическую проекцию исходной карты Meteoinfo.
+     */
     bounds: {
       south: 38.2156,
       west: 14.9893,
       north: 69.6544,
       east: 72.9238
     },
+
     frames: outputFrames,
     source: "meteoinfo.ru"
   };
@@ -241,10 +259,7 @@ module.exports = async function handler(req, res) {
   try {
     if (cachedResult && Date.now() - cachedAt < CACHE_MS) {
       if (req.method === "HEAD") {
-        res.setHeader(
-          "Content-Type",
-          "application/json; charset=utf-8"
-        );
+        res.setHeader("Content-Type", "application/json");
         return res.status(200).end();
       }
 
@@ -261,10 +276,7 @@ module.exports = async function handler(req, res) {
     cachedAt = Date.now();
 
     if (req.method === "HEAD") {
-      res.setHeader(
-        "Content-Type",
-        "application/json; charset=utf-8"
-      );
+      res.setHeader("Content-Type", "application/json");
       return res.status(200).end();
     }
 

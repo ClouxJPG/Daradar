@@ -4,10 +4,10 @@
    GET /api/phenomena
 
    - Серверная обработка GIF через sharp
-   - Отдельная обработка каждого кадра
-   - Удаление подложки, подписей и серых зон
-   - Сохранение цветных метеоявлений
-   - Прозрачные PNG-кадры для Leaflet
+   - Отдельные PNG-кадры
+   - Удаление фона и сохранение цветных явлений
+   - Удаление легенды и логотипов
+   - Исходный размер кадра сохраняется
    ========================================================= */
 
 const SOURCE =
@@ -37,7 +37,8 @@ function keepRadarPixel(r, g, b) {
     return false;
   }
 
-  const saturation = max === 0 ? 0 : (delta / max) * 255;
+  const saturation =
+    max === 0 ? 0 : (delta / max) * 255;
 
   if (saturation < 50) {
     return false;
@@ -57,11 +58,6 @@ function keepRadarPixel(r, g, b) {
 
   hue = (hue + 360) % 360;
 
-  /*
-   * Основные оттенки легенды Meteoinfo:
-   * голубой, зелёный, жёлтый, оранжевый,
-   * красный, розовый и фиолетовый.
-   */
   return (
     (hue >= 75 && hue <= 175) ||
     (hue >= 175 && hue <= 225) ||
@@ -89,7 +85,9 @@ async function fetchSource() {
 
   if (
     input.length < 100 ||
-    !["GIF87a", "GIF89a"].includes(input.toString("ascii", 0, 6))
+    !["GIF87a", "GIF89a"].includes(
+      input.toString("ascii", 0, 6)
+    )
   ) {
     throw new Error("Meteoinfo did not return a valid GIF");
   }
@@ -132,10 +130,6 @@ async function processGif() {
   const outputFrames = [];
 
   for (let page = 0; page < pages; page++) {
-    /*
-     * Запрашиваем один кадр декодера.
-     * Не разрезаем общий буфер вручную.
-     */
     const frameResult = await sharp(input, {
       page,
       pages: 1,
@@ -164,6 +158,30 @@ async function processGif() {
     const pixels = Buffer.from(frameResult.data);
 
     for (let i = 0; i < pixels.length; i += 4) {
+      const pixel = i / 4;
+      const x = pixel % frameWidth;
+      const y = Math.floor(pixel / frameWidth);
+
+      /*
+       * Легенда в левом верхнем углу.
+       * Маска применяется к исходному кадру 1200×1200.
+       */
+      const isLegend =
+        x < 138 &&
+        y < 350;
+
+      /*
+       * Логотипы и эмблемы в левом нижнем углу.
+       */
+      const isLogo =
+        x < 115 &&
+        y > 1040;
+
+      if (isLegend || isLogo) {
+        pixels[i + 3] = 0;
+        continue;
+      }
+
       const r = pixels[i];
       const g = pixels[i + 1];
       const b = pixels[i + 2];
@@ -213,6 +231,7 @@ module.exports = async function handler(req, res) {
 
   if (req.method !== "GET" && req.method !== "HEAD") {
     res.setHeader("Allow", "GET, HEAD");
+
     return sendJson(res, 405, {
       ok: false,
       error: "Method not allowed"
@@ -222,7 +241,10 @@ module.exports = async function handler(req, res) {
   try {
     if (cachedResult && Date.now() - cachedAt < CACHE_MS) {
       if (req.method === "HEAD") {
-        res.setHeader("Content-Type", "application/json; charset=utf-8");
+        res.setHeader(
+          "Content-Type",
+          "application/json; charset=utf-8"
+        );
         return res.status(200).end();
       }
 
@@ -234,11 +256,15 @@ module.exports = async function handler(req, res) {
     }
 
     const result = await pending;
+
     cachedResult = result;
     cachedAt = Date.now();
 
     if (req.method === "HEAD") {
-      res.setHeader("Content-Type", "application/json; charset=utf-8");
+      res.setHeader(
+        "Content-Type",
+        "application/json; charset=utf-8"
+      );
       return res.status(200).end();
     }
 

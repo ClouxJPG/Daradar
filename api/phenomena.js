@@ -2,8 +2,12 @@
 /* =========================================================
    Quantum Meteo — Meteoinfo Phenomena API
    GET /api/phenomena
-   Возвращает PNG-кадры с прозрачным фоном.
-   Требует sharp из package.json.
+
+   - Серверная обработка GIF через sharp
+   - Отдельная обработка каждого кадра
+   - Удаление подложки, подписей и серых зон
+   - Сохранение цветных метеоявлений
+   - Прозрачные PNG-кадры для Leaflet
    ========================================================= */
 
 const SOURCE =
@@ -24,9 +28,51 @@ function sendJson(res, status, body) {
   return res.status(status).json(body);
 }
 
-async function processGif() {
-  const sharp = require("sharp");
+function keepRadarPixel(r, g, b) {
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  const delta = max - min;
 
+  if (max < 45 || delta < 24) {
+    return false;
+  }
+
+  const saturation = max === 0 ? 0 : (delta / max) * 255;
+
+  if (saturation < 50) {
+    return false;
+  }
+
+  let hue;
+
+  if (delta === 0) {
+    hue = 0;
+  } else if (max === r) {
+    hue = 60 * (((g - b) / delta) % 6);
+  } else if (max === g) {
+    hue = 60 * ((b - r) / delta + 2);
+  } else {
+    hue = 60 * ((r - g) / delta + 4);
+  }
+
+  hue = (hue + 360) % 360;
+
+  /*
+   * Основные оттенки легенды Meteoinfo:
+   * голубой, зелёный, жёлтый, оранжевый,
+   * красный, розовый и фиолетовый.
+   */
+  return (
+    (hue >= 75 && hue <= 175) ||
+    (hue >= 175 && hue <= 225) ||
+    (hue >= 225 && hue <= 260) ||
+    (hue >= 35 && hue < 75) ||
+    (hue >= 0 && hue < 35) ||
+    (hue >= 260 && hue <= 330)
+  );
+}
+
+async function fetchSource() {
   const upstream = await fetch(SOURCE, {
     headers: {
       "User-Agent": "Mozilla/5.0 (compatible; QuantumMeteo/1.0)",
@@ -47,6 +93,13 @@ async function processGif() {
   ) {
     throw new Error("Meteoinfo did not return a valid GIF");
   }
+
+  return input;
+}
+
+async function processGif() {
+  const sharp = require("sharp");
+  const input = await fetchSource();
 
   const metadata = await sharp(input, {
     animated: true,
@@ -78,65 +131,52 @@ async function processGif() {
 
   const outputFrames = [];
 
-  /*
-   * Decode each frame independently using the page offset.
-   * Do not split a multi-page raw buffer by assumed dimensions.
-   */
   for (let page = 0; page < pages; page++) {
-    const frameBuffer = await sharp(input, {
+    /*
+     * Запрашиваем один кадр декодера.
+     * Не разрезаем общий буфер вручную.
+     */
+    const frameResult = await sharp(input, {
       page,
       pages: 1,
       failOn: "error"
     })
-      .resize({
-        width,
-        height,
-        fit: "fill",
-        kernel: "nearest"
-      })
       .ensureAlpha()
       .raw()
       .toBuffer({ resolveWithObject: true });
 
-    const frameWidth = frameBuffer.info.width;
-    const frameHeight = frameBuffer.info.height;
-    const pixels = Buffer.from(frameBuffer.data);
+    const frameWidth = frameResult.info.width;
+    const frameHeight = frameResult.info.height;
+    const channels = frameResult.info.channels;
 
     if (
       frameWidth !== width ||
       frameHeight !== height ||
-      frameBuffer.info.channels !== 4
+      channels !== 4
     ) {
-      throw new Error("Unexpected frame dimensions at page " + page);
+      throw new Error(
+        "Unexpected dimensions for frame " + page +
+        ": " + frameWidth + "x" + frameHeight +
+        ", channels=" + channels
+      );
     }
 
-    /*
-     * Conservative initial filter:
-     * remove only mid-bright neutral pixels.
-     * This does NOT remove every map label, boundary, or gray circle.
-     */
+    const pixels = Buffer.from(frameResult.data);
+
     for (let i = 0; i < pixels.length; i += 4) {
       const r = pixels[i];
       const g = pixels[i + 1];
       const b = pixels[i + 2];
 
-      const max = Math.max(r, g, b);
-      const min = Math.min(r, g, b);
-      const difference = max - min;
-
-      if (
-        difference < 12 &&
-        max > 125 &&
-        max < 244
-      ) {
+      if (!keepRadarPixel(r, g, b)) {
         pixels[i + 3] = 0;
       }
     }
 
     const png = await sharp(pixels, {
       raw: {
-        width,
-        height,
+        width: frameWidth,
+        height: frameHeight,
         channels: 4
       }
     })

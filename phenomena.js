@@ -1,43 +1,49 @@
+
 /* =========================================================
    Quantum Meteo — Meteoinfo Phenomena
-   Источник: /api/phenomena
+   API: /api/phenomena
    Режим: S
-   Возможности:
-   - прозрачный малонасыщенный фон;
-   - сохранение цветных метеоявлений;
-   - обработка анимированной GIF через Canvas;
-   - географическая привязка к карте Leaflet;
-   - автоматическое удаление слоя при переходе в R/H;
-   - без диагностических панелей.
-   index.html должен содержать:
-   window.quantumMeteoMap = map;
+
+   - Получение прозрачных PNG-кадров из серверного API
+   - Без сглаживания: imageSmoothingEnabled = false
+   - Привязка к Leaflet
+   - Удаление слоя при переключении на R/H
+   - Без диагностических панелей
+
+   index.html не изменять.
+   Используется window.quantumMeteoMap.
    ========================================================= */
+
 (() => {
   "use strict";
+
   const SOURCE = "/api/phenomena";
+
+  // Предварительные границы. Для точной привязки их
+  // необходимо откалибровать по исходной карте Meteoinfo.
   const BOUNDS = [
     [38.2156, 14.9893],
     [69.6544, 72.9238]
   ];
-  const FRAME_INTERVAL = 100;
-  // Настройки предварительного удаления фона.
-  const MIN_SATURATION = 35;
-  const MIN_COLOR_DIFFERENCE = 18;
-  const MIN_BRIGHTNESS = 45;
-  const MAX_BRIGHTNESS = 248;
+
+  const DEFAULT_FRAME_DELAY = 500;
+
   let map = null;
   let layer = null;
-  let image = null;
   let canvas = null;
   let context = null;
+  let frameImages = [];
+  let frameDelays = [];
+  let frameIndex = 0;
   let frameTimer = null;
   let resizeHandler = null;
   let enabled = false;
   let loading = false;
   let requestId = 0;
-  let imageUrl = null;
+
   function getMap() {
     const candidate = window.quantumMeteoMap;
+
     if (
       candidate &&
       typeof candidate.addLayer === "function" &&
@@ -45,243 +51,359 @@
     ) {
       return candidate;
     }
+
     return null;
   }
+
   function message(text) {
     const element = document.getElementById("msg");
     if (element) element.textContent = text || "";
   }
-  function releaseResources() {
+
+  function stopAnimation() {
     if (frameTimer !== null) {
-      clearInterval(frameTimer);
+      clearTimeout(frameTimer);
       frameTimer = null;
     }
+  }
+
+  function releaseResources() {
+    stopAnimation();
+
     if (resizeHandler) {
       window.removeEventListener("resize", resizeHandler);
       resizeHandler = null;
     }
-    if (image) {
+
+    for (const image of frameImages) {
       image.onload = null;
       image.onerror = null;
       image.src = "";
-      image = null;
     }
-    if (imageUrl) {
-      URL.revokeObjectURL(imageUrl);
-      imageUrl = null;
-    }
+
+    frameImages = [];
+    frameDelays = [];
+    frameIndex = 0;
     canvas = null;
     context = null;
   }
+
   function removeLayer() {
     requestId++;
     enabled = false;
     loading = false;
+
     if (map && layer && map.hasLayer(layer)) {
       map.removeLayer(layer);
     }
+
     if (layer && typeof layer.destroy === "function") {
       layer.destroy();
     }
+
     layer = null;
     map = getMap();
     releaseResources();
   }
-  function makeTransparent() {
-    if (!context || !canvas || !image) return;
-    const width = canvas.width;
-    const height = canvas.height;
-    if (!width || !height) return;
-    context.clearRect(0, 0, width, height);
-    context.drawImage(image, 0, 0, width, height);
-    let pixels;
-    try {
-      pixels = context.getImageData(0, 0, width, height);
-    } catch (error) {
-      console.error("[Quantum Meteo] Canvas:", error);
-      return;
-    }
-    const data = pixels.data;
-    for (let i = 0; i < data.length; i += 4) {
-      const r = data[i];
-      const g = data[i + 1];
-      const b = data[i + 2];
-      const max = Math.max(r, g, b);
-      const min = Math.min(r, g, b);
-      const brightness = (r + g + b) / 3;
-      const saturation =
-        max === 0 ? 0 : ((max - min) / max) * 255;
-      const colorDifference = max - min;
-      // Почти белый, серый и малонасыщенный фон
-      // исходной метеокарты становится прозрачным.
-      const background =
-        (
-          saturation < MIN_SATURATION &&
-          colorDifference < MIN_COLOR_DIFFERENCE
-        ) ||
-        brightness < MIN_BRIGHTNESS ||
-        brightness > MAX_BRIGHTNESS;
-      if (background) {
-        data[i + 3] = 0;
-      }
-    }
-    context.putImageData(pixels, 0, 0);
+
+  function drawFrame(index) {
+    if (!canvas || !context || !frameImages.length) return;
+
+    const image = frameImages[index];
+
+    if (!image || !image.complete || !image.naturalWidth) return;
+
+    context.clearRect(0, 0, canvas.width, canvas.height);
+
+    // Запрещаем интерполяцию пикселей.
+    context.imageSmoothingEnabled = false;
+
+    context.drawImage(
+      image,
+      0,
+      0,
+      canvas.width,
+      canvas.height
+    );
   }
-  function createCanvasLayer(targetMap) {
+
+  function scheduleNextFrame() {
+    stopAnimation();
+
+    if (!enabled || !frameImages.length) return;
+
+    if (frameImages.length < 2) return;
+
+    const delay = Math.max(
+      100,
+      Math.min(
+        5000,
+        Number(frameDelays[frameIndex]) || DEFAULT_FRAME_DELAY
+      )
+    );
+
+    frameTimer = setTimeout(() => {
+      if (!enabled || !frameImages.length) return;
+
+      frameIndex = (frameIndex + 1) % frameImages.length;
+      drawFrame(frameIndex);
+      scheduleNextFrame();
+    }, delay);
+  }
+
+  function createCanvasLayer(targetMap, width, height) {
     const L = window.L;
-    const PhenomenaCanvasLayer = L.Layer.extend({
+
+    const PhenomenaLayer = L.Layer.extend({
       onAdd: function (leafletMap) {
         this._map = leafletMap;
-        this._canvas = document.createElement("canvas");
-        this._canvas.className = "quantum-phenomena-canvas";
-        Object.assign(this._canvas.style, {
+
+        canvas = document.createElement("canvas");
+        canvas.className = "quantum-phenomena-canvas";
+
+        canvas.width = width;
+        canvas.height = height;
+
+        Object.assign(canvas.style, {
           position: "absolute",
+          display: "block",
           pointerEvents: "none",
+          imageRendering: "pixelated",
           zIndex: "450"
         });
-        this._canvas.width = image.naturalWidth;
-        this._canvas.height = image.naturalHeight;
-        const pane = leafletMap.getPanes().overlayPane;
-        pane.appendChild(this._canvas);
-        canvas = this._canvas;
+
         context = canvas.getContext("2d", {
-          alpha: true,
-          willReadFrequently: true
+          alpha: true
         });
+
+        if (!context) {
+          throw new Error("Canvas 2D недоступен");
+        }
+
+        context.imageSmoothingEnabled = false;
+
+        leafletMap.getPanes().overlayPane.appendChild(canvas);
+
         this._bounds = L.latLngBounds(BOUNDS);
         this._reset = this._reset.bind(this);
-        leafletMap.on("move zoom resize viewreset", this._reset);
-        this._reset();
-        // GIF остаётся анимированной: Canvas периодически
-        // считывает текущий кадр из браузерного декодера.
-        frameTimer = setInterval(() => {
-          if (!enabled || !this._map || !image) return;
-          makeTransparent();
-        }, FRAME_INTERVAL);
-        resizeHandler = () => this._reset();
+
+        leafletMap.on(
+          "move zoom resize viewreset",
+          this._reset
+        );
+
+        resizeHandler = this._reset;
         window.addEventListener("resize", resizeHandler);
+
+        this._reset();
+        drawFrame(frameIndex);
+        scheduleNextFrame();
       },
+
       _reset: function () {
-        if (!this._map || !this._canvas) return;
+        if (!this._map || !canvas) return;
+
         const topLeft = this._map.latLngToLayerPoint(
           this._bounds.getNorthWest()
         );
+
         const bottomRight = this._map.latLngToLayerPoint(
           this._bounds.getSouthEast()
         );
-        const width = bottomRight.x - topLeft.x;
-        const height = bottomRight.y - topLeft.y;
-        L.DomUtil.setPosition(this._canvas, topLeft);
-        this._canvas.style.width = Math.max(0, width) + "px";
-        this._canvas.style.height = Math.max(0, height) + "px";
+
+        const widthOnMap = bottomRight.x - topLeft.x;
+        const heightOnMap = bottomRight.y - topLeft.y;
+
+        L.DomUtil.setPosition(canvas, topLeft);
+
+        canvas.style.width = Math.max(0, widthOnMap) + "px";
+        canvas.style.height = Math.max(0, heightOnMap) + "px";
       },
+
       onRemove: function (leafletMap) {
-        leafletMap.off("move zoom resize viewreset", this._reset);
-        if (this._canvas && this._canvas.parentNode) {
-          this._canvas.parentNode.removeChild(this._canvas);
+        leafletMap.off(
+          "move zoom resize viewreset",
+          this._reset
+        );
+
+        if (canvas && canvas.parentNode) {
+          canvas.parentNode.removeChild(canvas);
         }
-        this._canvas = null;
+
+        stopAnimation();
+
         this._map = null;
       },
+
       destroy: function () {
-        if (frameTimer !== null) {
-          clearInterval(frameTimer);
-          frameTimer = null;
-        }
+        stopAnimation();
       }
     });
-    return new PhenomenaCanvasLayer();
+
+    return new PhenomenaLayer();
   }
+
+  async function loadFrames() {
+    const response = await fetch(
+      SOURCE + "?_=" + Date.now(),
+      {
+        cache: "no-store",
+        credentials: "same-origin"
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error("HTTP " + response.status);
+    }
+
+    const result = await response.json();
+
+    if (
+      !result ||
+      result.ok !== true ||
+      !Array.isArray(result.frames) ||
+      result.frames.length === 0
+    ) {
+      throw new Error(
+        result && result.error
+          ? result.error
+          : "API не вернул PNG-кадры"
+      );
+    }
+
+    const width = Number(result.width);
+    const height = Number(result.height);
+
+    if (
+      !Number.isInteger(width) ||
+      !Number.isInteger(height) ||
+      width < 1 ||
+      height < 1
+    ) {
+      throw new Error("Некорректные размеры кадров");
+    }
+
+    const images = [];
+    const delays = [];
+
+    for (const frame of result.frames) {
+      if (
+        !frame ||
+        typeof frame.png !== "string" ||
+        !/^[A-Za-z0-9+/]+={0,2}$/.test(frame.png)
+      ) {
+        throw new Error("Некорректный PNG-кадр");
+      }
+
+      const image = new Image();
+      image.decoding = "async";
+      image.src = "data:image/png;base64," + frame.png;
+
+      await new Promise((resolve, reject) => {
+        image.onload = resolve;
+        image.onerror = () => reject(
+          new Error("Не удалось загрузить PNG-кадр")
+        );
+      });
+
+      if (
+        image.naturalWidth !== width ||
+        image.naturalHeight !== height
+      ) {
+        throw new Error("Размер PNG-кадра не совпадает с API");
+      }
+
+      images.push(image);
+      delays.push(Number(frame.delay) || DEFAULT_FRAME_DELAY);
+    }
+
+    return { images, delays, width, height };
+  }
+
   async function showLayer() {
     if (loading) {
       enabled = true;
       return;
     }
+
     map = getMap();
-    if (!map || !window.L || typeof window.L.Layer !== "function") {
+
+    if (
+      !map ||
+      !window.L ||
+      typeof window.L.Layer !== "function"
+    ) {
       message("Карта Leaflet недоступна");
       return;
     }
+
     if (layer && map.hasLayer(layer)) {
       enabled = true;
       message("");
       return;
     }
+
     enabled = true;
     loading = true;
+
     const currentRequest = ++requestId;
     message("Загрузка метеоявлений…");
+
     try {
-      const response = await fetch(
-        SOURCE + "?_=" + Date.now(),
-        {
-          cache: "no-store",
-          credentials: "same-origin"
-        }
+      const result = await loadFrames();
+
+      if (currentRequest !== requestId || !enabled) return;
+
+      frameImages = result.images;
+      frameDelays = result.delays;
+      frameIndex = 0;
+
+      layer = createCanvasLayer(
+        map,
+        result.width,
+        result.height
       );
-      if (!response.ok) {
-        throw new Error("HTTP " + response.status);
-      }
-      const blob = await response.blob();
-      const signature = String.fromCharCode(
-        ...new Uint8Array(
-          await blob.slice(0, 6).arrayBuffer()
-        )
-      );
-      if (
-        signature !== "GIF87a" &&
-        signature !== "GIF89a"
-      ) {
-        throw new Error("Сервер не вернул GIF");
-      }
-      const url = URL.createObjectURL(blob);
-      const loadedImage = new Image();
-      await new Promise((resolve, reject) => {
-        loadedImage.onload = resolve;
-        loadedImage.onerror = () => {
-          reject(new Error("Не удалось декодировать GIF"));
-        };
-        loadedImage.src = url;
-      });
-      if (currentRequest !== requestId || !enabled) {
-        URL.revokeObjectURL(url);
-        return;
-      }
-      if (!loadedImage.naturalWidth || !loadedImage.naturalHeight) {
-        URL.revokeObjectURL(url);
-        throw new Error("У GIF неверный размер");
-      }
-      image = loadedImage;
-      imageUrl = url;
-      layer = createCanvasLayer(map);
+
       layer.addTo(map);
-      // Сразу обрабатываем первый доступный кадр.
-      makeTransparent();
       message("");
     } catch (error) {
       console.error("[Quantum Meteo] Phenomena:", error);
+
       if (currentRequest === requestId) {
         message(
           "Ошибка метеоявлений: " +
           (error.message || "неизвестная ошибка")
         );
       }
+
       releaseResources();
+
+      if (layer && map && map.hasLayer(layer)) {
+        map.removeLayer(layer);
+      }
+
+      layer = null;
     } finally {
       if (currentRequest === requestId) {
         loading = false;
       }
     }
   }
+
   function handleModeClick(event) {
     const target = event.target;
+
     if (!target || typeof target.closest !== "function") return;
+
     const button = target.closest(".st .b[data-m]");
     if (!button) return;
+
     if (button.dataset.m === "S") {
-      // Даём штатному обработчику переключить режим.
       setTimeout(() => {
-        if (button.isConnected && button.dataset.m === "S") {
+        if (
+          button.isConnected &&
+          button.dataset.m === "S"
+        ) {
           showLayer();
         }
       }, 0);
@@ -290,10 +412,12 @@
       message("");
     }
   }
+
   function init() {
     document.addEventListener("click", handleModeClick, false);
     window.addEventListener("pagehide", removeLayer);
   }
+
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", init, {
       once: true

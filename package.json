@@ -1,0 +1,11 @@
+{
+“name”: “daradar”,
+“version”: “1.0.0”,
+“private”: true,
+“engines”: {
+“node”: “22.x”
+},
+“dependencies”: {
+“sharp”: “^0.34.3”
+}
+}

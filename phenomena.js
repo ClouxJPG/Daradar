@@ -3,9 +3,10 @@
    Источник: /api/phenomena
 
    - index.html не изменяется
-   - кадры GIF переключаются по их длительности
-   - сглаживание не применяется
-   - режимы R/H не затрагиваются
+   - режим S: слой метеоявлений
+   - режимы R/H: слой удаляется
+   - кадры переключаются по delay из API
+   - исходная карта и остальные слои не меняются
    ========================================================= */
 
 (function () {
@@ -14,7 +15,7 @@
   const API = "/api/phenomena";
   const GLOBAL_KEY = "__quantumPhenomenaLayer";
 
-  const BOUNDS_FALLBACK = [
+  const FALLBACK_BOUNDS = [
     [38.2156, 14.9893],
     [69.6544, 72.9238]
   ];
@@ -27,31 +28,43 @@
   let loading = false;
   let active = false;
   let requestId = 0;
+  let modeObserver = null;
+  let syncTimer = null;
 
   function getMap() {
-    return window.quantumMeteoMap || window.map || null;
+    return window.quantumMeteoMap || null;
   }
 
   function getMode() {
-    const selectors = [
-      "[data-mode].active",
-      "[data-mode][aria-pressed='true']",
-      ".mode-button.active",
-      ".mode-btn.active"
-    ];
+    // Основной код Quantum Meteo подсвечивает выбранную
+    // кнопку классом red в ui().
+    const selected = document.querySelector(
+      ".st .b.red[data-m]"
+    );
 
-    for (const selector of selectors) {
-      const element = document.querySelector(selector);
-      if (!element) continue;
+    if (selected) {
+      const mode = selected.dataset.m;
 
-      const value = (
-        element.dataset.mode ||
-        element.textContent ||
-        ""
-      ).trim().toUpperCase();
+      if (mode === "S" || mode === "R" || mode === "H") {
+        return mode;
+      }
+    }
 
-      if (value === "S" || value === "R" || value === "H") {
-        return value;
+    // Резерв: проверяем все кнопки, если разметка изменится.
+    const buttons = document.querySelectorAll(
+      ".st .b[data-m]"
+    );
+
+    for (const button of buttons) {
+      if (
+        button.classList.contains("red") ||
+        button.getAttribute("aria-pressed") === "true"
+      ) {
+        const mode = button.dataset.m;
+
+        if (mode === "S" || mode === "R" || mode === "H") {
+          return mode;
+        }
       }
     }
 
@@ -92,42 +105,38 @@
       ];
     }
 
-    return BOUNDS_FALLBACK;
+    return FALLBACK_BOUNDS;
   }
 
   function frameUrl(frame) {
     return "data:image/png;base64," + frame.png;
   }
 
-  function showFrame(index) {
-    if (!map || !layer || !frames.length || !active) return;
-
-    frameIndex = ((index % frames.length) + frames.length) % frames.length;
-
-    const frame = frames[frameIndex];
-
-    if (!frame || !frame.png) {
-      scheduleNext();
-      return;
-    }
-
-    layer.setUrl(frameUrl(frame));
-    scheduleNext();
-  }
-
   function scheduleNext() {
     stopAnimation();
 
-    if (!active || !frames.length) return;
+    if (!active || !frames.length || !layer) return;
 
-    const frame = frames[frameIndex];
-    const delay = Math.max(
-      100,
-      Math.min(10000, Number(frame && frame.delay) || 700)
-    );
+    const current = frames[frameIndex];
+    const sourceDelay = Number(current && current.delay);
+
+    const delay =
+      Number.isFinite(sourceDelay) && sourceDelay > 0
+        ? Math.max(100, Math.min(sourceDelay, 10000))
+        : 700;
 
     timer = setTimeout(function () {
-      if (active) showFrame(frameIndex + 1);
+      if (!active || !frames.length || !layer) return;
+
+      frameIndex = (frameIndex + 1) % frames.length;
+
+      const next = frames[frameIndex];
+
+      if (next && next.png) {
+        layer.setUrl(frameUrl(next));
+      }
+
+      scheduleNext();
     }, delay);
   }
 
@@ -143,7 +152,9 @@
 
     try {
       const response = await fetch(API, {
-        cache: "no-store"
+        method: "GET",
+        cache: "no-store",
+        credentials: "same-origin"
       });
 
       if (!response.ok) {
@@ -154,17 +165,31 @@
 
       if (thisRequest !== requestId) return;
 
-      if (!Array.isArray(data.frames) || data.frames.length === 0) {
-        throw new Error("API не вернул кадры GIF");
+      if (!Array.isArray(data.frames) || !data.frames.length) {
+        throw new Error("API не вернул массив frames");
       }
 
-      frames = data.frames.filter(function (frame) {
-        return frame && typeof frame.png === "string";
+      const validFrames = data.frames.filter(function (frame) {
+        return (
+          frame &&
+          typeof frame.png === "string" &&
+          frame.png.length > 0
+        );
       });
 
-      if (!frames.length) {
-        throw new Error("Нет корректных PNG-кадров");
+      if (!validFrames.length) {
+        throw new Error("В API нет корректных PNG-кадров");
       }
+
+      // Если режим изменился во время загрузки, ничего не добавляем.
+      if (getMode() !== "S") return;
+
+      map = getMap();
+
+      if (!map) return;
+
+      frames = validFrames;
+      frameIndex = 0;
 
       layer = L.imageOverlay(
         frameUrl(frames[0]),
@@ -178,13 +203,16 @@
 
       layer.addTo(map);
       active = true;
-      frameIndex = 0;
 
       scheduleNext();
 
       console.info(
-        "Quantum Meteo: загружено кадров phenomena:",
-        frames.length
+        "Quantum Meteo: метеоявления загружены",
+        {
+          frames: frames.length,
+          width: data.width,
+          height: data.height
+        }
       );
     } catch (error) {
       console.error("Quantum Meteo phenomena:", error);
@@ -201,23 +229,27 @@
 
     const mode = getMode();
 
-    if (mode && mode !== "S") {
-      removeLayer();
+    if (mode === "S") {
+      load();
       return;
     }
 
-    if (mode === "S") {
-      load();
+    if (mode === "R" || mode === "H") {
+      requestId++;
+      removeLayer();
     }
   }
 
   function installStyles() {
-    if (document.getElementById("quantum-phenomena-style")) return;
+    if (document.getElementById("quantum-phenomena-style")) {
+      return;
+    }
 
     const style = document.createElement("style");
+
     style.id = "quantum-phenomena-style";
     style.textContent = `
-      .quantum-phenomena-overlay {
+      .leaflet-image-layer.quantum-phenomena-overlay {
         image-rendering: pixelated !important;
         image-rendering: crisp-edges !important;
       }
@@ -226,38 +258,83 @@
     document.head.appendChild(style);
   }
 
-  function init() {
-    installStyles();
+  function scheduleSync() {
+    if (syncTimer !== null) {
+      clearTimeout(syncTimer);
+    }
 
+    syncTimer = setTimeout(function () {
+      syncTimer = null;
+      syncMode();
+    }, 0);
+  }
+
+  function init() {
     map = getMap();
 
     if (!map) {
-      setTimeout(init, 300);
+      setTimeout(init, 250);
       return;
     }
 
-    document.addEventListener("click", function () {
-      setTimeout(syncMode, 50);
+    installStyles();
+
+    // Слушаем изменения выбранного режима.
+    document.addEventListener("click", function (event) {
+      if (event.target.closest(".st .b[data-m]")) {
+        scheduleSync();
+      }
     });
 
-    setInterval(syncMode, 1000);
+    // Подстраховка: основной интерфейс обновляет класс кнопки
+    // после вызова ui(). Наблюдатель реагирует на это изменение.
+    modeObserver = new MutationObserver(function () {
+      scheduleSync();
+    });
+
+    document.querySelectorAll(".st .b[data-m]").forEach(function (button) {
+      modeObserver.observe(button, {
+        attributes: true,
+        attributeFilter: ["class", "aria-pressed"]
+      });
+    });
 
     syncMode();
   }
 
   window[GLOBAL_KEY] = {
+    sync: syncMode,
+
     reload: function () {
+      requestId++;
       removeLayer();
       frames = [];
       loading = false;
       syncMode();
     },
+
     remove: removeLayer,
-    sync: syncMode
+
+    destroy: function () {
+      requestId++;
+      removeLayer();
+
+      if (modeObserver) {
+        modeObserver.disconnect();
+        modeObserver = null;
+      }
+
+      if (syncTimer !== null) {
+        clearTimeout(syncTimer);
+        syncTimer = null;
+      }
+    }
   };
 
   if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", init, { once: true });
+    document.addEventListener("DOMContentLoaded", init, {
+      once: true
+    });
   } else {
     init();
   }

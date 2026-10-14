@@ -1,84 +1,23 @@
 
 /* =========================================================
    Quantum Meteo — Phenomena API
-   Отдельные статичные PNG-кадры из исходного GIF
+   GIF -> отдельные полноценные PNG-кадры
    ========================================================= */
 
 const SOURCE =
   "https://meteoinfo.ru/hmc-output/rmap/phenomena.gif";
 
-const CACHE_MS = 60_000;
 const MAX_FRAMES = 30;
+const CACHE_MS = 60_000;
 
 let cache = null;
 let cacheTime = 0;
 let pending = null;
 
-function keepRadarPixel(r, g, b) {
-  const max = Math.max(r, g, b);
-  const min = Math.min(r, g, b);
-  const delta = max - min;
+async function buildFrames() {
+  const sharp = require("sharp");
+  const { parseGIF, decompressFrames } = require("gifuct-js");
 
-  if (max < 45 || delta < 24) return false;
-
-  const saturation = (delta / max) * 255;
-  if (saturation < 50) return false;
-
-  let hue;
-
-  if (max === r) {
-    hue = 60 * (((g - b) / delta) % 6);
-  } else if (max === g) {
-    hue = 60 * ((b - r) / delta + 2);
-  } else {
-    hue = 60 * ((r - g) / delta + 4);
-  }
-
-  if (hue < 0) hue += 360;
-
-  return (
-    (hue >= 75 && hue <= 175) ||
-    (hue > 175 && hue <= 225) ||
-    (hue > 225 && hue <= 260) ||
-    (hue >= 35 && hue < 75) ||
-    hue < 35 ||
-    (hue >= 260 && hue <= 330)
-  );
-}
-
-function cleanFrame(raw, width, height) {
-  const output = Buffer.alloc(width * height * 4);
-
-  const legendWidth = Math.round(width * 0.123);
-  const legendHeight = Math.round(height * 0.308);
-  const logoWidth = Math.round(width * 0.103);
-  const logoTop = Math.round(height * 0.918);
-
-  for (let y = 0; y < height; y++) {
-    for (let x = 0; x < width; x++) {
-      const i = (y * width + x) * 4;
-
-      if (x < legendWidth && y < legendHeight) continue;
-      if (x < logoWidth && y > logoTop) continue;
-
-      const r = raw[i];
-      const g = raw[i + 1];
-      const b = raw[i + 2];
-      const a = raw[i + 3];
-
-      if (!a || !keepRadarPixel(r, g, b)) continue;
-
-      output[i] = r;
-      output[i + 1] = g;
-      output[i + 2] = b;
-      output[i + 3] = a;
-    }
-  }
-
-  return output;
-}
-
-async function fetchSource() {
   const response = await fetch(SOURCE, {
     headers: {
       "User-Agent": "Mozilla/5.0 (compatible; QuantumMeteo/1.0)",
@@ -97,84 +36,124 @@ async function fetchSource() {
     throw new Error("Источник не вернул GIF");
   }
 
-  return input;
-}
-
-async function processGif(sharp, input) {
-  const metadata = await sharp(input, {
-    animated: true,
-    pages: -1,
-    failOn: "none"
-  }).metadata();
-
-  const width = metadata.width;
-  const height = metadata.pageHeight || metadata.height;
-  const pageCount = Math.min(
-    Math.max(1, Number(metadata.pages) || 1),
+  const gif = parseGIF(input);
+  const parsedFrames = decompressFrames(gif, true).slice(
+    0,
     MAX_FRAMES
   );
 
-  if (!width || !height) {
-    throw new Error("Некорректные размеры GIF");
+  const width = gif.lsd.width;
+  const height = gif.lsd.height;
+
+  if (!width || !height || !parsedFrames.length) {
+    throw new Error("Не удалось разобрать кадры GIF");
   }
 
-  const delays = Array.isArray(metadata.delay)
-    ? metadata.delay
-    : [];
-
+  // Полный холст, на котором накапливаются изменения кадров.
+  let canvas = Buffer.alloc(width * height * 4);
   const frames = [];
 
-  for (let index = 0; index < pageCount; index++) {
-    // Ключевой момент: page и pages указывают
-    // Sharp декодировать только одну страницу.
-    const decoded = await sharp(input, {
-      page: index,
-      pages: 1,
-      animated: false,
-      failOn: "none"
-    })
-      .ensureAlpha()
-      .png()
-      .toBuffer({ resolveWithObject: true });
+  for (let index = 0; index < parsedFrames.length; index++) {
+    const frame = parsedFrames[index];
+    const dims = frame.dims;
+    const patch = frame.patch;
 
-    // Повторно декодируем уже полученный PNG в RGBA.
-    const raw = await sharp(decoded.data)
-      .ensureAlpha()
-      .raw()
-      .toBuffer({ resolveWithObject: true });
+    // GIF disposal method 3: перед кадром нужно сохранить холст.
+    const previousCanvas =
+      frame.disposalType === 3 ? Buffer.from(canvas) : null;
 
-    const fw = raw.info.width;
-    const fh = raw.info.height;
+    // Накладываем фрагмент кадра с учётом прозрачности.
+    for (let py = 0; py < dims.height; py++) {
+      for (let px = 0; px < dims.width; px++) {
+        const sx = px;
+        const sy = py;
+        const dx = dims.left + px;
+        const dy = dims.top + py;
 
-    if (fw !== width || fh !== height || raw.info.channels !== 4) {
-      throw new Error(
-        `Размер кадра ${index}: ${fw}x${fh}, ожидался ${width}x${height}`
-      );
+        if (dx < 0 || dy < 0 || dx >= width || dy >= height) {
+          continue;
+        }
+
+        const si = (sy * dims.width + sx) * 4;
+        const di = (dy * width + dx) * 4;
+        const alpha = patch[si + 3];
+
+        if (alpha === 0) continue;
+
+        if (alpha === 255) {
+          canvas[di] = patch[si];
+          canvas[di + 1] = patch[si + 1];
+          canvas[di + 2] = patch[si + 2];
+          canvas[di + 3] = 255;
+        } else {
+          const dstAlpha = canvas[di + 3] / 255;
+          const srcAlpha = alpha / 255;
+          const outAlpha = srcAlpha + dstAlpha * (1 - srcAlpha);
+
+          if (outAlpha > 0) {
+            for (let c = 0; c < 3; c++) {
+              canvas[di + c] = Math.round(
+                (
+                  patch[si + c] * srcAlpha +
+                  canvas[di + c] * dstAlpha * (1 - srcAlpha)
+                ) / outAlpha
+              );
+            }
+            canvas[di + 3] = Math.round(outAlpha * 255);
+          }
+        }
+      }
     }
 
-    const cleaned = cleanFrame(raw.data, fw, fh);
-
-    const png = await sharp(cleaned, {
-      raw: { width: fw, height: fh, channels: 4 }
+    const png = await sharp(Buffer.from(canvas), {
+      raw: { width, height, channels: 4 }
     })
       .png()
       .toBuffer();
 
-    const delay = Number(delays[index]);
-
     frames.push({
       index,
-      delay: Number.isFinite(delay) && delay > 0 ? delay : 700,
+      delay: Math.max(100, Number(frame.delay) || 70) * 10,
       png: png.toString("base64")
     });
+
+    // Учитываем очистку кадра после его показа.
+    if (frame.disposalType === 2) {
+      for (let py = 0; py < dims.height; py++) {
+        for (let px = 0; px < dims.width; px++) {
+          const dx = dims.left + px;
+          const dy = dims.top + py;
+
+          if (dx < 0 || dy < 0 || dx >= width || dy >= height) {
+            continue;
+          }
+
+          const di = (dy * width + dx) * 4;
+          canvas.fill(0, di, di + 4);
+        }
+      }
+    } else if (frame.disposalType === 3 && previousCanvas) {
+      canvas = previousCanvas;
+    }
   }
+
+  // Проверяем, что хотя бы некоторые кадры различаются.
+  const uniqueFrames = new Set(
+    frames.map(frame => frame.png.slice(0, 200))
+  );
+
+  console.info("[Quantum Phenomena] GIF разобран", {
+    width,
+    height,
+    frameCount: frames.length,
+    uniqueFramePrefixes: uniqueFrames.size
+  });
 
   return {
     ok: true,
     width,
     height,
     frameCount: frames.length,
-    loop: metadata.loop ?? 0,
     frames,
     bounds: {
       south: 38.2156,
@@ -212,25 +191,19 @@ module.exports = async function handler(req, res) {
     }
   }
 
-  pending = (async () => {
-    const sharp = require("sharp");
-    const input = await fetchSource();
-    return processGif(sharp, input);
-  })();
+  pending = buildFrames();
 
   try {
     const result = await pending;
-
     cache = result;
     cacheTime = Date.now();
-
     return res.status(200).json(result);
   } catch (error) {
-    console.error("Quantum Meteo phenomena API:", error);
+    console.error("[Quantum Phenomena]", error);
 
     return res.status(502).json({
       ok: false,
-      error: "Не удалось обработать GIF Meteoinfo",
+      error: "Не удалось обработать GIF",
       details: error.message
     });
   } finally {

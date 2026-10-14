@@ -1,12 +1,14 @@
+
 /* =========================================================
    Quantum Meteo — Phenomena API
    Источник: Meteoinfo phenomena.gif
 
-   - GIF декодируется как последовательность кадров
-   - сохраняются длительности кадров
+   - каждый кадр GIF декодируется отдельно
+   - сохраняются задержки кадров
    - цветные метеоявления остаются на прозрачном фоне
    - легенда и логотипы удаляются
-   - результат кэшируется в памяти
+   - результат кэшируется на 60 секунд
+   - index.html не изменяется
    ========================================================= */
 
 const SOURCE =
@@ -54,6 +56,12 @@ function keepRadarPixel(r, g, b) {
 function cleanFrame(raw, width, height) {
   const output = Buffer.alloc(width * height * 4);
 
+  // Пропорциональные пороги для легенды и логотипов.
+  const legendWidth = Math.round(width * 0.123);
+  const legendHeight = Math.round(height * 0.308);
+  const logoWidth = Math.round(width * 0.103);
+  const logoTop = Math.round(height * 0.918);
+
   for (let y = 0; y < height; y++) {
     for (let x = 0; x < width; x++) {
       const i = (y * width + x) * 4;
@@ -63,11 +71,11 @@ function cleanFrame(raw, width, height) {
       const b = raw[i + 2];
       const a = raw[i + 3];
 
-      // Легенда слева сверху.
-      if (x < 138 && y < 350) continue;
+      // Легенда в верхнем левом углу.
+      if (x < legendWidth && y < legendHeight) continue;
 
-      // Логотипы слева снизу.
-      if (x < 115 && y > 1040) continue;
+      // Логотипы в нижнем левом углу.
+      if (x < logoWidth && y > logoTop) continue;
 
       if (!a || !keepRadarPixel(r, g, b)) continue;
 
@@ -91,9 +99,7 @@ async function fetchSource() {
   });
 
   if (!response.ok) {
-    throw new Error(
-      `Meteoinfo вернул HTTP ${response.status}`
-    );
+    throw new Error(`Meteoinfo HTTP ${response.status}`);
   }
 
   const input = Buffer.from(await response.arrayBuffer());
@@ -117,81 +123,58 @@ async function processGif(sharp, input) {
 
   const width = metadata.width;
   const height = metadata.pageHeight || metadata.height;
-  const frameCount = Math.min(
-    Math.max(1, metadata.pages || 1),
+  const pageCount = Math.min(
+    Math.max(1, Number(metadata.pages) || 1),
     MAX_FRAMES
   );
 
-  if (
-    !width ||
-    !height ||
-    width < 100 ||
-    height < 100
-  ) {
+  if (!width || !height || width < 100 || height < 100) {
     throw new Error("Некорректные размеры GIF");
-  }
-
-  // Для анимированного GIF libvips возвращает кадры
-  // вертикальной полосой: width × (height * pages).
-  const decoded = await sharp(input, {
-    animated: true,
-    pages: -1,
-    failOn: "none"
-  })
-    .ensureAlpha()
-    .raw()
-    .toBuffer({ resolveWithObject: true });
-
-  const channels = decoded.info.channels;
-  const decodedWidth = decoded.info.width;
-  const decodedHeight = decoded.info.height;
-
-  if (
-    channels !== 4 ||
-    decodedWidth !== width ||
-    decodedHeight < height
-  ) {
-    throw new Error(
-      `Неожиданный размер декодированного GIF: ` +
-      `${decodedWidth}x${decodedHeight}, каналов: ${channels}`
-    );
-  }
-
-  const actualFrameCount = Math.min(
-    frameCount,
-    Math.floor(decodedHeight / height)
-  );
-
-  if (actualFrameCount < 1) {
-    throw new Error("Не удалось извлечь кадры GIF");
   }
 
   const delays = Array.isArray(metadata.delay)
     ? metadata.delay
     : [];
 
-  const frameBytes = width * height * 4;
   const frames = [];
 
-  for (let index = 0; index < actualFrameCount; index++) {
-    const start = index * frameBytes;
-    const end = start + frameBytes;
+  for (let index = 0; index < pageCount; index++) {
+    // Важно: извлекаем одну страницу, а не режем
+    // общую вертикальную полосу на предполагаемые кадры.
+    const decoded = await sharp(input, {
+      page: index,
+      pages: 1,
+      failOn: "none"
+    })
+      .ensureAlpha()
+      .raw()
+      .toBuffer({ resolveWithObject: true });
 
-    const raw = decoded.data.subarray(start, end);
+    const frameWidth = decoded.info.width;
+    const frameHeight = decoded.info.height;
+    const channels = decoded.info.channels;
 
-    if (raw.length !== frameBytes) {
-      console.error(
-        `Quantum Meteo: неполный кадр ${index}`
+    if (
+      frameWidth !== width ||
+      frameHeight !== height ||
+      channels !== 4
+    ) {
+      throw new Error(
+        `Кадр ${index}: ожидалось ${width}x${height} RGBA, ` +
+        `получено ${frameWidth}x${frameHeight}, каналов ${channels}`
       );
-      continue;
     }
 
-    const cleaned = cleanFrame(raw, width, height);
+    const cleaned = cleanFrame(
+      decoded.data,
+      frameWidth,
+      frameHeight
+    );
 
     const png = await sharp(cleaned, {
       raw: {
-        width,
-        height,
+        width: frameWidth,
+        height: frameHeight,
         channels: 4
       }
     })
@@ -211,7 +194,7 @@ async function processGif(sharp, input) {
   }
 
   if (!frames.length) {
-    throw new Error("Не удалось сформировать PNG-кадры");
+    throw new Error("Не удалось извлечь кадры GIF");
   }
 
   return {
@@ -222,7 +205,8 @@ async function processGif(sharp, input) {
     loop: metadata.loop ?? 0,
     frames,
 
-    // Пока используются прежние приблизительные границы.
+    // Приблизительные прежние границы.
+    // Для точной привязки нужна проверка проекции исходной карты.
     bounds: {
       south: 38.2156,
       west: 14.9893,
@@ -260,10 +244,9 @@ module.exports = async function handler(req, res) {
     }
   }
 
-  pending = (async function () {
+  pending = (async () => {
     const sharp = require("sharp");
     const input = await fetchSource();
-
     return processGif(sharp, input);
   })();
 
@@ -275,10 +258,7 @@ module.exports = async function handler(req, res) {
 
     return res.status(200).json(result);
   } catch (error) {
-    console.error(
-      "Quantum Meteo phenomena API:",
-      error
-    );
+    console.error("Quantum Meteo phenomena API:", error);
 
     return res.status(502).json({
       ok: false,

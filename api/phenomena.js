@@ -1,14 +1,7 @@
 
 /* =========================================================
    Quantum Meteo — Phenomena API
-   Источник: Meteoinfo phenomena.gif
-
-   - каждый кадр GIF декодируется отдельно
-   - сохраняются задержки кадров
-   - цветные метеоявления остаются на прозрачном фоне
-   - легенда и логотипы удаляются
-   - результат кэшируется на 60 секунд
-   - index.html не изменяется
+   Отдельные статичные PNG-кадры из исходного GIF
    ========================================================= */
 
 const SOURCE =
@@ -56,7 +49,6 @@ function keepRadarPixel(r, g, b) {
 function cleanFrame(raw, width, height) {
   const output = Buffer.alloc(width * height * 4);
 
-  // Пропорциональные пороги для легенды и логотипов.
   const legendWidth = Math.round(width * 0.123);
   const legendHeight = Math.round(height * 0.308);
   const logoWidth = Math.round(width * 0.103);
@@ -66,16 +58,13 @@ function cleanFrame(raw, width, height) {
     for (let x = 0; x < width; x++) {
       const i = (y * width + x) * 4;
 
+      if (x < legendWidth && y < legendHeight) continue;
+      if (x < logoWidth && y > logoTop) continue;
+
       const r = raw[i];
       const g = raw[i + 1];
       const b = raw[i + 2];
       const a = raw[i + 3];
-
-      // Легенда в верхнем левом углу.
-      if (x < legendWidth && y < legendHeight) continue;
-
-      // Логотипы в нижнем левом углу.
-      if (x < logoWidth && y > logoTop) continue;
 
       if (!a || !keepRadarPixel(r, g, b)) continue;
 
@@ -104,10 +93,7 @@ async function fetchSource() {
 
   const input = Buffer.from(await response.arrayBuffer());
 
-  if (
-    input.length < 10 ||
-    input.toString("ascii", 0, 3) !== "GIF"
-  ) {
+  if (input.toString("ascii", 0, 3) !== "GIF") {
     throw new Error("Источник не вернул GIF");
   }
 
@@ -128,7 +114,7 @@ async function processGif(sharp, input) {
     MAX_FRAMES
   );
 
-  if (!width || !height || width < 100 || height < 100) {
+  if (!width || !height) {
     throw new Error("Некорректные размеры GIF");
   }
 
@@ -139,62 +125,48 @@ async function processGif(sharp, input) {
   const frames = [];
 
   for (let index = 0; index < pageCount; index++) {
-    // Важно: извлекаем одну страницу, а не режем
-    // общую вертикальную полосу на предполагаемые кадры.
+    // Ключевой момент: page и pages указывают
+    // Sharp декодировать только одну страницу.
     const decoded = await sharp(input, {
       page: index,
       pages: 1,
+      animated: false,
       failOn: "none"
     })
+      .ensureAlpha()
+      .png()
+      .toBuffer({ resolveWithObject: true });
+
+    // Повторно декодируем уже полученный PNG в RGBA.
+    const raw = await sharp(decoded.data)
       .ensureAlpha()
       .raw()
       .toBuffer({ resolveWithObject: true });
 
-    const frameWidth = decoded.info.width;
-    const frameHeight = decoded.info.height;
-    const channels = decoded.info.channels;
+    const fw = raw.info.width;
+    const fh = raw.info.height;
 
-    if (
-      frameWidth !== width ||
-      frameHeight !== height ||
-      channels !== 4
-    ) {
+    if (fw !== width || fh !== height || raw.info.channels !== 4) {
       throw new Error(
-        `Кадр ${index}: ожидалось ${width}x${height} RGBA, ` +
-        `получено ${frameWidth}x${frameHeight}, каналов ${channels}`
+        `Размер кадра ${index}: ${fw}x${fh}, ожидался ${width}x${height}`
       );
     }
 
-    const cleaned = cleanFrame(
-      decoded.data,
-      frameWidth,
-      frameHeight
-    );
+    const cleaned = cleanFrame(raw.data, fw, fh);
 
     const png = await sharp(cleaned, {
-      raw: {
-        width: frameWidth,
-        height: frameHeight,
-        channels: 4
-      }
+      raw: { width: fw, height: fh, channels: 4 }
     })
       .png()
       .toBuffer();
 
-    const sourceDelay = Number(delays[index]);
+    const delay = Number(delays[index]);
 
     frames.push({
       index,
-      delay:
-        Number.isFinite(sourceDelay) && sourceDelay > 0
-          ? sourceDelay
-          : 700,
+      delay: Number.isFinite(delay) && delay > 0 ? delay : 700,
       png: png.toString("base64")
     });
-  }
-
-  if (!frames.length) {
-    throw new Error("Не удалось извлечь кадры GIF");
   }
 
   return {
@@ -204,16 +176,12 @@ async function processGif(sharp, input) {
     frameCount: frames.length,
     loop: metadata.loop ?? 0,
     frames,
-
-    // Приблизительные прежние границы.
-    // Для точной привязки нужна проверка проекции исходной карты.
     bounds: {
       south: 38.2156,
       west: 14.9893,
       north: 69.6544,
       east: 72.9238
     },
-
     updatedAt: new Date().toISOString()
   };
 }

@@ -1,18 +1,99 @@
-
 /* =========================================================
    Quantum Meteo — Phenomena API
-   GIF -> отдельные полноценные PNG-кадры
+   GIF -> PNG с прозрачным картографическим фоном
+
+   Сохраняет цветные метеоявления.
+   Удаляет нейтральную подложку, серые круги,
+   легенду и служебные надписи у краёв.
    ========================================================= */
 
 const SOURCE =
   "https://meteoinfo.ru/hmc-output/rmap/phenomena.gif";
 
-const MAX_FRAMES = 30;
 const CACHE_MS = 60_000;
 
 let cache = null;
 let cacheTime = 0;
 let pending = null;
+
+const BOUNDS = {
+  south: 38.2156,
+  west: 14.9893,
+  north: 69.6544,
+  east: 72.9238
+};
+
+function isPhenomena(r, g, b) {
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  const spread = max - min;
+
+  // Нейтральные цвета: карта, серые зоны покрытия,
+  // подписи и большая часть служебной графики.
+  if (spread < 13) return false;
+
+  // Явные цветные зоны.
+  if (spread >= 30) return true;
+
+  // Слабые голубые и синие эхо-сигналы.
+  if (b > r + 7 && b >= g - 4) return true;
+
+  // Зелёные и бирюзовые слабые отражения.
+  if (g > r + 8 && g >= b - 12) return true;
+
+  // Жёлтые, оранжевые и красные отражения.
+  if (r > b + 15 && g > b + 8) return true;
+
+  return false;
+}
+
+function removeServiceAreas(raw, width, height) {
+  const out = Buffer.from(raw);
+
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const i = (y * width + x) * 4;
+
+      // Легенда и подписи оборудования слева.
+      if (x < Math.floor(width * 0.065)) {
+        out[i + 3] = 0;
+        continue;
+      }
+
+      // Логотипы и копирайт внизу слева.
+      if (
+        x < Math.floor(width * 0.09) &&
+        y > Math.floor(height * 0.89)
+      ) {
+        out[i + 3] = 0;
+        continue;
+      }
+
+      // Время, напечатанное поверх карты вверху и внизу.
+      // Убираем узкие полосы с метками времени.
+      if (
+        y < Math.floor(height * 0.025) ||
+        y > Math.floor(height * 0.975)
+      ) {
+        out[i + 3] = 0;
+        continue;
+      }
+
+      const r = out[i];
+      const g = out[i + 1];
+      const b = out[i + 2];
+
+      if (!isPhenomena(r, g, b)) {
+        out[i + 3] = 0;
+      } else {
+        // Сохраняем исходную яркость и цвет эха.
+        out[i + 3] = 255;
+      }
+    }
+  }
+
+  return out;
+}
 
 async function buildFrames() {
   const sharp = require("sharp");
@@ -37,48 +118,43 @@ async function buildFrames() {
   }
 
   const gif = parseGIF(input);
-  const parsedFrames = decompressFrames(gif, true).slice(
-    0,
-    MAX_FRAMES
-  );
+  const parsedFrames = decompressFrames(gif, true);
 
   const width = gif.lsd.width;
   const height = gif.lsd.height;
 
   if (!width || !height || !parsedFrames.length) {
-    throw new Error("Не удалось разобрать кадры GIF");
+    throw new Error("Не удалось разобрать GIF");
   }
 
-  // Полный холст, на котором накапливаются изменения кадров.
-  let canvas = Buffer.alloc(width * height * 4);
+  // Не придумываем дополнительные кадры:
+  // используем только реально присутствующие в GIF.
   const frames = [];
+  let canvas = Buffer.alloc(width * height * 4);
 
   for (let index = 0; index < parsedFrames.length; index++) {
     const frame = parsedFrames[index];
     const dims = frame.dims;
     const patch = frame.patch;
 
-    // GIF disposal method 3: перед кадром нужно сохранить холст.
     const previousCanvas =
       frame.disposalType === 3 ? Buffer.from(canvas) : null;
 
-    // Накладываем фрагмент кадра с учётом прозрачности.
     for (let py = 0; py < dims.height; py++) {
       for (let px = 0; px < dims.width; px++) {
-        const sx = px;
-        const sy = py;
         const dx = dims.left + px;
         const dy = dims.top + py;
 
-        if (dx < 0 || dy < 0 || dx >= width || dy >= height) {
-          continue;
-        }
+        if (
+          dx < 0 || dy < 0 ||
+          dx >= width || dy >= height
+        ) continue;
 
-        const si = (sy * dims.width + sx) * 4;
+        const si = (py * dims.width + px) * 4;
         const di = (dy * width + dx) * 4;
         const alpha = patch[si + 3];
 
-        if (alpha === 0) continue;
+        if (!alpha) continue;
 
         if (alpha === 255) {
           canvas[di] = patch[si];
@@ -86,27 +162,38 @@ async function buildFrames() {
           canvas[di + 2] = patch[si + 2];
           canvas[di + 3] = 255;
         } else {
-          const dstAlpha = canvas[di + 3] / 255;
-          const srcAlpha = alpha / 255;
-          const outAlpha = srcAlpha + dstAlpha * (1 - srcAlpha);
+          const sa = alpha / 255;
+          const da = canvas[di + 3] / 255;
+          const oa = sa + da * (1 - sa);
 
-          if (outAlpha > 0) {
+          if (oa > 0) {
             for (let c = 0; c < 3; c++) {
               canvas[di + c] = Math.round(
                 (
-                  patch[si + c] * srcAlpha +
-                  canvas[di + c] * dstAlpha * (1 - srcAlpha)
-                ) / outAlpha
+                  patch[si + c] * sa +
+                  canvas[di + c] * da * (1 - sa)
+                ) / oa
               );
             }
-            canvas[di + 3] = Math.round(outAlpha * 255);
+
+            canvas[di + 3] = Math.round(oa * 255);
           }
         }
       }
     }
 
-    const png = await sharp(Buffer.from(canvas), {
-      raw: { width, height, channels: 4 }
+    const transparent = removeServiceAreas(
+      canvas,
+      width,
+      height
+    );
+
+    const png = await sharp(transparent, {
+      raw: {
+        width,
+        height,
+        channels: 4
+      }
     })
       .png()
       .toBuffer();
@@ -117,37 +204,28 @@ async function buildFrames() {
       png: png.toString("base64")
     });
 
-    // Учитываем очистку кадра после его показа.
     if (frame.disposalType === 2) {
       for (let py = 0; py < dims.height; py++) {
         for (let px = 0; px < dims.width; px++) {
           const dx = dims.left + px;
           const dy = dims.top + py;
 
-          if (dx < 0 || dy < 0 || dx >= width || dy >= height) {
-            continue;
-          }
+          if (
+            dx < 0 || dy < 0 ||
+            dx >= width || dy >= height
+          ) continue;
 
           const di = (dy * width + dx) * 4;
           canvas.fill(0, di, di + 4);
         }
       }
-    } else if (frame.disposalType === 3 && previousCanvas) {
+    } else if (
+      frame.disposalType === 3 &&
+      previousCanvas
+    ) {
       canvas = previousCanvas;
     }
   }
-
-  // Проверяем, что хотя бы некоторые кадры различаются.
-  const uniqueFrames = new Set(
-    frames.map(frame => frame.png.slice(0, 200))
-  );
-
-  console.info("[Quantum Phenomena] GIF разобран", {
-    width,
-    height,
-    frameCount: frames.length,
-    uniqueFramePrefixes: uniqueFrames.size
-  });
 
   return {
     ok: true,
@@ -155,12 +233,7 @@ async function buildFrames() {
     height,
     frameCount: frames.length,
     frames,
-    bounds: {
-      south: 38.2156,
-      west: 14.9893,
-      north: 69.6544,
-      east: 72.9238
-    },
+    bounds: BOUNDS,
     updatedAt: new Date().toISOString()
   };
 }
@@ -170,6 +243,7 @@ module.exports = async function handler(req, res) {
 
   if (req.method !== "GET") {
     res.setHeader("Allow", "GET");
+
     return res.status(405).json({
       ok: false,
       error: "Method not allowed"
@@ -195,8 +269,10 @@ module.exports = async function handler(req, res) {
 
   try {
     const result = await pending;
+
     cache = result;
     cacheTime = Date.now();
+
     return res.status(200).json(result);
   } catch (error) {
     console.error("[Quantum Phenomena]", error);

@@ -6,6 +6,7 @@
    - Нет автоматической анимации
    - Переключение кадров через таймлайн
    - Остальные слои карты не удаляются
+   - Точные границы исходного GIF
    ========================================================= */
 
 (function () {
@@ -15,7 +16,7 @@
   const GLOBAL_KEY = "__quantumPhenomenaLayer";
   const RETRY_MS = 1000;
 
-  const FALLBACK_BOUNDS = [
+  const GIF_BOUNDS = [
     [38.2155955810, 14.9892981264],
     [69.6543707199, 72.9237642948]
   ];
@@ -33,7 +34,6 @@
   let domObserver = null;
   let timelineObserver = null;
   let lastPointerX = NaN;
-  let lastPointerY = NaN;
 
   function log(...args) {
     console.info("[Quantum Phenomena]", ...args);
@@ -65,25 +65,6 @@
     return null;
   }
 
-  function getBounds(data) {
-    const b = data && data.bounds;
-
-    if (
-      b &&
-      Number.isFinite(Number(b.south)) &&
-      Number.isFinite(Number(b.west)) &&
-      Number.isFinite(Number(b.north)) &&
-      Number.isFinite(Number(b.east))
-    ) {
-      return [
-        [Number(b.south), Number(b.west)],
-        [Number(b.north), Number(b.east)]
-      ];
-    }
-
-    return FALLBACK_BOUNDS;
-  }
-
   function frameUrl(frame) {
     return "data:image/png;base64," + frame.png;
   }
@@ -110,10 +91,6 @@
     frameIndex = -1;
   }
 
-  /*
-   * Определяем позицию таймлайна по координате
-   * последнего нажатия или перемещения по canvas #bar.
-   */
   function getTimelinePosition() {
     const range = document.querySelector(
       '#range, input[type="range"], #timeline input'
@@ -125,7 +102,10 @@
       const value = Number(range.value);
 
       if (Number.isFinite(value) && max > min) {
-        return Math.max(0, Math.min(1, (value - min) / (max - min)));
+        return Math.max(
+          0,
+          Math.min(1, (value - min) / (max - min))
+        );
       }
     }
 
@@ -183,7 +163,7 @@
 
     layer = window.L.imageOverlay(
       frameUrl(frame),
-      FALLBACK_BOUNDS,
+      GIF_BOUNDS,
       {
         opacity: 1,
         interactive: false,
@@ -192,9 +172,10 @@
       }
     );
 
-    layer.setBounds(getBounds(window.__quantumPhenomenaData || {}));
     layer.addTo(map);
     frameIndex = index;
+
+    log("Применены границы GIF:", layer.getBounds().toBBoxString());
   }
 
   function updateFrame() {
@@ -230,7 +211,7 @@
     const currentRequest = ++requestId;
 
     try {
-      const response = await fetch(API, {
+      const response = await fetch(API + "?_=" + Date.now(), {
         method: "GET",
         cache: "no-store",
         credentials: "same-origin"
@@ -253,7 +234,9 @@
       }
 
       frames = data.frames.filter(function (frame) {
-        return frame && typeof frame.png === "string" && frame.png.length;
+        return frame &&
+          typeof frame.png === "string" &&
+          frame.png.length;
       });
 
       if (!frames.length) {
@@ -261,13 +244,17 @@
       }
 
       window.__quantumPhenomenaData = data;
+
       map = getMap();
 
       if (!map || getMode() !== "S") return;
 
-      showFrame(getSelectedFrame() >= 0 ? getSelectedFrame() : 0);
+      const selected = getSelectedFrame();
+      showFrame(selected >= 0 ? selected : 0);
 
       log("Загружено кадров:", frames.length);
+      log("Границы API (только диагностика):", data.bounds);
+      log("Границы слоя:", layer ? layer.getBounds().toBBoxString() : "слой не создан");
     } catch (error) {
       console.error("[Quantum Phenomena] Ошибка:", error);
       scheduleRetry();
@@ -343,7 +330,6 @@
 
       if (canvas && (target === canvas || canvas.contains(target))) {
         lastPointerX = event.clientX;
-        lastPointerY = event.clientY;
       }
 
       requestAnimationFrame(updateFrame);

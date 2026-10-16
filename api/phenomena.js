@@ -23,58 +23,94 @@ const BOUNDS = {
   east: 72.9238
 };
 
+/* =========================================================
+   Определение цветных метеоявлений
+   ========================================================= */
+
 function isPhenomena(r, g, b) {
   const max = Math.max(r, g, b);
   const min = Math.min(r, g, b);
   const spread = max - min;
 
-  // Нейтральные цвета: карта, серые зоны покрытия,
-  // подписи и большая часть служебной графики.
-  if (spread < 13) return false;
+  // Убираем нейтральные цвета: подложку, серые круги,
+  // большую часть границ и географической сетки.
+  if (spread < 20) return false;
 
-  // Явные цветные зоны.
-  if (spread >= 30) return true;
+  // Дополнительно подавляем бледные картографические линии.
+  if (max > 215 && spread < 55) return false;
 
-  // Слабые голубые и синие эхо-сигналы.
-  if (b > r + 7 && b >= g - 4) return true;
+  // Голубые и синие слабые эхо-сигналы.
+  if (
+    b > r + 9 &&
+    b >= g - 10 &&
+    spread >= 20
+  ) {
+    return true;
+  }
 
-  // Зелёные и бирюзовые слабые отражения.
-  if (g > r + 8 && g >= b - 12) return true;
+  // Зелёные и бирюзовые отражения.
+  if (
+    g > r + 9 &&
+    g >= b - 18 &&
+    spread >= 20
+  ) {
+    return true;
+  }
 
   // Жёлтые, оранжевые и красные отражения.
-  if (r > b + 15 && g > b + 8) return true;
+  if (
+    r > b + 18 &&
+    g > b + 10 &&
+    spread >= 25
+  ) {
+    return true;
+  }
 
-  return false;
+  // Яркие цветные участки, включая фиолетовые.
+  return spread >= 42;
 }
+
+/* =========================================================
+   Удаление фона и служебных элементов
+   ========================================================= */
 
 function removeServiceAreas(raw, width, height) {
   const out = Buffer.from(raw);
+
+  // Область легенды в левом верхнем углу.
+  // Вырезаем её вместе с рамкой и текстом.
+  const legendRight = Math.floor(width * 0.105);
+  const legendBottom = Math.floor(height * 0.285);
+
+  // Нижние логотипы.
+  const bottomLogoRight = Math.floor(width * 0.09);
+  const bottomLogoTop = Math.floor(height * 0.89);
+
+  // Крайние полосы с датой и временем.
+  const topStrip = Math.floor(height * 0.025);
+  const bottomStrip = Math.floor(height * 0.975);
 
   for (let y = 0; y < height; y++) {
     for (let x = 0; x < width; x++) {
       const i = (y * width + x) * 4;
 
-      // Легенда и подписи оборудования слева.
-      if (x < Math.floor(width * 0.065)) {
+      // Легенда и её подписи.
+      if (x < legendRight && y < legendBottom) {
         out[i + 3] = 0;
         continue;
       }
 
-      // Логотипы и копирайт внизу слева.
+      // Логотипы и копирайт снизу слева.
       if (
-        x < Math.floor(width * 0.09) &&
-        y > Math.floor(height * 0.89)
+        x < bottomLogoRight &&
+        y >= bottomLogoTop
       ) {
         out[i + 3] = 0;
         continue;
       }
 
-      // Время, напечатанное поверх карты вверху и внизу.
-      // Убираем узкие полосы с метками времени.
-      if (
-        y < Math.floor(height * 0.025) ||
-        y > Math.floor(height * 0.975)
-      ) {
+      // Дата и время в верхней и нижней кромке.
+      if (y < topStrip || y >= bottomStrip) {
         out[i + 3] = 0;
         continue;
       }
@@ -86,7 +122,7 @@ function removeServiceAreas(raw, width, height) {
       if (!isPhenomena(r, g, b)) {
         out[i + 3] = 0;
       } else {
-        // Сохраняем исходную яркость и цвет эха.
+        // Сохраняем цветные метеоявления без затемнения.
         out[i + 3] = 255;
       }
     }
@@ -95,9 +131,16 @@ function removeServiceAreas(raw, width, height) {
   return out;
 }
 
+/* =========================================================
+   Загрузка и обработка GIF
+   ========================================================= */
+
 async function buildFrames() {
   const sharp = require("sharp");
-  const { parseGIF, decompressFrames } = require("gifuct-js");
+  const {
+    parseGIF,
+    decompressFrames
+  } = require("gifuct-js");
 
   const response = await fetch(SOURCE, {
     headers: {
@@ -127,34 +170,47 @@ async function buildFrames() {
     throw new Error("Не удалось разобрать GIF");
   }
 
-  // Не придумываем дополнительные кадры:
-  // используем только реально присутствующие в GIF.
+  // Используем только реально существующие кадры GIF.
   const frames = [];
+
+  // Холст для сборки кадров с частичными обновлениями.
   let canvas = Buffer.alloc(width * height * 4);
 
-  for (let index = 0; index < parsedFrames.length; index++) {
+  for (
+    let index = 0;
+    index < parsedFrames.length;
+    index++
+  ) {
     const frame = parsedFrames[index];
     const dims = frame.dims;
     const patch = frame.patch;
 
+    // Disposal method 3 восстанавливает предыдущий холст.
     const previousCanvas =
-      frame.disposalType === 3 ? Buffer.from(canvas) : null;
+      frame.disposalType === 3
+        ? Buffer.from(canvas)
+        : null;
 
+    // Накладываем текущий фрагмент GIF на холст.
     for (let py = 0; py < dims.height; py++) {
       for (let px = 0; px < dims.width; px++) {
         const dx = dims.left + px;
         const dy = dims.top + py;
 
         if (
-          dx < 0 || dy < 0 ||
-          dx >= width || dy >= height
-        ) continue;
+          dx < 0 ||
+          dy < 0 ||
+          dx >= width ||
+          dy >= height
+        ) {
+          continue;
+        }
 
         const si = (py * dims.width + px) * 4;
         const di = (dy * width + dx) * 4;
         const alpha = patch[si + 3];
 
-        if (!alpha) continue;
+        if (alpha === 0) continue;
 
         if (alpha === 255) {
           canvas[di] = patch[si];
@@ -182,6 +238,7 @@ async function buildFrames() {
       }
     }
 
+    // Удаляем фон из готового кадра.
     const transparent = removeServiceAreas(
       canvas,
       width,
@@ -200,10 +257,14 @@ async function buildFrames() {
 
     frames.push({
       index,
-      delay: Math.max(100, Number(frame.delay) || 70) * 10,
+      delay: Math.max(
+        100,
+        Number(frame.delay) || 70
+      ) * 10,
       png: png.toString("base64")
     });
 
+    // Disposal method 2: очищаем область текущего кадра.
     if (frame.disposalType === 2) {
       for (let py = 0; py < dims.height; py++) {
         for (let px = 0; px < dims.width; px++) {
@@ -211,11 +272,16 @@ async function buildFrames() {
           const dy = dims.top + py;
 
           if (
-            dx < 0 || dy < 0 ||
-            dx >= width || dy >= height
-          ) continue;
+            dx < 0 ||
+            dy < 0 ||
+            dx >= width ||
+            dy >= height
+          ) {
+            continue;
+          }
 
           const di = (dy * width + dx) * 4;
+
           canvas.fill(0, di, di + 4);
         }
       }
@@ -227,6 +293,12 @@ async function buildFrames() {
     }
   }
 
+  console.info("[Quantum Phenomena] GIF обработан", {
+    width,
+    height,
+    frameCount: frames.length
+  });
+
   return {
     ok: true,
     width,
@@ -237,6 +309,10 @@ async function buildFrames() {
     updatedAt: new Date().toISOString()
   };
 }
+
+/* =========================================================
+   API handler
+   ========================================================= */
 
 module.exports = async function handler(req, res) {
   res.setHeader("Cache-Control", "no-store");
@@ -250,7 +326,10 @@ module.exports = async function handler(req, res) {
     });
   }
 
-  if (cache && Date.now() - cacheTime < CACHE_MS) {
+  if (
+    cache &&
+    Date.now() - cacheTime < CACHE_MS
+  ) {
     return res.status(200).json(cache);
   }
 

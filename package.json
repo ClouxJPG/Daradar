@@ -1,12 +1,12 @@
 {
-“name”: “daradar”,
-“version”: “1.0.0”,
-“private”: true,
-“engines”: {
-“node”: “22.x”
-},
-“dependencies”: {
-“sharp”: “^0.34.3”,
-“gifuct-js”: “^2.1.2”
-}
+  "name": "daradar",
+  "version": "1.0.0",
+  "private": true,
+  "engines": {
+    "node": "22.x"
+  },
+  "dependencies": {
+    "sharp": "^0.34.3",
+    "gifuct-js": "^2.1.2"
+  }
 }

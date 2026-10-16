@@ -1,10 +1,15 @@
+
 /* =========================================================
    Quantum Meteo — Phenomena API
    GIF -> PNG с прозрачным картографическим фоном
 
-   Сохраняет цветные метеоявления.
-   Удаляет нейтральную подложку, серые круги,
-   легенду и служебные надписи у краёв.
+   Удаляет:
+   - нейтральную подложку и серые круги;
+   - легенду и служебные надписи;
+   - стабильные цветные участки картографического фона;
+   - мелкий цветовой шум.
+
+   Сохраняет изменяющиеся метеоявления.
    ========================================================= */
 
 const SOURCE =
@@ -24,7 +29,32 @@ const BOUNDS = {
 };
 
 /* =========================================================
-   Определение цветных метеоявлений
+   Служебные области
+   ========================================================= */
+
+function isServicePixel(x, y, width, height) {
+  const legendRight = Math.floor(width * 0.105);
+  const legendBottom = Math.floor(height * 0.285);
+
+  const bottomLogoRight = Math.floor(width * 0.09);
+  const bottomLogoTop = Math.floor(height * 0.89);
+
+  const topStrip = Math.floor(height * 0.025);
+  const bottomStrip = Math.floor(height * 0.975);
+
+  if (x < legendRight && y < legendBottom) {
+    return true;
+  }
+
+  if (x < bottomLogoRight && y >= bottomLogoTop) {
+    return true;
+  }
+
+  return y < topStrip || y >= bottomStrip;
+}
+
+/* =========================================================
+   Строгая цветовая маска
    ========================================================= */
 
 function isPhenomena(r, g, b) {
@@ -32,107 +62,67 @@ function isPhenomena(r, g, b) {
   const min = Math.min(r, g, b);
   const spread = max - min;
 
-  // Убираем нейтральные цвета: подложку, серые круги,
-  // большую часть границ и географической сетки.
-  if (spread < 20) return false;
+  // Нейтральный фон, серые круги и линии.
+  if (spread < 24) return false;
 
-  // Дополнительно подавляем бледные картографические линии.
+  // Бледные картографические детали.
   if (max > 215 && spread < 55) return false;
 
-  // Голубые и синие слабые эхо-сигналы.
+  // Синий и голубой.
   if (
-    b > r + 9 &&
-    b >= g - 10 &&
-    spread >= 20
+    b >= 95 &&
+    b >= r + 22 &&
+    b >= g - 15 &&
+    spread >= 30
   ) {
     return true;
   }
 
-  // Зелёные и бирюзовые отражения.
+  // Зелёный.
   if (
-    g > r + 9 &&
-    g >= b - 18 &&
-    spread >= 20
+    g >= 85 &&
+    g >= r + 18 &&
+    g >= b - 22 &&
+    spread >= 28
   ) {
     return true;
   }
 
-  // Жёлтые, оранжевые и красные отражения.
+  // Жёлтый и оранжевый.
   if (
-    r > b + 18 &&
-    g > b + 10 &&
-    spread >= 25
+    r >= 145 &&
+    g >= 105 &&
+    r >= b + 35 &&
+    g >= b + 20
   ) {
     return true;
   }
 
-  // Яркие цветные участки, включая фиолетовые.
-  return spread >= 42;
+  // Красный и розовый.
+  if (
+    r >= 145 &&
+    r >= g + 20 &&
+    r >= b + 25
+  ) {
+    return true;
+  }
+
+  // Фиолетовый.
+  if (
+    b >= 90 &&
+    r >= 90 &&
+    b >= g + 18 &&
+    r >= g + 18 &&
+    spread >= 35
+  ) {
+    return true;
+  }
+
+  return false;
 }
 
 /* =========================================================
-   Удаление фона и служебных элементов
-   ========================================================= */
-
-function removeServiceAreas(raw, width, height) {
-  const out = Buffer.from(raw);
-
-  // Область легенды в левом верхнем углу.
-  // Вырезаем её вместе с рамкой и текстом.
-  const legendRight = Math.floor(width * 0.105);
-  const legendBottom = Math.floor(height * 0.285);
-
-  // Нижние логотипы.
-  const bottomLogoRight = Math.floor(width * 0.09);
-  const bottomLogoTop = Math.floor(height * 0.89);
-
-  // Крайние полосы с датой и временем.
-  const topStrip = Math.floor(height * 0.025);
-  const bottomStrip = Math.floor(height * 0.975);
-
-  for (let y = 0; y < height; y++) {
-    for (let x = 0; x < width; x++) {
-      const i = (y * width + x) * 4;
-
-      // Легенда и её подписи.
-      if (x < legendRight && y < legendBottom) {
-        out[i + 3] = 0;
-        continue;
-      }
-
-      // Логотипы и копирайт снизу слева.
-      if (
-        x < bottomLogoRight &&
-        y >= bottomLogoTop
-      ) {
-        out[i + 3] = 0;
-        continue;
-      }
-
-      // Дата и время в верхней и нижней кромке.
-      if (y < topStrip || y >= bottomStrip) {
-        out[i + 3] = 0;
-        continue;
-      }
-
-      const r = out[i];
-      const g = out[i + 1];
-      const b = out[i + 2];
-
-      if (!isPhenomena(r, g, b)) {
-        out[i + 3] = 0;
-      } else {
-        // Сохраняем цветные метеоявления без затемнения.
-        out[i + 3] = 255;
-      }
-    }
-  }
-
-  return out;
-}
-
-/* =========================================================
-   Загрузка и обработка GIF
+   Сборка настоящих кадров GIF
    ========================================================= */
 
 async function buildFrames() {
@@ -165,33 +155,29 @@ async function buildFrames() {
 
   const width = gif.lsd.width;
   const height = gif.lsd.height;
+  const pixelCount = width * height;
 
   if (!width || !height || !parsedFrames.length) {
     throw new Error("Не удалось разобрать GIF");
   }
 
-  // Используем только реально существующие кадры GIF.
-  const frames = [];
+  /*
+   * Сначала собираем все кадры без удаления фона.
+   * Это позволяет сравнить один и тот же пиксель
+   * во времени, а не только анализировать его цвет.
+   */
+  const rawFrames = [];
+  let canvas = Buffer.alloc(pixelCount * 4);
 
-  // Холст для сборки кадров с частичными обновлениями.
-  let canvas = Buffer.alloc(width * height * 4);
-
-  for (
-    let index = 0;
-    index < parsedFrames.length;
-    index++
-  ) {
-    const frame = parsedFrames[index];
+  for (const frame of parsedFrames) {
     const dims = frame.dims;
     const patch = frame.patch;
 
-    // Disposal method 3 восстанавливает предыдущий холст.
     const previousCanvas =
       frame.disposalType === 3
         ? Buffer.from(canvas)
         : null;
 
-    // Накладываем текущий фрагмент GIF на холст.
     for (let py = 0; py < dims.height; py++) {
       for (let px = 0; px < dims.width; px++) {
         const dx = dims.left + px;
@@ -238,33 +224,11 @@ async function buildFrames() {
       }
     }
 
-    // Удаляем фон из готового кадра.
-    const transparent = removeServiceAreas(
-      canvas,
-      width,
-      height
-    );
-
-    const png = await sharp(transparent, {
-      raw: {
-        width,
-        height,
-        channels: 4
-      }
-    })
-      .png()
-      .toBuffer();
-
-    frames.push({
-      index,
-      delay: Math.max(
-        100,
-        Number(frame.delay) || 70
-      ) * 10,
-      png: png.toString("base64")
+    rawFrames.push({
+      pixels: Buffer.from(canvas),
+      delay: Math.max(100, Number(frame.delay) || 70) * 10
     });
 
-    // Disposal method 2: очищаем область текущего кадра.
     if (frame.disposalType === 2) {
       for (let py = 0; py < dims.height; py++) {
         for (let px = 0; px < dims.width; px++) {
@@ -281,7 +245,6 @@ async function buildFrames() {
           }
 
           const di = (dy * width + dx) * 4;
-
           canvas.fill(0, di, di + 4);
         }
       }
@@ -291,6 +254,135 @@ async function buildFrames() {
     ) {
       canvas = previousCanvas;
     }
+  }
+
+  /* =======================================================
+     Анализ стабильности пикселей между кадрами
+
+     Если цветной пиксель почти не меняется на протяжении
+     всей анимации, он может быть частью постоянной карты.
+
+     Порог не абсолютный: учитываем небольшие колебания цвета
+     из-за GIF-палитры и сглаживания.
+     ======================================================= */
+
+  const stableBackground = new Uint8Array(pixelCount);
+
+  if (rawFrames.length >= 3) {
+    for (let p = 0; p < pixelCount; p++) {
+      const i = p * 4;
+
+      let minR = 255;
+      let maxR = 0;
+      let minG = 255;
+      let maxG = 0;
+      let minB = 255;
+      let maxB = 0;
+      let coloredCount = 0;
+
+      for (const frame of rawFrames) {
+        const data = frame.pixels;
+
+        if (data[i + 3] === 0) continue;
+
+        const r = data[i];
+        const g = data[i + 1];
+        const b = data[i + 2];
+
+        minR = Math.min(minR, r);
+        maxR = Math.max(maxR, r);
+        minG = Math.min(minG, g);
+        maxG = Math.max(maxG, g);
+        minB = Math.min(minB, b);
+        maxB = Math.max(maxB, b);
+
+        coloredCount++;
+      }
+
+      if (coloredCount < 3) continue;
+
+      const variation = Math.max(
+        maxR - minR,
+        maxG - minG,
+        maxB - minB
+      );
+
+      /*
+       * Удаляем только стабильные цветные пиксели.
+       * Нейтральный фон отдельно отсекается цветовой маской.
+       */
+      if (variation <= 3) {
+        const r = rawFrames[0].pixels[i];
+        const g = rawFrames[0].pixels[i + 1];
+        const b = rawFrames[0].pixels[i + 2];
+
+        if (isPhenomena(r, g, b)) {
+          stableBackground[p] = 1;
+        }
+      }
+    }
+  }
+
+  /* =======================================================
+     Прозрачные PNG
+     ======================================================= */
+
+  const frames = [];
+
+  for (let index = 0; index < rawFrames.length; index++) {
+    const sourcePixels = rawFrames[index].pixels;
+    const output = Buffer.from(sourcePixels);
+
+    for (let y = 0; y < height; y++) {
+      for (let x = 0; x < width; x++) {
+        const p = y * width + x;
+        const i = p * 4;
+
+        if (isServicePixel(x, y, width, height)) {
+          output[i + 3] = 0;
+          continue;
+        }
+
+        if (stableBackground[p]) {
+          output[i + 3] = 0;
+          continue;
+        }
+
+        if (sourcePixels[i + 3] === 0) {
+          output[i + 3] = 0;
+          continue;
+        }
+
+        if (
+          !isPhenomena(
+            sourcePixels[i],
+            sourcePixels[i + 1],
+            sourcePixels[i + 2]
+          )
+        ) {
+          output[i + 3] = 0;
+          continue;
+        }
+
+        output[i + 3] = 255;
+      }
+    }
+
+    const png = await sharp(output, {
+      raw: {
+        width,
+        height,
+        channels: 4
+      }
+    })
+      .png()
+      .toBuffer();
+
+    frames.push({
+      index,
+      delay: rawFrames[index].delay,
+      png: png.toString("base64")
+    });
   }
 
   console.info("[Quantum Phenomena] GIF обработан", {
@@ -326,10 +418,7 @@ module.exports = async function handler(req, res) {
     });
   }
 
-  if (
-    cache &&
-    Date.now() - cacheTime < CACHE_MS
-  ) {
+  if (cache && Date.now() - cacheTime < CACHE_MS) {
     return res.status(200).json(cache);
   }
 

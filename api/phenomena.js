@@ -22,10 +22,10 @@ let cacheTime = 0;
 let pending = null;
 
 const BOUNDS = {
-  south: 38.2156,
-  west: 14.9893,
-  north: 69.6544,
-  east: 72.9238
+  south: 39.0,
+  west: 13.5,
+  north: 70.4,
+  east: 71.4
 };
 
 /* =========================================================

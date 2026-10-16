@@ -1,4 +1,3 @@
-
 /* =========================================================
    Quantum Meteo — Phenomena API
    GIF -> PNG с прозрачным картографическим фоном
@@ -21,11 +20,21 @@ let cache = null;
 let cacheTime = 0;
 let pending = null;
 
+/* =========================================================
+   Точные границы исходного GIF
+   Порядок: [[юг, запад], [север, восток]]
+   ========================================================= */
+
+const GIF_BOUNDS = [
+  [38.2155955810, 14.9892981264],
+  [69.6543707199, 72.9237642948]
+];
+
 const BOUNDS = {
-  south: 39.0,
-  west: 13.5,
-  north: 70.4,
-  east: 71.4
+  south: GIF_BOUNDS[0][0],
+  west: GIF_BOUNDS[0][1],
+  north: GIF_BOUNDS[1][0],
+  east: GIF_BOUNDS[1][1]
 };
 
 /* =========================================================
@@ -62,10 +71,8 @@ function isPhenomena(r, g, b) {
   const min = Math.min(r, g, b);
   const spread = max - min;
 
-  // Нейтральный фон, серые круги и линии.
   if (spread < 24) return false;
 
-  // Бледные картографические детали.
   if (max > 215 && spread < 55) return false;
 
   // Синий и голубой.
@@ -122,7 +129,7 @@ function isPhenomena(r, g, b) {
 }
 
 /* =========================================================
-   Сборка настоящих кадров GIF
+   Сборка кадров GIF
    ========================================================= */
 
 async function buildFrames() {
@@ -161,11 +168,6 @@ async function buildFrames() {
     throw new Error("Не удалось разобрать GIF");
   }
 
-  /*
-   * Сначала собираем все кадры без удаления фона.
-   * Это позволяет сравнить один и тот же пиксель
-   * во времени, а не только анализировать его цвет.
-   */
   const rawFrames = [];
   let canvas = Buffer.alloc(pixelCount * 4);
 
@@ -258,12 +260,6 @@ async function buildFrames() {
 
   /* =======================================================
      Анализ стабильности пикселей между кадрами
-
-     Если цветной пиксель почти не меняется на протяжении
-     всей анимации, он может быть частью постоянной карты.
-
-     Порог не абсолютный: учитываем небольшие колебания цвета
-     из-за GIF-палитры и сглаживания.
      ======================================================= */
 
   const stableBackground = new Uint8Array(pixelCount);
@@ -307,10 +303,6 @@ async function buildFrames() {
         maxB - minB
       );
 
-      /*
-       * Удаляем только стабильные цветные пиксели.
-       * Нейтральный фон отдельно отсекается цветовой маской.
-       */
       if (variation <= 3) {
         const r = rawFrames[0].pixels[i];
         const g = rawFrames[0].pixels[i + 1];
@@ -388,7 +380,8 @@ async function buildFrames() {
   console.info("[Quantum Phenomena] GIF обработан", {
     width,
     height,
-    frameCount: frames.length
+    frameCount: frames.length,
+    bounds: GIF_BOUNDS
   });
 
   return {

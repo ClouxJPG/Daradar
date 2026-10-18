@@ -1,14 +1,9 @@
 /* =========================================================
    Quantum Meteo — Phenomena API
-   GIF -> PNG с прозрачным картографическим фоном
+   GIF → очистка → геопривязка Web Mercator → PNG
 
-   Удаляет:
-   - нейтральную подложку и серые круги;
-   - легенду и служебные надписи;
-   - стабильные цветные участки картографического фона;
-   - мелкий цветовой шум.
-
-   Сохраняет изменяющиеся метеоявления.
+   Калибровка перенесена из CLOrad.
+   API: GET /api/phenomena
    ========================================================= */
 
 const SOURCE =
@@ -19,11 +14,6 @@ const CACHE_MS = 60_000;
 let cache = null;
 let cacheTime = 0;
 let pending = null;
-
-/* =========================================================
-   Точные границы исходного GIF
-   Порядок: [[юг, запад], [север, восток]]
-   ========================================================= */
 
 const GIF_BOUNDS = [
   [38.2155955810, 14.9892981264],
@@ -38,32 +28,87 @@ const BOUNDS = {
 };
 
 /* =========================================================
-   Служебные области
+   CLOrad calibration
    ========================================================= */
 
-function isServicePixel(x, y, width, height) {
-  const legendRight = Math.floor(width * 0.105);
-  const legendBottom = Math.floor(height * 0.285);
+const UC_LON = 42.7295125;
+const UC_MERC = 1.159140403966;
+const US_LON = 11.984477282034;
+const US_MERC = 0.080017466461;
 
-  const bottomLogoRight = Math.floor(width * 0.09);
-  const bottomLogoTop = Math.floor(height * 0.89);
+const PX = [
+   614.702787260693,
+   213.524267491052,
+    86.865800553715,
+    17.052995641967,
+   -18.941081998370,
+    -3.466637383242
+];
 
-  const topStrip = Math.floor(height * 0.025);
-  const bottomStrip = Math.floor(height * 0.975);
+const PY = [
+   548.709828924571,
+   231.245550214358,
+   -80.613999910294,
+   -23.817051905972,
+   -12.895624928117,
+     3.365220370149
+];
 
-  if (x < legendRight && y < legendBottom) {
-    return true;
-  }
+const CALIBRATION_WIDTH = 1122;
+const CALIBRATION_HEIGHT = 1136;
 
-  if (x < bottomLogoRight && y >= bottomLogoTop) {
-    return true;
-  }
+function mercatorY(lat) {
+  const rad = lat * Math.PI / 180;
+  return Math.log(Math.tan(Math.PI / 4 + rad / 2));
+}
 
-  return y < topStrip || y >= bottomStrip;
+function geoToSource(lon, mercY) {
+  const x = (lon - UC_LON) / US_LON;
+  const y = (mercY - UC_MERC) / US_MERC;
+
+  const xx = x * x;
+  const xy = x * y;
+  const yy = y * y;
+
+  const sx =
+    PX[0] +
+    PX[1] * x +
+    PX[2] * y +
+    PX[3] * xx +
+    PX[4] * xy +
+    PX[5] * yy;
+
+  const sy =
+    PY[0] +
+    PY[1] * x +
+    PY[2] * y +
+    PY[3] * xx +
+    PY[4] * xy +
+    PY[5] * yy;
+
+  return [sx, sy];
 }
 
 /* =========================================================
-   Строгая цветовая маска
+   Служебные области исходной GIF
+   ========================================================= */
+
+function isServicePixel(x, y, width, height) {
+  const sx = x * CALIBRATION_WIDTH / width;
+  const sy = y * CALIBRATION_HEIGHT / height;
+
+  if (sx <= 145 && sy <= 365) return true;
+  if (sy <= 58) return true;
+  if (sx <= 160 && sy >= 965) return true;
+  if (sy >= 1105) return true;
+  if (sx >= 760 && sy >= 1060) return true;
+  if (sx >= 735 && sy <= 65) return true;
+
+  return false;
+}
+
+/* =========================================================
+   Фильтр метеоявлений
    ========================================================= */
 
 function isPhenomena(r, g, b) {
@@ -71,61 +116,81 @@ function isPhenomena(r, g, b) {
   const min = Math.min(r, g, b);
   const spread = max - min;
 
-  if (spread < 24) return false;
+  if (max < 70 || spread < 30) return false;
 
-  if (max > 215 && spread < 55) return false;
+  const saturation = spread / max;
+  if (saturation < 0.15) return false;
 
-  // Синий и голубой.
-  if (
-    b >= 95 &&
-    b >= r + 22 &&
-    b >= g - 15 &&
-    spread >= 30
-  ) {
-    return true;
+  if (max > 238 && saturation < 0.20) return false;
+
+  return true;
+}
+
+/* =========================================================
+   Пересчёт изображения в географическую сетку
+   ========================================================= */
+
+function reprojectFrame(source, width, height) {
+  const output = Buffer.alloc(width * height * 4);
+
+  const west = BOUNDS.west;
+  const east = BOUNDS.east;
+  const southMerc = mercatorY(BOUNDS.south);
+  const northMerc = mercatorY(BOUNDS.north);
+
+  const lonStep = (east - west) / Math.max(1, width - 1);
+  const mercStep =
+    (northMerc - southMerc) / Math.max(1, height - 1);
+
+  for (let y = 0; y < height; y++) {
+    const mercY = northMerc - y * mercStep;
+
+    for (let x = 0; x < width; x++) {
+      const lon = west + x * lonStep;
+      const [calX, calY] = geoToSource(lon, mercY);
+
+      const sourceX = Math.round(
+        calX * width / CALIBRATION_WIDTH
+      );
+
+      const sourceY = Math.round(
+        calY * height / CALIBRATION_HEIGHT
+      );
+
+      if (
+        sourceX < 0 ||
+        sourceX >= width ||
+        sourceY < 0 ||
+        sourceY >= height
+      ) {
+        continue;
+      }
+
+      if (
+        isServicePixel(sourceX, sourceY, width, height)
+      ) {
+        continue;
+      }
+
+      const si = (sourceY * width + sourceX) * 4;
+
+      const r = source[si];
+      const g = source[si + 1];
+      const b = source[si + 2];
+      const a = source[si + 3];
+
+      if (!a || !isPhenomena(r, g, b)) continue;
+
+      const oi = (y * width + x) * 4;
+
+      output[oi] = r;
+      output[oi + 1] = g;
+      output[oi + 2] = b;
+      output[oi + 3] = 255;
+    }
   }
 
-  // Зелёный.
-  if (
-    g >= 85 &&
-    g >= r + 18 &&
-    g >= b - 22 &&
-    spread >= 28
-  ) {
-    return true;
-  }
-
-  // Жёлтый и оранжевый.
-  if (
-    r >= 145 &&
-    g >= 105 &&
-    r >= b + 35 &&
-    g >= b + 20
-  ) {
-    return true;
-  }
-
-  // Красный и розовый.
-  if (
-    r >= 145 &&
-    r >= g + 20 &&
-    r >= b + 25
-  ) {
-    return true;
-  }
-
-  // Фиолетовый.
-  if (
-    b >= 90 &&
-    r >= 90 &&
-    b >= g + 18 &&
-    r >= g + 18 &&
-    spread >= 35
-  ) {
-    return true;
-  }
-
-  return false;
+  return output;
 }
 
 /* =========================================================
@@ -134,15 +199,13 @@ function isPhenomena(r, g, b) {
 
 async function buildFrames() {
   const sharp = require("sharp");
-  const {
-    parseGIF,
-    decompressFrames
-  } = require("gifuct-js");
+  const { parseGIF, decompressFrames } = require("gifuct-js");
 
   const response = await fetch(SOURCE, {
     headers: {
       "User-Agent": "Mozilla/5.0 (compatible; QuantumMeteo/1.0)",
-      Accept: "image/gif,image/*,*/*;q=0.8"
+      Accept: "image/gif,image/*,*/*;q=0.8",
+      Referer: "https://meteoinfo.ru/radanim"
     },
     signal: AbortSignal.timeout(20000)
   });
@@ -176,21 +239,14 @@ async function buildFrames() {
     const patch = frame.patch;
 
     const previousCanvas =
-      frame.disposalType === 3
-        ? Buffer.from(canvas)
-        : null;
+      frame.disposalType === 3 ? Buffer.from(canvas) : null;
 
     for (let py = 0; py < dims.height; py++) {
       for (let px = 0; px < dims.width; px++) {
         const dx = dims.left + px;
         const dy = dims.top + py;
 
-        if (
-          dx < 0 ||
-          dy < 0 ||
-          dx >= width ||
-          dy >= height
-        ) {
+        if (dx < 0 || dy < 0 || dx >= width || dy >= height) {
           continue;
         }
 
@@ -198,7 +254,7 @@ async function buildFrames() {
         const di = (dy * width + dx) * 4;
         const alpha = patch[si + 3];
 
-        if (alpha === 0) continue;
+        if (!alpha) continue;
 
         if (alpha === 255) {
           canvas[di] = patch[si];
@@ -237,12 +293,7 @@ async function buildFrames() {
           const dx = dims.left + px;
           const dy = dims.top + py;
 
-          if (
-            dx < 0 ||
-            dy < 0 ||
-            dx >= width ||
-            dy >= height
-          ) {
+          if (dx < 0 || dy < 0 || dx >= width || dy >= height) {
             continue;
           }
 
@@ -250,17 +301,12 @@ async function buildFrames() {
           canvas.fill(0, di, di + 4);
         }
       }
-    } else if (
-      frame.disposalType === 3 &&
-      previousCanvas
-    ) {
+    } else if (frame.disposalType === 3 && previousCanvas) {
       canvas = previousCanvas;
     }
   }
 
-  /* =======================================================
-     Анализ стабильности пикселей между кадрами
-     ======================================================= */
+  /* Удаление стабильного цветного фона */
 
   const stableBackground = new Uint8Array(pixelCount);
 
@@ -268,34 +314,25 @@ async function buildFrames() {
     for (let p = 0; p < pixelCount; p++) {
       const i = p * 4;
 
-      let minR = 255;
-      let maxR = 0;
-      let minG = 255;
-      let maxG = 0;
-      let minB = 255;
-      let maxB = 0;
-      let coloredCount = 0;
+      let minR = 255, maxR = 0;
+      let minG = 255, maxG = 0;
+      let minB = 255, maxB = 0;
+      let count = 0;
 
       for (const frame of rawFrames) {
         const data = frame.pixels;
+        if (!data[i + 3]) continue;
 
-        if (data[i + 3] === 0) continue;
-
-        const r = data[i];
-        const g = data[i + 1];
-        const b = data[i + 2];
-
-        minR = Math.min(minR, r);
-        maxR = Math.max(maxR, r);
-        minG = Math.min(minG, g);
-        maxG = Math.max(maxG, g);
-        minB = Math.min(minB, b);
-        maxB = Math.max(maxB, b);
-
-        coloredCount++;
+        minR = Math.min(minR, data[i]);
+        maxR = Math.max(maxR, data[i]);
+        minG = Math.min(minG, data[i + 1]);
+        maxG = Math.max(maxG, data[i + 1]);
+        minB = Math.min(minB, data[i + 2]);
+        maxB = Math.max(maxB, data[i + 2]);
+        count++;
       }
 
-      if (coloredCount < 3) continue;
+      if (count < 3) continue;
 
       const variation = Math.max(
         maxR - minR,
@@ -304,68 +341,49 @@ async function buildFrames() {
       );
 
       if (variation <= 3) {
-        const r = rawFrames[0].pixels[i];
-        const g = rawFrames[0].pixels[i + 1];
-        const b = rawFrames[0].pixels[i + 2];
+        const d = rawFrames[0].pixels;
 
-        if (isPhenomena(r, g, b)) {
+        if (isPhenomena(d[i], d[i + 1], d[i + 2])) {
           stableBackground[p] = 1;
         }
       }
     }
   }
 
-  /* =======================================================
-     Прозрачные PNG
-     ======================================================= */
+  /* Геопривязка, фильтрация и PNG */
 
   const frames = [];
 
   for (let index = 0; index < rawFrames.length; index++) {
     const sourcePixels = rawFrames[index].pixels;
-    const output = Buffer.from(sourcePixels);
+    const filtered = Buffer.from(sourcePixels);
 
     for (let y = 0; y < height; y++) {
       for (let x = 0; x < width; x++) {
         const p = y * width + x;
         const i = p * 4;
 
-        if (isServicePixel(x, y, width, height)) {
-          output[i + 3] = 0;
-          continue;
-        }
-
-        if (stableBackground[p]) {
-          output[i + 3] = 0;
-          continue;
-        }
-
-        if (sourcePixels[i + 3] === 0) {
-          output[i + 3] = 0;
-          continue;
-        }
-
         if (
+          isServicePixel(x, y, width, height) ||
+          stableBackground[p] ||
+          !sourcePixels[i + 3] ||
           !isPhenomena(
             sourcePixels[i],
             sourcePixels[i + 1],
             sourcePixels[i + 2]
           )
         ) {
-          output[i + 3] = 0;
-          continue;
+          filtered[i + 3] = 0;
+        } else {
+          filtered[i + 3] = 255;
         }
-
-        output[i + 3] = 255;
       }
     }
 
+    const output = reprojectFrame(filtered, width, height);
+
     const png = await sharp(output, {
-      raw: {
-        width,
-        height,
-        channels: 4
-      }
+      raw: { width, height, channels: 4 }
     })
       .png()
       .toBuffer();

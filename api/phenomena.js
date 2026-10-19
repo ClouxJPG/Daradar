@@ -1,22 +1,19 @@
 /* =========================================================
    Quantum Meteo — Phenomena API
-   GIF -> очистка -> геопривязка -> прозрачные PNG
+   GIF -> очистка -> геопривязка -> PNG
 
-   Источник: Meteoinfo phenomena.gif
-   Калибровка: CLOrad
-   API: GET /api/phenomena
+   GET /api/phenomena
+   GET /api/phenomena?frame=latest
+   GET /api/phenomena?frame=0
    ========================================================= */
 
-const SOURCE =
-  "https://meteoinfo.ru/hmc-output/rmap/phenomena.gif";
-
+const SOURCE = "https://meteoinfo.ru/hmc-output/rmap/phenomena.gif";
 const CACHE_MS = 60_000;
 
 let cache = null;
 let cacheTime = 0;
 let pending = null;
 
-/* Географические границы исходной карты */
 const GIF_BOUNDS = [
   [38.2155955810, 14.9892981264],
   [69.6543707199, 72.9237642948]
@@ -29,9 +26,7 @@ const BOUNDS = {
   east: GIF_BOUNDS[1][1]
 };
 
-/* =========================================================
-   CLOrad — базовая калибровка
-   ========================================================= */
+/* CLOrad — базовая калибровка */
 
 const UC_LON = 42.7295125;
 const UC_MERC = 1.159140403966;
@@ -39,36 +34,25 @@ const US_LON = 11.984477282034;
 const US_MERC = 0.080017466461;
 
 const PX = [
-   614.702787260693,
-   213.524267491052,
-    86.865800553715,
-    17.052995641967,
-   -18.941081998370,
-    -3.466637383242
+  614.702787260693,
+  213.524267491052,
+  86.865800553715,
+  17.052995641967,
+  -18.941081998370,
+  -3.466637383242
 ];
 
 const PY = [
-   548.709828924571,
-   231.245550214358,
-   -80.613999910294,
-   -23.817051905972,
-   -12.895624928117,
-     3.365220370149
+  548.709828924571,
+  231.245550214358,
+  -80.613999910294,
+  -23.817051905972,
+  -12.895624928117,
+  3.365220370149
 ];
 
 const CALIBRATION_WIDTH = 1122;
 const CALIBRATION_HEIGHT = 1136;
-
-/* =========================================================
-   Настройка геопривязки
-
-   shiftLon  — смещение по долготе в градусах
-   shiftMerc — смещение по Mercator Y
-   scaleLon  — масштаб по горизонтали
-   scaleMerc — масштаб по вертикали
-
-   0 / 0 / 1 / 1 = исходная калибровка CLOrad.
-   ========================================================= */
 
 const GEO_ADJUST = {
   shiftLon: 0,
@@ -91,27 +75,15 @@ function geoToSource(lon, mercY) {
   const yy = y * y;
 
   const sx =
-    PX[0] +
-    PX[1] * x +
-    PX[2] * y +
-    PX[3] * xx +
-    PX[4] * xy +
-    PX[5] * yy;
+    PX[0] + PX[1] * x + PX[2] * y +
+    PX[3] * xx + PX[4] * xy + PX[5] * yy;
 
   const sy =
-    PY[0] +
-    PY[1] * x +
-    PY[2] * y +
-    PY[3] * xx +
-    PY[4] * xy +
-    PY[5] * yy;
+    PY[0] + PY[1] * x + PY[2] * y +
+    PY[3] * xx + PY[4] * xy + PY[5] * yy;
 
   return [sx, sy];
 }
-
-/* =========================================================
-   Служебные области исходной GIF
-   ========================================================= */
 
 function isServicePixel(x, y, width, height) {
   const sx = x * CALIBRATION_WIDTH / width;
@@ -126,10 +98,6 @@ function isServicePixel(x, y, width, height) {
 
   return false;
 }
-
-/* =========================================================
-   Фильтр метеоявлений
-   ========================================================= */
 
 function isPhenomena(r, g, b) {
   const max = Math.max(r, g, b);
@@ -146,13 +114,6 @@ function isPhenomena(r, g, b) {
   return true;
 }
 
-/* =========================================================
-   Географическая перепроекция кадра
-
-   Для каждой точки выходной геосетки находим
-   соответствующий пиксель исходной GIF.
-   ========================================================= */
-
 function reprojectFrame(source, width, height) {
   const output = Buffer.alloc(width * height * 4);
 
@@ -161,21 +122,16 @@ function reprojectFrame(source, width, height) {
   const southMerc = mercatorY(BOUNDS.south);
   const northMerc = mercatorY(BOUNDS.north);
 
-  const lonStep =
-    (east - west) / Math.max(1, width - 1);
-
-  const mercStep =
-    (northMerc - southMerc) / Math.max(1, height - 1);
+  const lonStep = (east - west) / Math.max(1, width - 1);
+  const mercStep = (northMerc - southMerc) / Math.max(1, height - 1);
 
   const scaleLon =
-    Number.isFinite(GEO_ADJUST.scaleLon) &&
-    GEO_ADJUST.scaleLon > 0
+    Number.isFinite(GEO_ADJUST.scaleLon) && GEO_ADJUST.scaleLon > 0
       ? GEO_ADJUST.scaleLon
       : 1;
 
   const scaleMerc =
-    Number.isFinite(GEO_ADJUST.scaleMerc) &&
-    GEO_ADJUST.scaleMerc > 0
+    Number.isFinite(GEO_ADJUST.scaleMerc) && GEO_ADJUST.scaleMerc > 0
       ? GEO_ADJUST.scaleMerc
       : 1;
 
@@ -186,53 +142,26 @@ function reprojectFrame(source, width, height) {
       const lon = west + x * lonStep;
 
       const correctedLon =
-        UC_LON +
-        (
-          lon -
-          UC_LON -
-          GEO_ADJUST.shiftLon
-        ) / scaleLon;
+        UC_LON + (lon - UC_LON - GEO_ADJUST.shiftLon) / scaleLon;
 
       const correctedMerc =
-        UC_MERC +
-        (
-          mercY -
-          UC_MERC -
-          GEO_ADJUST.shiftMerc
-        ) / scaleMerc;
+        UC_MERC + (mercY - UC_MERC - GEO_ADJUST.shiftMerc) / scaleMerc;
 
-      const [calX, calY] = geoToSource(
-        correctedLon,
-        correctedMerc
-      );
+      const [calX, calY] = geoToSource(correctedLon, correctedMerc);
 
-      const sourceX = Math.round(
-        calX * width / CALIBRATION_WIDTH
-      );
-
-      const sourceY = Math.round(
-        calY * height / CALIBRATION_HEIGHT
-      );
+      const sourceX = Math.round(calX * width / CALIBRATION_WIDTH);
+      const sourceY = Math.round(calY * height / CALIBRATION_HEIGHT);
 
       if (
-        sourceX < 0 ||
-        sourceX >= width ||
-        sourceY < 0 ||
-        sourceY >= height
-      ) {
-        continue;
-      }
+        sourceX < 0 || sourceX >= width ||
+        sourceY < 0 || sourceY >= height
+      ) continue;
 
-      if (
-        isServicePixel(sourceX, sourceY, width, height)
-      ) {
-        continue;
-      }
+      if (isServicePixel(sourceX, sourceY, width, height)) continue;
 
       const si = (sourceY * width + sourceX) * 4;
-      const alpha = source[si + 3];
 
-      if (!alpha) continue;
+      if (!source[si + 3]) continue;
 
       const r = source[si];
       const g = source[si + 1];
@@ -252,21 +181,13 @@ function reprojectFrame(source, width, height) {
   return output;
 }
 
-/* =========================================================
-   Сборка кадров GIF
-   ========================================================= */
-
 async function buildFrames() {
   const sharp = require("sharp");
-  const {
-    parseGIF,
-    decompressFrames
-  } = require("gifuct-js");
+  const { parseGIF, decompressFrames } = require("gifuct-js");
 
   const response = await fetch(SOURCE, {
     headers: {
-      "User-Agent":
-        "Mozilla/5.0 (compatible; QuantumMeteo/1.0)",
+      "User-Agent": "Mozilla/5.0 (compatible; QuantumMeteo/1.0)",
       "Accept": "image/gif,image/*,*/*;q=0.8",
       "Referer": "https://meteoinfo.ru/radanim"
     },
@@ -274,14 +195,10 @@ async function buildFrames() {
   });
 
   if (!response.ok) {
-    throw new Error(
-      `Meteoinfo HTTP ${response.status}`
-    );
+    throw new Error(`Meteoinfo HTTP ${response.status}`);
   }
 
-  const input = Buffer.from(
-    await response.arrayBuffer()
-  );
+  const input = Buffer.from(await response.arrayBuffer());
 
   if (input.toString("ascii", 0, 3) !== "GIF") {
     throw new Error("Источник не вернул GIF");
@@ -301,30 +218,21 @@ async function buildFrames() {
   const rawFrames = [];
   let canvas = Buffer.alloc(pixelCount * 4);
 
-  /* Собираем полные кадры с учётом disposal GIF */
+  /* Сборка полных кадров с учётом disposal GIF */
 
   for (const frame of parsedFrames) {
     const dims = frame.dims;
     const patch = frame.patch;
 
     const previousCanvas =
-      frame.disposalType === 3
-        ? Buffer.from(canvas)
-        : null;
+      frame.disposalType === 3 ? Buffer.from(canvas) : null;
 
     for (let py = 0; py < dims.height; py++) {
       for (let px = 0; px < dims.width; px++) {
         const dx = dims.left + px;
         const dy = dims.top + py;
 
-        if (
-          dx < 0 ||
-          dy < 0 ||
-          dx >= width ||
-          dy >= height
-        ) {
-          continue;
-        }
+        if (dx < 0 || dy < 0 || dx >= width || dy >= height) continue;
 
         const si = (py * dims.width + px) * 4;
         const di = (dy * width + dx) * 4;
@@ -360,10 +268,7 @@ async function buildFrames() {
 
     rawFrames.push({
       pixels: Buffer.from(canvas),
-      delay: Math.max(
-        100,
-        Number(frame.delay) || 70
-      ) * 10
+      delay: Math.max(100, Number(frame.delay) || 70) * 10
     });
 
     if (frame.disposalType === 2) {
@@ -372,33 +277,20 @@ async function buildFrames() {
           const dx = dims.left + px;
           const dy = dims.top + py;
 
-          if (
-            dx < 0 ||
-            dy < 0 ||
-            dx >= width ||
-            dy >= height
-          ) {
-            continue;
-          }
+          if (dx < 0 || dy < 0 || dx >= width || dy >= height) continue;
 
           const di = (dy * width + dx) * 4;
           canvas.fill(0, di, di + 4);
         }
       }
-    } else if (
-      frame.disposalType === 3 &&
-      previousCanvas
-    ) {
+    } else if (frame.disposalType === 3 && previousCanvas) {
       canvas = previousCanvas;
     }
   }
 
-  /* =======================================================
-     Поиск стабильных цветных областей между кадрами
-     ======================================================= */
+  /* Поиск стабильных цветных областей */
 
-  const stableBackground =
-    new Uint8Array(pixelCount);
+  const stableBackground = new Uint8Array(pixelCount);
 
   if (rawFrames.length >= 3) {
     for (let p = 0; p < pixelCount; p++) {
@@ -416,10 +308,8 @@ async function buildFrames() {
 
         minR = Math.min(minR, data[i]);
         maxR = Math.max(maxR, data[i]);
-
         minG = Math.min(minG, data[i + 1]);
         maxG = Math.max(maxG, data[i + 1]);
-
         minB = Math.min(minB, data[i + 2]);
         maxB = Math.max(maxB, data[i + 2]);
 
@@ -437,30 +327,18 @@ async function buildFrames() {
       if (variation <= 3) {
         const data = rawFrames[0].pixels;
 
-        if (
-          isPhenomena(
-            data[i],
-            data[i + 1],
-            data[i + 2]
-          )
-        ) {
+        if (isPhenomena(data[i], data[i + 1], data[i + 2])) {
           stableBackground[p] = 1;
         }
       }
     }
   }
 
-  /* =======================================================
-     Очистка -> перепроекция -> PNG
-     ======================================================= */
+  /* Очистка, перепроекция и сжатие PNG */
 
   const frames = [];
 
-  for (
-    let index = 0;
-    index < rawFrames.length;
-    index++
-  ) {
+  for (let index = 0; index < rawFrames.length; index++) {
     const sourcePixels = rawFrames[index].pixels;
     const filtered = Buffer.from(sourcePixels);
 
@@ -483,20 +361,12 @@ async function buildFrames() {
       }
     }
 
-    const output = reprojectFrame(
-      filtered,
-      width,
-      height
-    );
+    const output = reprojectFrame(filtered, width, height);
 
     const png = await sharp(output, {
-      raw: {
-        width,
-        height,
-        channels: 4
-      }
+      raw: { width, height, channels: 4 }
     })
-      .png()
+      .png({ compressionLevel: 9, adaptiveFiltering: true })
       .toBuffer();
 
     frames.push({
@@ -506,16 +376,13 @@ async function buildFrames() {
     });
   }
 
-  console.info(
-    "[Quantum Phenomena] GIF обработан",
-    {
-      width,
-      height,
-      frameCount: frames.length,
-      bounds: GIF_BOUNDS,
-      adjustment: GEO_ADJUST
-    }
-  );
+  console.info("[Quantum Phenomena] GIF обработан", {
+    width,
+    height,
+    frameCount: frames.length,
+    bounds: GIF_BOUNDS,
+    adjustment: GEO_ADJUST
+  });
 
   return {
     ok: true,
@@ -528,55 +395,80 @@ async function buildFrames() {
   };
 }
 
-/* =========================================================
-   API handler
-   ========================================================= */
+/* API — отдаём только запрошенный кадр */
 
 module.exports = async function handler(req, res) {
   res.setHeader("Cache-Control", "no-store");
 
   if (req.method !== "GET") {
     res.setHeader("Allow", "GET");
-
-    return res.status(405).json({
-      ok: false,
-      error: "Method not allowed"
-    });
+    return res.status(405).json({ ok: false, error: "Method not allowed" });
   }
+
+  let data;
 
   if (cache && Date.now() - cacheTime < CACHE_MS) {
-    return res.status(200).json(cache);
-  }
-
-  if (pending) {
+    data = cache;
+  } else if (pending) {
     try {
-      return res.status(200).json(await pending);
+      data = await pending;
     } catch (error) {
       return res.status(502).json({
         ok: false,
-        error: error.message
+        error: "Не удалось обработать GIF",
+        details: error.message
       });
+    }
+  } else {
+    pending = buildFrames();
+
+    try {
+      data = await pending;
+      cache = data;
+      cacheTime = Date.now();
+    } catch (error) {
+      console.error("[Quantum Phenomena]", error);
+
+      return res.status(502).json({
+        ok: false,
+        error: "Не удалось обработать GIF",
+        details: error.message
+      });
+    } finally {
+      pending = null;
     }
   }
 
-  pending = buildFrames();
-
-  try {
-    const result = await pending;
-
-    cache = result;
-    cacheTime = Date.now();
-
-    return res.status(200).json(result);
-  } catch (error) {
-    console.error("[Quantum Phenomena]", error);
-
-    return res.status(502).json({
-      ok: false,
-      error: "Не удалось обработать GIF",
-      details: error.message
-    });
-  } finally {
-    pending = null;
+  if (!data || !Array.isArray(data.frames) || !data.frames.length) {
+    return res.status(502).json({ ok: false, error: "Нет доступных кадров" });
   }
+
+  const requested = req.query?.frame;
+  const index = requested === undefined || requested === "latest"
+    ? data.frames.length - 1
+    : Number(requested);
+
+  if (!Number.isInteger(index) || index < 0 || index >= data.frames.length) {
+    return res.status(400).json({
+      ok: false,
+      error: "Неверный номер кадра",
+      frameCount: data.frames.length
+    });
+  }
+
+  const frame = data.frames[index];
+
+  return res.status(200).json({
+    ok: true,
+    width: data.width,
+    height: data.height,
+    frameCount: data.frames.length,
+    frame: {
+      index: frame.index,
+      delay: frame.delay,
+      png: frame.png
+    },
+    bounds: data.bounds,
+    updatedAt: data.updatedAt
+  });
 };

@@ -6,6 +6,7 @@
    - Нет автоматической анимации
    - Кадры загружаются по запросу
    - Загруженные кадры кэшируются в памяти
+   - Не публикует число GIF-кадров в общий таймлайн
    - Остальные слои карты не удаляются
    ========================================================= */
 
@@ -81,9 +82,14 @@
   function removeLayer() {
     if (map && layer) {
       try {
-        if (map.hasLayer(layer)) map.removeLayer(layer);
+        if (map.hasLayer(layer)) {
+          map.removeLayer(layer);
+        }
       } catch (error) {
-        console.warn("[Quantum Phenomena] Ошибка удаления:", error);
+        console.warn(
+          "[Quantum Phenomena] Ошибка удаления:",
+          error
+        );
       }
     }
 
@@ -104,6 +110,7 @@
 
       if (oldestKey === frameIndex) {
         const value = frameCache.get(oldestKey);
+
         frameCache.delete(oldestKey);
         frameCache.set(oldestKey, value);
         continue;
@@ -113,11 +120,27 @@
     }
   }
 
+  function publishPhenomenaMetadata(data) {
+    /*
+     * ВАЖНО:
+     * Не передаём frameCount наружу.
+     * Количество кадров GIF не должно изменять
+     * количество делений общего таймлайна карты.
+     */
+    window.__quantumPhenomenaData = {
+      ok: true,
+      bounds: data.bounds || null,
+      updatedAt: data.updatedAt || null
+    };
+  }
+
   async function fetchFrame(index) {
     if (frameCache.has(index)) {
       const cached = frameCache.get(index);
+
       frameCache.delete(index);
       frameCache.set(index, cached);
+
       return cached;
     }
 
@@ -141,22 +164,25 @@
 
       const data = await response.json();
 
-      if (!data.ok || !data.frame || typeof data.frame.png !== "string") {
-        throw new Error(data.error || "API не вернул PNG-кадр");
+      if (
+        !data.ok ||
+        !data.frame ||
+        typeof data.frame.png !== "string"
+      ) {
+        throw new Error(
+          data.error || "API не вернул PNG-кадр"
+        );
       }
 
-      if (Number.isInteger(data.frameCount) && data.frameCount > 0) {
+      if (
+        Number.isInteger(data.frameCount) &&
+        data.frameCount > 0
+      ) {
         frameCount = data.frameCount;
       }
 
       rememberFrame(data.frame.index, data.frame);
-
-      window.__quantumPhenomenaData = {
-        ok: true,
-        frameCount: frameCount,
-        bounds: data.bounds,
-        updatedAt: data.updatedAt
-      };
+      publishPhenomenaMetadata(data);
 
       return data.frame;
     })();
@@ -172,7 +198,7 @@
 
   function getTimelinePosition() {
     const range = document.querySelector(
-      '#range, input[type="range"], #timeline input'
+      "#range, input[type='range'], #timeline input"
     );
 
     if (range) {
@@ -180,8 +206,16 @@
       const max = Number(range.max || 100);
       const value = Number(range.value);
 
-      if (Number.isFinite(value) && max > min) {
-        return Math.max(0, Math.min(1, (value - min) / (max - min)));
+      if (
+        Number.isFinite(value) &&
+        Number.isFinite(min) &&
+        Number.isFinite(max) &&
+        max > min
+      ) {
+        return Math.max(
+          0,
+          Math.min(1, (value - min) / (max - min))
+        );
       }
     }
 
@@ -193,7 +227,10 @@
       if (rect.width > 0) {
         return Math.max(
           0,
-          Math.min(1, (lastPointerX - rect.left) / rect.width)
+          Math.min(
+            1,
+            (lastPointerX - rect.left) / rect.width
+          )
         );
       }
     }
@@ -206,7 +243,9 @@
 
     const position = getTimelinePosition();
 
-    if (position === null) return frameCount - 1;
+    if (position === null) {
+      return frameCount - 1;
+    }
 
     return Math.round(position * (frameCount - 1));
   }
@@ -226,7 +265,13 @@
       if (frameIndex !== index) {
         layer.setUrl(frameUrl(frame));
         frameIndex = index;
-        log("Кадр:", index + 1, "/", frameCount);
+
+        log(
+          "Кадр:",
+          index + 1,
+          "/",
+          frameCount
+        );
       }
 
       return;
@@ -246,7 +291,10 @@
     layer.addTo(map);
     frameIndex = index;
 
-    log("Слой добавлен:", layer.getBounds().toBBoxString());
+    log(
+      "Слой добавлен:",
+      layer.getBounds().toBBoxString()
+    );
   }
 
   async function showFrame(index) {
@@ -259,9 +307,16 @@
       return;
     }
 
-    index = Math.max(0, Math.min(frameCount - 1, index));
+    index = Math.max(
+      0,
+      Math.min(frameCount - 1, index)
+    );
 
-    if (frameIndex === index && layer && map.hasLayer(layer)) {
+    if (
+      frameIndex === index &&
+      layer &&
+      map.hasLayer(layer)
+    ) {
       return;
     }
 
@@ -281,17 +336,28 @@
       }
 
       map = getMap();
+
       if (!map) return;
 
       displayFrame(index, frame);
     } catch (error) {
-      console.error("[Quantum Phenomena] Ошибка кадра:", error);
+      console.error(
+        "[Quantum Phenomena] Ошибка кадра:",
+        error
+      );
+
       scheduleRetry();
     }
   }
 
   async function loadInitial() {
-    if (destroyed || loadingInitial || getMode() !== "S") return;
+    if (
+      destroyed ||
+      loadingInitial ||
+      getMode() !== "S"
+    ) {
+      return;
+    }
 
     map = getMap();
 
@@ -304,12 +370,14 @@
     const currentRequest = requestId;
 
     try {
-      /* Сначала получаем последний кадр и общее число кадров. */
-      const response = await fetch(API + "?frame=latest", {
-        method: "GET",
-        cache: "no-store",
-        credentials: "same-origin"
-      });
+      const response = await fetch(
+        API + "?frame=latest",
+        {
+          method: "GET",
+          cache: "no-store",
+          credentials: "same-origin"
+        }
+      );
 
       if (!response.ok) {
         throw new Error("API HTTP " + response.status);
@@ -317,28 +385,37 @@
 
       const data = await response.json();
 
-      if (destroyed || currentRequest !== requestId) return;
+      if (
+        destroyed ||
+        currentRequest !== requestId
+      ) {
+        return;
+      }
 
-      if (!data.ok || !data.frame || !data.frame.png) {
-        throw new Error(data.error || "API не вернул начальный кадр");
+      if (
+        !data.ok ||
+        !data.frame ||
+        !data.frame.png
+      ) {
+        throw new Error(
+          data.error || "API не вернул начальный кадр"
+        );
       }
 
       frameCount = Number(data.frameCount) || 1;
-      rememberFrame(data.frame.index, data.frame);
 
-      window.__quantumPhenomenaData = {
-        ok: true,
-        frameCount: frameCount,
-        bounds: data.bounds,
-        updatedAt: data.updatedAt
-      };
+      rememberFrame(data.frame.index, data.frame);
+      publishPhenomenaMetadata(data);
 
       map = getMap();
 
       if (!map || getMode() !== "S") return;
 
       const selected = getSelectedFrame();
-      const index = selected >= 0 ? selected : data.frame.index;
+
+      const index = selected >= 0
+        ? selected
+        : data.frame.index;
 
       if (index === data.frame.index) {
         displayFrame(index, data.frame);
@@ -346,9 +423,13 @@
         await showFrame(index);
       }
 
-      log("Кадров доступно:", frameCount);
+      log("Кадров GIF:", frameCount);
     } catch (error) {
-      console.error("[Quantum Phenomena] Ошибка загрузки:", error);
+      console.error(
+        "[Quantum Phenomena] Ошибка загрузки:",
+        error
+      );
+
       scheduleRetry();
     } finally {
       loadingInitial = false;
@@ -356,7 +437,12 @@
   }
 
   function updateFrame() {
-    if (destroyed || getMode() !== "S") return;
+    if (
+      destroyed ||
+      getMode() !== "S"
+    ) {
+      return;
+    }
 
     if (!frameCount) {
       loadInitial();
@@ -365,7 +451,9 @@
 
     const index = getSelectedFrame();
 
-    if (index >= 0) showFrame(index);
+    if (index >= 0) {
+      showFrame(index);
+    }
   }
 
   function scheduleRetry() {
@@ -404,6 +492,7 @@
     if (mode === "R" || mode === "H") {
       requestId++;
       lastRequestedFrame = -1;
+
       stopRetry();
       removeLayer();
     }
@@ -412,7 +501,9 @@
   function scheduleSync() {
     if (destroyed) return;
 
-    if (syncTimer !== null) clearTimeout(syncTimer);
+    if (syncTimer !== null) {
+      clearTimeout(syncTimer);
+    }
 
     syncTimer = setTimeout(function () {
       syncTimer = null;
@@ -432,7 +523,10 @@
     ) {
       const canvas = document.querySelector("#bar");
 
-      if (canvas && (target === canvas || canvas.contains(target))) {
+      if (
+        canvas &&
+        (target === canvas || canvas.contains(target))
+      ) {
         lastPointerX = event.clientX;
       }
 
@@ -441,9 +535,16 @@
   }
 
   function installStyles() {
-    if (document.getElementById("quantum-phenomena-style")) return;
+    if (
+      document.getElementById(
+        "quantum-phenomena-style"
+      )
+    ) {
+      return;
+    }
 
     const style = document.createElement("style");
+
     style.id = "quantum-phenomena-style";
     style.textContent = `
       .leaflet-image-layer.quantum-phenomena-overlay {
@@ -473,16 +574,37 @@
 
       if (
         target instanceof Element &&
-        target.closest('[data-m="S"], [data-m="R"], [data-m="H"]')
+        target.closest(
+          '[data-m="S"], [data-m="R"], [data-m="H"]'
+        )
       ) {
         scheduleSync();
       }
     });
 
-    document.addEventListener("pointerdown", onTimelineEvent, true);
-    document.addEventListener("pointermove", onTimelineEvent, true);
-    document.addEventListener("input", onTimelineEvent, true);
-    document.addEventListener("change", onTimelineEvent, true);
+    document.addEventListener(
+      "pointerdown",
+      onTimelineEvent,
+      true
+    );
+
+    document.addEventListener(
+      "pointermove",
+      onTimelineEvent,
+      true
+    );
+
+    document.addEventListener(
+      "input",
+      onTimelineEvent,
+      true
+    );
+
+    document.addEventListener(
+      "change",
+      onTimelineEvent,
+      true
+    );
 
     modeObserver = new MutationObserver(scheduleSync);
 
@@ -490,13 +612,20 @@
       document.querySelectorAll(
         '.st .b[data-m], #bp .st .b[data-m], button[data-m]'
       ).forEach(function (button) {
-        if (button.dataset.phenomenaObserved === "1") return;
+        if (
+          button.dataset.phenomenaObserved === "1"
+        ) {
+          return;
+        }
 
         button.dataset.phenomenaObserved = "1";
 
         modeObserver.observe(button, {
           attributes: true,
-          attributeFilter: ["class", "aria-pressed"]
+          attributeFilter: [
+            "class",
+            "aria-pressed"
+          ]
         });
       });
     }
@@ -538,12 +667,14 @@
 
     reload: function () {
       requestId++;
+
       stopRetry();
       removeLayer();
 
       frameCount = 0;
       frameCache.clear();
       frameRequests.clear();
+
       loadingInitial = false;
       lastRequestedFrame = -1;
 
@@ -555,6 +686,7 @@
     destroy: function () {
       destroyed = true;
       requestId++;
+
       stopRetry();
       removeLayer();
 
@@ -567,17 +699,40 @@
         syncTimer = null;
       }
 
-      document.removeEventListener("pointerdown", onTimelineEvent, true);
-      document.removeEventListener("pointermove", onTimelineEvent, true);
-      document.removeEventListener("input", onTimelineEvent, true);
-      document.removeEventListener("change", onTimelineEvent, true);
+      document.removeEventListener(
+        "pointerdown",
+        onTimelineEvent,
+        true
+      );
+
+      document.removeEventListener(
+        "pointermove",
+        onTimelineEvent,
+        true
+      );
+
+      document.removeEventListener(
+        "input",
+        onTimelineEvent,
+        true
+      );
+
+      document.removeEventListener(
+        "change",
+        onTimelineEvent,
+        true
+      );
 
       log("Модуль остановлен.");
     }
   };
 
   if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", init, { once: true });
+    document.addEventListener(
+      "DOMContentLoaded",
+      init,
+      { once: true }
+    );
   } else {
     init();
   }

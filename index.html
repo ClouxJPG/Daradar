@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="ru">
 <head>
@@ -366,9 +367,13 @@ html,body{
 
 /* =========================================================
    ЧАСЫ ТАЙМЛАЙНА
+   СДВИГ ШКАЛЫ ВЛЕВО — ПАНЕЛЬ НЕ ДВИГАЕТСЯ
    ========================================================= */
 
 #hrs{
+ position:relative;
+ left:-6px;
+ width:calc(100% + 6px);
  display:flex;
  height:22px;
  border-top:1px solid #555;
@@ -398,11 +403,14 @@ html,body{
 
 /* =========================================================
    ГЛАВНЫЙ ТАЙМЛАЙН
+   СДВИГ ВЛЕВО НА 6 PX
    ========================================================= */
 
 #bar{
+ position:relative;
+ left:-6px;
  display:block;
- width:100%;
+ width:calc(100% + 6px);
  height:25px;
  border-top:1px solid #555;
  cursor:grab;
@@ -1090,7 +1098,7 @@ const map=L.map('map',{
  minZoom:2,
  attributionControl:true
 }).setView([56,50],5);
-window.quantumMeteoMap = map;      
+window.quantumMeteoMap = map;
 
 L.tileLayer(
  'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
@@ -1304,12 +1312,14 @@ function bar(){
 
  const c=$('bar');
 
+ /* Берём реальную ширину canvas после CSS-сдвига */
  const w=Math.max(
   1,
-  $('bp').clientWidth-2
+  Math.round(c.clientWidth)
  );
 
- c.width=w;
+ if(c.width!==w)
+  c.width=w;
 
  const g=c.getContext('2d');
 
@@ -1609,15 +1619,25 @@ function barTime(e){
  const start=timelineStart();
  const end=latest();
 
- let d=
-  new Date(
-   +start+
-   Math.floor(
-    f*((+end-+start)/STEP_MS)
-   )*STEP_MS
+ const steps=
+  Math.round(
+   (+end-+start)/STEP_MS
   );
 
- return clampTime(d);
+ const index=
+  Math.max(
+   0,
+   Math.min(
+    steps,
+    Math.round(f*steps)
+   )
+  );
+
+ return clampTime(
+  new Date(
+   +start+index*STEP_MS
+  )
+ );
 }
 
 $('bar').addEventListener(
@@ -2024,7 +2044,6 @@ async function show(){
      }
     }
    }
-  )
  );
 
  if(

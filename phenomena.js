@@ -4,9 +4,9 @@
    - Режим S: прозрачные метеоявления
    - Режимы R/H: слой скрывается
    - Нет автоматической анимации
-   - Переключение кадров через таймлайн
+   - Кадры загружаются по запросу
+   - Загруженные кадры кэшируются в памяти
    - Остальные слои карты не удаляются
-   - Точные границы исходного GIF
    ========================================================= */
 
 (function () {
@@ -15,6 +15,7 @@
   const API = "/api/phenomena";
   const GLOBAL_KEY = "__quantumPhenomenaLayer";
   const RETRY_MS = 1000;
+  const MAX_CACHED_FRAMES = 18;
 
   const GIF_BOUNDS = [
     [38.2155955810, 14.9892981264],
@@ -23,17 +24,22 @@
 
   let map = null;
   let layer = null;
-  let frames = [];
+  let frameCount = 0;
   let frameIndex = -1;
+
+  const frameCache = new Map();
+  const frameRequests = new Map();
+
   let retryTimer = null;
   let syncTimer = null;
-  let loading = false;
+  let loadingInitial = false;
   let destroyed = false;
   let requestId = 0;
   let modeObserver = null;
   let domObserver = null;
   let timelineObserver = null;
   let lastPointerX = NaN;
+  let lastRequestedFrame = -1;
 
   function log(...args) {
     console.info("[Quantum Phenomena]", ...args);
@@ -65,10 +71,6 @@
     return null;
   }
 
-  function frameUrl(frame) {
-    return "data:image/png;base64," + frame.png;
-  }
-
   function stopRetry() {
     if (retryTimer !== null) {
       clearTimeout(retryTimer);
@@ -79,9 +81,7 @@
   function removeLayer() {
     if (map && layer) {
       try {
-        if (map.hasLayer(layer)) {
-          map.removeLayer(layer);
-        }
+        if (map.hasLayer(layer)) map.removeLayer(layer);
       } catch (error) {
         console.warn("[Quantum Phenomena] Ошибка удаления:", error);
       }
@@ -89,6 +89,85 @@
 
     layer = null;
     frameIndex = -1;
+  }
+
+  function frameUrl(frame) {
+    return "data:image/png;base64," + frame.png;
+  }
+
+  function rememberFrame(index, frame) {
+    frameCache.delete(index);
+    frameCache.set(index, frame);
+
+    while (frameCache.size > MAX_CACHED_FRAMES) {
+      const oldestKey = frameCache.keys().next().value;
+
+      if (oldestKey === frameIndex) {
+        const value = frameCache.get(oldestKey);
+        frameCache.delete(oldestKey);
+        frameCache.set(oldestKey, value);
+        continue;
+      }
+
+      frameCache.delete(oldestKey);
+    }
+  }
+
+  async function fetchFrame(index) {
+    if (frameCache.has(index)) {
+      const cached = frameCache.get(index);
+      frameCache.delete(index);
+      frameCache.set(index, cached);
+      return cached;
+    }
+
+    if (frameRequests.has(index)) {
+      return frameRequests.get(index);
+    }
+
+    const promise = (async function () {
+      const response = await fetch(
+        API + "?frame=" + encodeURIComponent(index),
+        {
+          method: "GET",
+          cache: "no-store",
+          credentials: "same-origin"
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error("API HTTP " + response.status);
+      }
+
+      const data = await response.json();
+
+      if (!data.ok || !data.frame || typeof data.frame.png !== "string") {
+        throw new Error(data.error || "API не вернул PNG-кадр");
+      }
+
+      if (Number.isInteger(data.frameCount) && data.frameCount > 0) {
+        frameCount = data.frameCount;
+      }
+
+      rememberFrame(data.frame.index, data.frame);
+
+      window.__quantumPhenomenaData = {
+        ok: true,
+        frameCount: frameCount,
+        bounds: data.bounds,
+        updatedAt: data.updatedAt
+      };
+
+      return data.frame;
+    })();
+
+    frameRequests.set(index, promise);
+
+    try {
+      return await promise;
+    } finally {
+      frameRequests.delete(index);
+    }
   }
 
   function getTimelinePosition() {
@@ -102,10 +181,7 @@
       const value = Number(range.value);
 
       if (Number.isFinite(value) && max > min) {
-        return Math.max(
-          0,
-          Math.min(1, (value - min) / (max - min))
-        );
+        return Math.max(0, Math.min(1, (value - min) / (max - min)));
       }
     }
 
@@ -126,36 +202,31 @@
   }
 
   function getSelectedFrame() {
-    if (!frames.length) return -1;
+    if (!frameCount) return -1;
 
     const position = getTimelinePosition();
 
-    if (position === null) return 0;
+    if (position === null) return frameCount - 1;
 
-    return Math.round(position * (frames.length - 1));
+    return Math.round(position * (frameCount - 1));
   }
 
-  function showFrame(index) {
+  function displayFrame(index, frame) {
     if (
       destroyed ||
       getMode() !== "S" ||
       !map ||
-      !frames.length
+      !frame ||
+      typeof frame.png !== "string"
     ) {
       return;
     }
-
-    index = Math.max(0, Math.min(frames.length - 1, index));
-
-    const frame = frames[index];
-
-    if (!frame || !frame.png) return;
 
     if (layer && map.hasLayer(layer)) {
       if (frameIndex !== index) {
         layer.setUrl(frameUrl(frame));
         frameIndex = index;
-        log("Кадр:", index + 1, "/", frames.length);
+        log("Кадр:", index + 1, "/", frameCount);
       }
 
       return;
@@ -175,23 +246,52 @@
     layer.addTo(map);
     frameIndex = index;
 
-    log("Применены границы GIF:", layer.getBounds().toBBoxString());
+    log("Слой добавлен:", layer.getBounds().toBBoxString());
   }
 
-  function updateFrame() {
-    if (destroyed || getMode() !== "S" || !frames.length) {
+  async function showFrame(index) {
+    if (
+      destroyed ||
+      getMode() !== "S" ||
+      !map ||
+      !frameCount
+    ) {
       return;
     }
 
-    const index = getSelectedFrame();
+    index = Math.max(0, Math.min(frameCount - 1, index));
 
-    if (index >= 0) {
-      showFrame(index);
+    if (frameIndex === index && layer && map.hasLayer(layer)) {
+      return;
+    }
+
+    lastRequestedFrame = index;
+    const currentRequest = requestId;
+
+    try {
+      const frame = await fetchFrame(index);
+
+      if (
+        destroyed ||
+        currentRequest !== requestId ||
+        getMode() !== "S" ||
+        lastRequestedFrame !== index
+      ) {
+        return;
+      }
+
+      map = getMap();
+      if (!map) return;
+
+      displayFrame(index, frame);
+    } catch (error) {
+      console.error("[Quantum Phenomena] Ошибка кадра:", error);
+      scheduleRetry();
     }
   }
 
-  async function load() {
-    if (destroyed || loading) return;
+  async function loadInitial() {
+    if (destroyed || loadingInitial || getMode() !== "S") return;
 
     map = getMap();
 
@@ -200,18 +300,12 @@
       return;
     }
 
-    if (getMode() !== "S") return;
-
-    if (frames.length) {
-      updateFrame();
-      return;
-    }
-
-    loading = true;
-    const currentRequest = ++requestId;
+    loadingInitial = true;
+    const currentRequest = requestId;
 
     try {
-      const response = await fetch(API + "?_=" + Date.now(), {
+      /* Сначала получаем последний кадр и общее число кадров. */
+      const response = await fetch(API + "?frame=latest", {
         method: "GET",
         cache: "no-store",
         credentials: "same-origin"
@@ -225,42 +319,53 @@
 
       if (destroyed || currentRequest !== requestId) return;
 
-      if (data.ok === false) {
-        throw new Error(data.details || data.error || "Ошибка API");
+      if (!data.ok || !data.frame || !data.frame.png) {
+        throw new Error(data.error || "API не вернул начальный кадр");
       }
 
-      if (!Array.isArray(data.frames)) {
-        throw new Error("API не вернул кадры");
-      }
+      frameCount = Number(data.frameCount) || 1;
+      rememberFrame(data.frame.index, data.frame);
 
-      frames = data.frames.filter(function (frame) {
-        return frame &&
-          typeof frame.png === "string" &&
-          frame.png.length;
-      });
-
-      if (!frames.length) {
-        throw new Error("Нет PNG-кадров");
-      }
-
-      window.__quantumPhenomenaData = data;
+      window.__quantumPhenomenaData = {
+        ok: true,
+        frameCount: frameCount,
+        bounds: data.bounds,
+        updatedAt: data.updatedAt
+      };
 
       map = getMap();
 
       if (!map || getMode() !== "S") return;
 
       const selected = getSelectedFrame();
-      showFrame(selected >= 0 ? selected : 0);
+      const index = selected >= 0 ? selected : data.frame.index;
 
-      log("Загружено кадров:", frames.length);
-      log("Границы API (только диагностика):", data.bounds);
-      log("Границы слоя:", layer ? layer.getBounds().toBBoxString() : "слой не создан");
+      if (index === data.frame.index) {
+        displayFrame(index, data.frame);
+      } else {
+        await showFrame(index);
+      }
+
+      log("Кадров доступно:", frameCount);
     } catch (error) {
-      console.error("[Quantum Phenomena] Ошибка:", error);
+      console.error("[Quantum Phenomena] Ошибка загрузки:", error);
       scheduleRetry();
     } finally {
-      loading = false;
+      loadingInitial = false;
     }
+  }
+
+  function updateFrame() {
+    if (destroyed || getMode() !== "S") return;
+
+    if (!frameCount) {
+      loadInitial();
+      return;
+    }
+
+    const index = getSelectedFrame();
+
+    if (index >= 0) showFrame(index);
   }
 
   function scheduleRetry() {
@@ -287,8 +392,8 @@
     if (mode === "S") {
       stopRetry();
 
-      if (!frames.length) {
-        load();
+      if (!frameCount) {
+        loadInitial();
       } else {
         updateFrame();
       }
@@ -298,6 +403,7 @@
 
     if (mode === "R" || mode === "H") {
       requestId++;
+      lastRequestedFrame = -1;
       stopRetry();
       removeLayer();
     }
@@ -306,9 +412,7 @@
   function scheduleSync() {
     if (destroyed) return;
 
-    if (syncTimer !== null) {
-      clearTimeout(syncTimer);
-    }
+    if (syncTimer !== null) clearTimeout(syncTimer);
 
     syncTimer = setTimeout(function () {
       syncTimer = null;
@@ -436,8 +540,13 @@
       requestId++;
       stopRetry();
       removeLayer();
-      frames = [];
-      loading = false;
+
+      frameCount = 0;
+      frameCache.clear();
+      frameRequests.clear();
+      loadingInitial = false;
+      lastRequestedFrame = -1;
+
       syncMode();
     },
 

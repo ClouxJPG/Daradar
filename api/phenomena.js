@@ -1,7 +1,8 @@
 
 /* =========================================================
    Quantum Meteo — Phenomena API
-   GIF -> очистка -> строгая палитра -> геопривязка -> PNG
+   GIF -> очистка -> фильтрация серого шума ->
+   строгая палитра -> геопривязка -> PNG
 
    GET /api/phenomena
    GET /api/phenomena?frame=latest
@@ -29,7 +30,6 @@ const BOUNDS = {
 
 /* =========================================================
    СТРОГАЯ ПАЛИТРА QUANTUM METEO
-   Только эти 19 цветов разрешены в итоговом PNG.
    ========================================================= */
 
 const PHENOMENA_PALETTE = [
@@ -54,9 +54,7 @@ const PHENOMENA_PALETTE = [
   { hex: "#3f3f5f", rgb: [63, 63, 95] }
 ];
 
-const PALETTE_RGB = PHENOMENA_PALETTE.map(
-  item => item.rgb
-);
+const PALETTE_RGB = PHENOMENA_PALETTE.map(item => item.rgb);
 
 /* =========================================================
    ПОИСК БЛИЖАЙШЕГО РАЗРЕШЁННОГО ЦВЕТА
@@ -73,10 +71,7 @@ function nearestPaletteColor(r, g, b) {
     const dg = g - color[1];
     const db = b - color[2];
 
-    const distance =
-      dr * dr +
-      dg * dg +
-      db * db;
+    const distance = dr * dr + dg * dg + db * db;
 
     if (distance < bestDistance) {
       bestDistance = distance;
@@ -85,6 +80,94 @@ function nearestPaletteColor(r, g, b) {
   }
 
   return PALETTE_RGB[bestIndex];
+}
+
+/* =========================================================
+   УДАЛЕНИЕ МЕЛКОГО СЕРОГО ШУМА
+
+   Работает исключительно с серой категорией #9caab1.
+   Остальные цвета палитры не изменяются.
+
+   Удаляются только маленькие изолированные компоненты.
+   ========================================================= */
+
+function removeGrayNoise(pixels, width, height) {
+  const total = width * height;
+  const visited = new Uint8Array(total);
+  const queue = new Int32Array(total);
+
+  const gray = PHENOMENA_PALETTE[0].rgb;
+
+  // Допуск для распознавания серого цвета исходного GIF.
+  const GRAY_DISTANCE_LIMIT = 35 * 35;
+
+  // Компоненты меньше этого размера удаляются.
+  const MIN_GRAY_COMPONENT = 12;
+
+  function isGrayPixel(pixelIndex) {
+    const i = pixelIndex * 4;
+
+    if (pixels[i + 3] === 0) return false;
+
+    const dr = pixels[i] - gray[0];
+    const dg = pixels[i + 1] - gray[1];
+    const db = pixels[i + 2] - gray[2];
+
+    return (
+      dr * dr +
+      dg * dg +
+      db * db
+    ) <= GRAY_DISTANCE_LIMIT;
+  }
+
+  for (let start = 0; start < total; start++) {
+    if (visited[start] || !isGrayPixel(start)) continue;
+
+    let head = 0;
+    let tail = 0;
+
+    queue[tail++] = start;
+    visited[start] = 1;
+
+    while (head < tail) {
+      const current = queue[head++];
+
+      const x = current % width;
+      const y = Math.floor(current / width);
+
+      // Проверяем 8 соседних пикселей.
+      for (let dy = -1; dy <= 1; dy++) {
+        for (let dx = -1; dx <= 1; dx++) {
+          if (dx === 0 && dy === 0) continue;
+
+          const nx = x + dx;
+          const ny = y + dy;
+
+          if (
+            nx < 0 || nx >= width ||
+            ny < 0 || ny >= height
+          ) continue;
+
+          const next = ny * width + nx;
+
+          if (visited[next] || !isGrayPixel(next)) continue;
+
+          visited[next] = 1;
+          queue[tail++] = next;
+        }
+      }
+    }
+
+    // Удаляем только маленькие изолированные серые области.
+    if (tail < MIN_GRAY_COMPONENT) {
+      for (let i = 0; i < tail; i++) {
+        const pixel = queue[i] * 4;
+        pixels[pixel + 3] = 0;
+      }
+    }
+  }
+
+  return pixels;
 }
 
 /* =========================================================
@@ -164,9 +247,6 @@ function isServicePixel(x, y, width, height) {
 
 /* =========================================================
    РАСПОЗНАВАНИЕ МЕТЕОЯВЛЕНИЙ
-
-   Сохраняем исходный фильтр цветных областей,
-   отдельно учитываем серую категорию облачности.
    ========================================================= */
 
 function isPhenomena(r, g, b) {
@@ -176,7 +256,6 @@ function isPhenomena(r, g, b) {
 
   if (max < 70) return false;
 
-  /* Серая категория: облачность высокой и средней яркости */
   const gray = PHENOMENA_PALETTE[0].rgb;
 
   const grayDistance =
@@ -184,9 +263,7 @@ function isPhenomena(r, g, b) {
     (g - gray[1]) ** 2 +
     (b - gray[2]) ** 2;
 
-  if (grayDistance <= 45 * 45) {
-    return true;
-  }
+  if (grayDistance <= 45 * 45) return true;
 
   if (spread < 30) return false;
 
@@ -257,7 +334,6 @@ function reprojectFrame(source, width, height) {
 
       if (!isPhenomena(r, g, b)) continue;
 
-      /* Каждый пиксель получает строго один цвет палитры */
       const color = nearestPaletteColor(r, g, b);
 
       const oi = (y * width + x) * 4;
@@ -383,9 +459,7 @@ async function buildFrames() {
     }
   }
 
-  /* =======================================================
-     ПОИСК СТАБИЛЬНЫХ ЦВЕТНЫХ ОБЛАСТЕЙ
-     ======================================================= */
+  /* Поиск стабильных цветных областей */
 
   const stableBackground = new Uint8Array(pixelCount);
 
@@ -431,9 +505,7 @@ async function buildFrames() {
     }
   }
 
-  /* =======================================================
-     ОЧИСТКА, ПЕРЕПРОЕКЦИЯ И PNG
-     ======================================================= */
+  /* Очистка, фильтрация, перепроекция и PNG */
 
   const frames = [];
 
@@ -460,7 +532,10 @@ async function buildFrames() {
       }
     }
 
-    /* Здесь все непрозрачные пиксели квантуются в 19 цветов */
+    /* Удаление мелкого серого шума */
+    removeGrayNoise(filtered, width, height);
+
+    /* Геопривязка и строгая палитра из 19 цветов */
     const output = reprojectFrame(filtered, width, height);
 
     const png = await sharp(output, {
@@ -484,6 +559,7 @@ async function buildFrames() {
     height,
     frameCount: frames.length,
     paletteColors: PHENOMENA_PALETTE.length,
+    grayNoiseFilter: true,
     bounds: GIF_BOUNDS,
     adjustment: GEO_ADJUST
   });

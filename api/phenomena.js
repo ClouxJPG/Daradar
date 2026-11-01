@@ -1,6 +1,7 @@
+
 /* =========================================================
    Quantum Meteo — Phenomena API
-   GIF -> очистка -> геопривязка -> PNG
+   GIF -> очистка -> строгая палитра -> геопривязка -> PNG
 
    GET /api/phenomena
    GET /api/phenomena?frame=latest
@@ -26,7 +27,69 @@ const BOUNDS = {
   east: GIF_BOUNDS[1][1]
 };
 
-/* CLOrad — базовая калибровка */
+/* =========================================================
+   СТРОГАЯ ПАЛИТРА QUANTUM METEO
+   Только эти 19 цветов разрешены в итоговом PNG.
+   ========================================================= */
+
+const PHENOMENA_PALETTE = [
+  { hex: "#9caab1", rgb: [156, 170, 177] },
+  { hex: "#a2c6ff", rgb: [162, 198, 255] },
+  { hex: "#46ff93", rgb: [70, 255, 147] },
+  { hex: "#00c25a", rgb: [0, 194, 90] },
+  { hex: "#009800", rgb: [0, 152, 0] },
+  { hex: "#ffff80", rgb: [255, 255, 128] },
+  { hex: "#3e88ff", rgb: [62, 136, 255] },
+  { hex: "#0138ff", rgb: [1, 56, 255] },
+  { hex: "#000074", rgb: [0, 0, 116] },
+  { hex: "#ffaa7f", rgb: [255, 170, 127] },
+  { hex: "#ff557f", rgb: [255, 85, 127] },
+  { hex: "#ff0000", rgb: [255, 0, 0] },
+  { hex: "#cc6600", rgb: [204, 102, 0] },
+  { hex: "#884400", rgb: [136, 68, 0] },
+  { hex: "#5f0000", rgb: [95, 0, 0] },
+  { hex: "#ffaaff", rgb: [255, 170, 255] },
+  { hex: "#ff55ff", rgb: [255, 85, 255] },
+  { hex: "#c700c7", rgb: [199, 0, 199] },
+  { hex: "#3f3f5f", rgb: [63, 63, 95] }
+];
+
+const PALETTE_RGB = PHENOMENA_PALETTE.map(
+  item => item.rgb
+);
+
+/* =========================================================
+   ПОИСК БЛИЖАЙШЕГО РАЗРЕШЁННОГО ЦВЕТА
+   ========================================================= */
+
+function nearestPaletteColor(r, g, b) {
+  let bestIndex = 0;
+  let bestDistance = Infinity;
+
+  for (let i = 0; i < PALETTE_RGB.length; i++) {
+    const color = PALETTE_RGB[i];
+
+    const dr = r - color[0];
+    const dg = g - color[1];
+    const db = b - color[2];
+
+    const distance =
+      dr * dr +
+      dg * dg +
+      db * db;
+
+    if (distance < bestDistance) {
+      bestDistance = distance;
+      bestIndex = i;
+    }
+  }
+
+  return PALETTE_RGB[bestIndex];
+}
+
+/* =========================================================
+   CLOrad — базовая калибровка
+   ========================================================= */
 
 const UC_LON = 42.7295125;
 const UC_MERC = 1.159140403966;
@@ -99,12 +162,33 @@ function isServicePixel(x, y, width, height) {
   return false;
 }
 
+/* =========================================================
+   РАСПОЗНАВАНИЕ МЕТЕОЯВЛЕНИЙ
+
+   Сохраняем исходный фильтр цветных областей,
+   отдельно учитываем серую категорию облачности.
+   ========================================================= */
+
 function isPhenomena(r, g, b) {
   const max = Math.max(r, g, b);
   const min = Math.min(r, g, b);
   const spread = max - min;
 
-  if (max < 70 || spread < 30) return false;
+  if (max < 70) return false;
+
+  /* Серая категория: облачность высокой и средней яркости */
+  const gray = PHENOMENA_PALETTE[0].rgb;
+
+  const grayDistance =
+    (r - gray[0]) ** 2 +
+    (g - gray[1]) ** 2 +
+    (b - gray[2]) ** 2;
+
+  if (grayDistance <= 45 * 45) {
+    return true;
+  }
+
+  if (spread < 30) return false;
 
   const saturation = spread / max;
 
@@ -113,6 +197,10 @@ function isPhenomena(r, g, b) {
 
   return true;
 }
+
+/* =========================================================
+   ГЕОПРИВЯЗКА + ПРИНУДИТЕЛЬНАЯ ПАЛИТРА
+   ========================================================= */
 
 function reprojectFrame(source, width, height) {
   const output = Buffer.alloc(width * height * 4);
@@ -169,17 +257,24 @@ function reprojectFrame(source, width, height) {
 
       if (!isPhenomena(r, g, b)) continue;
 
+      /* Каждый пиксель получает строго один цвет палитры */
+      const color = nearestPaletteColor(r, g, b);
+
       const oi = (y * width + x) * 4;
 
-      output[oi] = r;
-      output[oi + 1] = g;
-      output[oi + 2] = b;
+      output[oi] = color[0];
+      output[oi + 1] = color[1];
+      output[oi + 2] = color[2];
       output[oi + 3] = 255;
     }
   }
 
   return output;
 }
+
+/* =========================================================
+   СБОРКА И ОБРАБОТКА GIF
+   ========================================================= */
 
 async function buildFrames() {
   const sharp = require("sharp");
@@ -288,7 +383,9 @@ async function buildFrames() {
     }
   }
 
-  /* Поиск стабильных цветных областей */
+  /* =======================================================
+     ПОИСК СТАБИЛЬНЫХ ЦВЕТНЫХ ОБЛАСТЕЙ
+     ======================================================= */
 
   const stableBackground = new Uint8Array(pixelCount);
 
@@ -334,7 +431,9 @@ async function buildFrames() {
     }
   }
 
-  /* Очистка, перепроекция и сжатие PNG */
+  /* =======================================================
+     ОЧИСТКА, ПЕРЕПРОЕКЦИЯ И PNG
+     ======================================================= */
 
   const frames = [];
 
@@ -361,12 +460,16 @@ async function buildFrames() {
       }
     }
 
+    /* Здесь все непрозрачные пиксели квантуются в 19 цветов */
     const output = reprojectFrame(filtered, width, height);
 
     const png = await sharp(output, {
       raw: { width, height, channels: 4 }
     })
-      .png({ compressionLevel: 9, adaptiveFiltering: true })
+      .png({
+        compressionLevel: 9,
+        adaptiveFiltering: false
+      })
       .toBuffer();
 
     frames.push({
@@ -380,6 +483,7 @@ async function buildFrames() {
     width,
     height,
     frameCount: frames.length,
+    paletteColors: PHENOMENA_PALETTE.length,
     bounds: GIF_BOUNDS,
     adjustment: GEO_ADJUST
   });
@@ -395,14 +499,19 @@ async function buildFrames() {
   };
 }
 
-/* API — отдаём только запрошенный кадр */
+/* =========================================================
+   API — ОТДАЁМ ТОЛЬКО ЗАПРОШЕННЫЙ КАДР
+   ========================================================= */
 
 module.exports = async function handler(req, res) {
   res.setHeader("Cache-Control", "no-store");
 
   if (req.method !== "GET") {
     res.setHeader("Allow", "GET");
-    return res.status(405).json({ ok: false, error: "Method not allowed" });
+    return res.status(405).json({
+      ok: false,
+      error: "Method not allowed"
+    });
   }
 
   let data;
@@ -440,15 +549,24 @@ module.exports = async function handler(req, res) {
   }
 
   if (!data || !Array.isArray(data.frames) || !data.frames.length) {
-    return res.status(502).json({ ok: false, error: "Нет доступных кадров" });
+    return res.status(502).json({
+      ok: false,
+      error: "Нет доступных кадров"
+    });
   }
 
   const requested = req.query?.frame;
-  const index = requested === undefined || requested === "latest"
-    ? data.frames.length - 1
-    : Number(requested);
 
-  if (!Number.isInteger(index) || index < 0 || index >= data.frames.length) {
+  const index =
+    requested === undefined || requested === "latest"
+      ? data.frames.length - 1
+      : Number(requested);
+
+  if (
+    !Number.isInteger(index) ||
+    index < 0 ||
+    index >= data.frames.length
+  ) {
     return res.status(400).json({
       ok: false,
       error: "Неверный номер кадра",

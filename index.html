@@ -374,8 +374,8 @@ html,body{
  border-top:1px solid #555;
  overflow:hidden;
  position:relative;
- left:-4px;
- width:calc(100% + 4px)
+ left:-12px;
+ width:calc(100% + 12px)
 }
 
 #hrs div{
@@ -405,13 +405,13 @@ html,body{
 
 #bar{
  display:block;
- width:calc(100% + 4px);
+ width:calc(100% + 12px);
  height:25px;
  border-top:1px solid #555;
  cursor:grab;
  touch-action:none;
  position:relative;
- left:-4px
+ left:-12px
 }
 
 #bar:active{
@@ -1095,7 +1095,7 @@ const map=L.map('map',{
  minZoom:2,
  attributionControl:true
 }).setView([56,50],5);
-window.quantumMeteoMap = map;      
+window.quantumMeteoMap = map;
 
 L.tileLayer(
  'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
@@ -1308,6 +1308,8 @@ function ui(){
 function bar(){
 
  const c=$('bar');
+
+ const shift=12;
 
  const w=Math.max(
   1,
@@ -2029,7 +2031,6 @@ async function show(){
      }
     }
    }
-  )
  );
 
  if(

@@ -1,8 +1,9 @@
 
 /* =========================================================
    Quantum Meteo — Phenomena API
-   GIF -> очистка -> фильтрация артефактов ->
-   строгая палитра -> геопривязка -> PNG
+   GIF -> очистка покрытия -> фильтрация артефактов ->
+   заполнение малых дыр -> строгая палитра ->
+   геопривязка -> PNG
 
    GET /api/phenomena
    GET /api/phenomena?frame=latest
@@ -29,7 +30,7 @@ const BOUNDS = {
 };
 
 /* =========================================================
-   ПАЛИТРА QUANTUM METEO
+   ПАЛИТРА QUANTUM METEO — РОВНО 19 ЦВЕТОВ
    ========================================================= */
 
 const PHENOMENA_PALETTE = [
@@ -55,13 +56,6 @@ const PHENOMENA_PALETTE = [
 ];
 
 const PALETTE_RGB = PHENOMENA_PALETTE.map(item => item.rgb);
-
-/* =========================================================
-   СТРОГОЕ СРАВНЕНИЕ С ПАЛИТРОЙ
-
-   Серый цвет облачности сохраняется.
-   Посторонние оттенки не перекрашиваются.
-   ========================================================= */
 
 const PALETTE_TOLERANCE = {
   gray: 20,
@@ -96,21 +90,70 @@ function nearestPaletteColor(r, g, b) {
       ? PALETTE_TOLERANCE.gray
       : PALETTE_TOLERANCE.normal;
 
-  if (bestDistance > tolerance * tolerance) {
-    return null;
-  }
+  if (bestDistance > tolerance * tolerance) return null;
 
   return bestColor;
 }
 
-/* =========================================================
-   ПРОВЕРКА РАЗРЕШЁННОГО МЕТЕОЦВЕТА
-   ========================================================= */
-
 function isPhenomena(r, g, b) {
   if (Math.max(r, g, b) < 30) return false;
-
   return nearestPaletteColor(r, g, b) !== null;
+}
+
+/* =========================================================
+   УДАЛЕНИЕ СЕРОГО ПОКРЫТИЯ
+
+   Круговые заливки покрытия обычно смешиваются
+   с картографической подложкой и дают нейтральные
+   серые оттенки.
+
+   Важно:
+   - цветные осадки не удаляются;
+   - точный палитровый серый сохраняется;
+   - удаляются только серые оттенки, не похожие
+     на настоящий серый цвет метеослоя.
+   ========================================================= */
+
+function removeCoverageArtifacts(pixels, width, height) {
+  const total = width * height;
+  const gray = PHENOMENA_PALETTE[0].rgb;
+
+  const exactGrayLimit = 20 * 20;
+
+  for (let p = 0; p < total; p++) {
+    const i = p * 4;
+
+    if (!pixels[i + 3]) continue;
+
+    const r = pixels[i];
+    const g = pixels[i + 1];
+    const b = pixels[i + 2];
+
+    const max = Math.max(r, g, b);
+    const min = Math.min(r, g, b);
+    const chroma = max - min;
+
+    // Цветные метеоявления не трогаем.
+    if (chroma > 45) continue;
+
+    const dr = r - gray[0];
+    const dg = g - gray[1];
+    const db = b - gray[2];
+
+    const grayDistance =
+      dr * dr + dg * dg + db * db;
+
+    // Настоящий серый цвет облачности сохраняется.
+    if (grayDistance <= exactGrayLimit) continue;
+
+    // Нейтральные серые пиксели покрытия удаляются.
+    // Остальные цвета обрабатываются обычным фильтром.
+    if (chroma <= 35 && min >= 55 && max <= 225) {
+      pixels[i + 3] = 0;
+    }
+  }
+
+  return pixels;
 }
 
 /* =========================================================
@@ -129,7 +172,7 @@ function removeGrayNoise(pixels, width, height) {
   function isGrayPixel(pixelIndex) {
     const i = pixelIndex * 4;
 
-    if (pixels[i + 3] === 0) return false;
+    if (!pixels[i + 3]) return false;
 
     const dr = pixels[i] - gray[0];
     const dg = pixels[i + 1] - gray[1];
@@ -183,6 +226,140 @@ function removeGrayNoise(pixels, width, height) {
       for (let i = 0; i < tail; i++) {
         pixels[queue[i] * 4 + 3] = 0;
       }
+    }
+  }
+
+  return pixels;
+}
+
+/* =========================================================
+   ЗАПОЛНЕНИЕ МАЛЫХ ДЫР В МЕТЕОМАСКЕ
+
+   Заполняются только небольшие прозрачные промежутки,
+   окружённые метеопикселями.
+
+   Большие области и отдельные ячейки не объединяются.
+   ========================================================= */
+
+function fillSmallHoles(pixels, width, height) {
+  const total = width * height;
+  const visited = new Uint8Array(total);
+  const queue = new Int32Array(total);
+
+  const MAX_HOLE_SIZE = 10;
+
+  function isTransparent(p) {
+    return pixels[p * 4 + 3] === 0;
+  }
+
+  for (let start = 0; start < total; start++) {
+    if (visited[start] || !isTransparent(start)) continue;
+
+    let head = 0;
+    let tail = 0;
+    let touchesEdge = false;
+
+    queue[tail++] = start;
+    visited[start] = 1;
+
+    while (head < tail) {
+      const current = queue[head++];
+      const x = current % width;
+      const y = Math.floor(current / width);
+
+      if (
+        x === 0 || y === 0 ||
+        x === width - 1 || y === height - 1
+      ) {
+        touchesEdge = true;
+      }
+
+      for (let dy = -1; dy <= 1; dy++) {
+        for (let dx = -1; dx <= 1; dx++) {
+          if (!dx && !dy) continue;
+
+          const nx = x + dx;
+          const ny = y + dy;
+
+          if (
+            nx < 0 || nx >= width ||
+            ny < 0 || ny >= height
+          ) continue;
+
+          const next = ny * width + nx;
+
+          if (visited[next] || !isTransparent(next)) continue;
+
+          visited[next] = 1;
+          queue[tail++] = next;
+        }
+      }
+    }
+
+    if (touchesEdge || tail > MAX_HOLE_SIZE) continue;
+
+    // Ищем ближайший цвет метеоявления вокруг дырки.
+    const counts = new Map();
+
+    for (let q = 0; q < tail; q++) {
+      const p = queue[q];
+      const x = p % width;
+      const y = Math.floor(p / width);
+
+      for (let dy = -1; dy <= 1; dy++) {
+        for (let dx = -1; dx <= 1; dx++) {
+          if (!dx && !dy) continue;
+
+          const nx = x + dx;
+          const ny = y + dy;
+
+          if (
+            nx < 0 || nx >= width ||
+            ny < 0 || ny >= height
+          ) continue;
+
+          const ni = (ny * width + nx) * 4;
+
+          if (!pixels[ni + 3]) continue;
+
+          const color = nearestPaletteColor(
+            pixels[ni],
+            pixels[ni + 1],
+            pixels[ni + 2]
+          );
+
+          if (!color) continue;
+
+          const key = color.join(",");
+
+          counts.set(key, (counts.get(key) || 0) + 1);
+        }
+      }
+    }
+
+    if (!counts.size) continue;
+
+    let bestKey = null;
+    let bestCount = 0;
+
+    for (const [key, count] of counts) {
+      if (count > bestCount) {
+        bestKey = key;
+        bestCount = count;
+      }
+    }
+
+    if (!bestKey) continue;
+
+    const color = bestKey.split(",").map(Number);
+
+    for (let q = 0; q < tail; q++) {
+      const i = queue[q] * 4;
+
+      pixels[i] = color[0];
+      pixels[i + 1] = color[1];
+      pixels[i + 2] = color[2];
+      pixels[i + 3] = 255;
     }
   }
 
@@ -317,13 +494,12 @@ function reprojectFrame(source, width, height) {
 
       if (!source[si + 3]) continue;
 
-      const r = source[si];
-      const g = source[si + 1];
-      const b = source[si + 2];
+      const color = nearestPaletteColor(
+        source[si],
+        source[si + 1],
+        source[si + 2]
+      );
 
-      const color = nearestPaletteColor(r, g, b);
-
-      // Неизвестные цвета становятся прозрачными.
       if (!color) continue;
 
       const oi = (y * width + x) * 4;
@@ -495,7 +671,7 @@ async function buildFrames() {
     }
   }
 
-  /* Очистка, фильтрация, перепроекция и PNG */
+  /* Очистка, фильтрация, заполнение дыр и PNG */
 
   const frames = [];
 
@@ -522,8 +698,16 @@ async function buildFrames() {
       }
     }
 
+    // Удаляем нейтральные артефакты кругового покрытия.
+    removeCoverageArtifacts(filtered, width, height);
+
+    // Убираем мелкий серый шум.
     removeGrayNoise(filtered, width, height);
 
+    // Заполняем только небольшие внутренние дырки.
+    fillSmallHoles(filtered, width, height);
+
+    // Геопривязка и строгая палитра.
     const output = reprojectFrame(filtered, width, height);
 
     const png = await sharp(output, {
@@ -548,7 +732,8 @@ async function buildFrames() {
     frameCount: frames.length,
     paletteColors: PHENOMENA_PALETTE.length,
     paletteTolerance: PALETTE_TOLERANCE,
-    grayNoiseFilter: true,
+    coverageFilter: true,
+    holeFilling: true,
     bounds: GIF_BOUNDS,
     adjustment: GEO_ADJUST
   });

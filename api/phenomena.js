@@ -1,4 +1,3 @@
-
 /* =========================================================
    Quantum Meteo — Phenomena API
    GIF -> очистка -> фильтрация серого шума ->
@@ -29,7 +28,7 @@ const BOUNDS = {
 };
 
 /* =========================================================
-   СТРОГАЯ ПАЛИТРА QUANTUM METEO
+   СТРОГАЯ ПАЛИТРА QUANTUM METEO — 19 ЦВЕТОВ
    ========================================================= */
 
 const PHENOMENA_PALETTE = [
@@ -57,38 +56,44 @@ const PHENOMENA_PALETTE = [
 const PALETTE_RGB = PHENOMENA_PALETTE.map(item => item.rgb);
 
 /* =========================================================
-   ПОИСК БЛИЖАЙШЕГО РАЗРЕШЁННОГО ЦВЕТА
+   СТРОГИЙ ЦВЕТОВОЙ ОГРАНИЧИТЕЛЬ
+
+   Разрешает только оттенки, достаточно близкие
+   к одному из 19 цветов.
+
+   Остальные пиксели становятся прозрачными.
    ========================================================= */
 
 function nearestPaletteColor(r, g, b) {
-  let bestIndex = 0;
+  const MAX_DISTANCE = 22 * 22;
+
+  let bestColor = null;
   let bestDistance = Infinity;
 
-  for (let i = 0; i < PALETTE_RGB.length; i++) {
-    const color = PALETTE_RGB[i];
-
+  for (const color of PALETTE_RGB) {
     const dr = r - color[0];
     const dg = g - color[1];
     const db = b - color[2];
 
-    const distance = dr * dr + dg * dg + db * db;
+    const distance =
+      dr * dr +
+      dg * dg +
+      db * db;
 
     if (distance < bestDistance) {
       bestDistance = distance;
-      bestIndex = i;
+      bestColor = color;
     }
   }
 
-  return PALETTE_RGB[bestIndex];
+  return bestDistance <= MAX_DISTANCE ? bestColor : null;
 }
 
 /* =========================================================
    УДАЛЕНИЕ МЕЛКОГО СЕРОГО ШУМА
 
-   Работает исключительно с серой категорией #9caab1.
-   Остальные цвета палитры не изменяются.
-
-   Удаляются только маленькие изолированные компоненты.
+   Работает только с серой категорией #9caab1.
+   Остальные цвета палитры не затрагиваются.
    ========================================================= */
 
 function removeGrayNoise(pixels, width, height) {
@@ -98,10 +103,7 @@ function removeGrayNoise(pixels, width, height) {
 
   const gray = PHENOMENA_PALETTE[0].rgb;
 
-  // Допуск для распознавания серого цвета исходного GIF.
   const GRAY_DISTANCE_LIMIT = 35 * 35;
-
-  // Компоненты меньше этого размера удаляются.
   const MIN_GRAY_COMPONENT = 12;
 
   function isGrayPixel(pixelIndex) {
@@ -135,7 +137,6 @@ function removeGrayNoise(pixels, width, height) {
       const x = current % width;
       const y = Math.floor(current / width);
 
-      // Проверяем 8 соседних пикселей.
       for (let dy = -1; dy <= 1; dy++) {
         for (let dx = -1; dx <= 1; dx++) {
           if (dx === 0 && dy === 0) continue;
@@ -158,7 +159,6 @@ function removeGrayNoise(pixels, width, height) {
       }
     }
 
-    // Удаляем только маленькие изолированные серые области.
     if (tail < MIN_GRAY_COMPONENT) {
       for (let i = 0; i < tail; i++) {
         const pixel = queue[i] * 4;
@@ -276,7 +276,7 @@ function isPhenomena(r, g, b) {
 }
 
 /* =========================================================
-   ГЕОПРИВЯЗКА + ПРИНУДИТЕЛЬНАЯ ПАЛИТРА
+   ГЕОПРИВЯЗКА + СТРОГАЯ ПАЛИТРА
    ========================================================= */
 
 function reprojectFrame(source, width, height) {
@@ -334,7 +334,11 @@ function reprojectFrame(source, width, height) {
 
       if (!isPhenomena(r, g, b)) continue;
 
+      /* Проверка допуска к одному из 19 цветов */
+
       const color = nearestPaletteColor(r, g, b);
+
+      if (!color) continue;
 
       const oi = (y * width + x) * 4;
 
@@ -533,9 +537,11 @@ async function buildFrames() {
     }
 
     /* Удаление мелкого серого шума */
+
     removeGrayNoise(filtered, width, height);
 
-    /* Геопривязка и строгая палитра из 19 цветов */
+    /* Геопривязка и строгая палитра */
+
     const output = reprojectFrame(filtered, width, height);
 
     const png = await sharp(output, {
@@ -559,6 +565,7 @@ async function buildFrames() {
     height,
     frameCount: frames.length,
     paletteColors: PHENOMENA_PALETTE.length,
+    paletteTolerance: 22,
     grayNoiseFilter: true,
     bounds: GIF_BOUNDS,
     adjustment: GEO_ADJUST

@@ -1,7 +1,7 @@
 
 /* =========================================================
    Quantum Meteo — Phenomena API
-   GIF -> очистка -> фильтрация серого шума ->
+   GIF -> очистка -> фильтрация артефактов ->
    строгая палитра -> геопривязка -> PNG
 
    GET /api/phenomena
@@ -29,7 +29,7 @@ const BOUNDS = {
 };
 
 /* =========================================================
-   СТРОГАЯ ПАЛИТРА QUANTUM METEO
+   ПАЛИТРА QUANTUM METEO
    ========================================================= */
 
 const PHENOMENA_PALETTE = [
@@ -57,12 +57,21 @@ const PHENOMENA_PALETTE = [
 const PALETTE_RGB = PHENOMENA_PALETTE.map(item => item.rgb);
 
 /* =========================================================
-   ПОИСК БЛИЖАЙШЕГО РАЗРЕШЁННОГО ЦВЕТА
+   СТРОГОЕ СРАВНЕНИЕ С ПАЛИТРОЙ
+
+   Серый цвет облачности сохраняется.
+   Посторонние оттенки не перекрашиваются.
    ========================================================= */
 
+const PALETTE_TOLERANCE = {
+  gray: 20,
+  normal: 34
+};
+
 function nearestPaletteColor(r, g, b) {
-  let bestIndex = 0;
+  let bestColor = null;
   let bestDistance = Infinity;
+  let bestIndex = -1;
 
   for (let i = 0; i < PALETTE_RGB.length; i++) {
     const color = PALETTE_RGB[i];
@@ -75,20 +84,37 @@ function nearestPaletteColor(r, g, b) {
 
     if (distance < bestDistance) {
       bestDistance = distance;
+      bestColor = color;
       bestIndex = i;
     }
   }
 
-  return PALETTE_RGB[bestIndex];
+  if (!bestColor) return null;
+
+  const tolerance =
+    bestIndex === 0
+      ? PALETTE_TOLERANCE.gray
+      : PALETTE_TOLERANCE.normal;
+
+  if (bestDistance > tolerance * tolerance) {
+    return null;
+  }
+
+  return bestColor;
+}
+
+/* =========================================================
+   ПРОВЕРКА РАЗРЕШЁННОГО МЕТЕОЦВЕТА
+   ========================================================= */
+
+function isPhenomena(r, g, b) {
+  if (Math.max(r, g, b) < 30) return false;
+
+  return nearestPaletteColor(r, g, b) !== null;
 }
 
 /* =========================================================
    УДАЛЕНИЕ МЕЛКОГО СЕРОГО ШУМА
-
-   Работает исключительно с серой категорией #9caab1.
-   Остальные цвета палитры не изменяются.
-
-   Удаляются только маленькие изолированные компоненты.
    ========================================================= */
 
 function removeGrayNoise(pixels, width, height) {
@@ -97,11 +123,7 @@ function removeGrayNoise(pixels, width, height) {
   const queue = new Int32Array(total);
 
   const gray = PHENOMENA_PALETTE[0].rgb;
-
-  // Допуск для распознавания серого цвета исходного GIF.
-  const GRAY_DISTANCE_LIMIT = 35 * 35;
-
-  // Компоненты меньше этого размера удаляются.
+  const GRAY_DISTANCE_LIMIT = 20 * 20;
   const MIN_GRAY_COMPONENT = 12;
 
   function isGrayPixel(pixelIndex) {
@@ -135,7 +157,6 @@ function removeGrayNoise(pixels, width, height) {
       const x = current % width;
       const y = Math.floor(current / width);
 
-      // Проверяем 8 соседних пикселей.
       for (let dy = -1; dy <= 1; dy++) {
         for (let dx = -1; dx <= 1; dx++) {
           if (dx === 0 && dy === 0) continue;
@@ -158,11 +179,9 @@ function removeGrayNoise(pixels, width, height) {
       }
     }
 
-    // Удаляем только маленькие изолированные серые области.
     if (tail < MIN_GRAY_COMPONENT) {
       for (let i = 0; i < tail; i++) {
-        const pixel = queue[i] * 4;
-        pixels[pixel + 3] = 0;
+        pixels[queue[i] * 4 + 3] = 0;
       }
     }
   }
@@ -171,7 +190,7 @@ function removeGrayNoise(pixels, width, height) {
 }
 
 /* =========================================================
-   CLOrad — базовая калибровка
+   CLOrad — БАЗОВАЯ КАЛИБРОВКА
    ========================================================= */
 
 const UC_LON = 42.7295125;
@@ -246,37 +265,7 @@ function isServicePixel(x, y, width, height) {
 }
 
 /* =========================================================
-   РАСПОЗНАВАНИЕ МЕТЕОЯВЛЕНИЙ
-   ========================================================= */
-
-function isPhenomena(r, g, b) {
-  const max = Math.max(r, g, b);
-  const min = Math.min(r, g, b);
-  const spread = max - min;
-
-  if (max < 70) return false;
-
-  const gray = PHENOMENA_PALETTE[0].rgb;
-
-  const grayDistance =
-    (r - gray[0]) ** 2 +
-    (g - gray[1]) ** 2 +
-    (b - gray[2]) ** 2;
-
-  if (grayDistance <= 45 * 45) return true;
-
-  if (spread < 30) return false;
-
-  const saturation = spread / max;
-
-  if (saturation < 0.15) return false;
-  if (max > 238 && saturation < 0.20) return false;
-
-  return true;
-}
-
-/* =========================================================
-   ГЕОПРИВЯЗКА + ПРИНУДИТЕЛЬНАЯ ПАЛИТРА
+   ГЕОПРИВЯЗКА + СТРОГАЯ ПАЛИТРА
    ========================================================= */
 
 function reprojectFrame(source, width, height) {
@@ -332,9 +321,10 @@ function reprojectFrame(source, width, height) {
       const g = source[si + 1];
       const b = source[si + 2];
 
-      if (!isPhenomena(r, g, b)) continue;
-
       const color = nearestPaletteColor(r, g, b);
+
+      // Неизвестные цвета становятся прозрачными.
+      if (!color) continue;
 
       const oi = (y * width + x) * 4;
 
@@ -459,7 +449,7 @@ async function buildFrames() {
     }
   }
 
-  /* Поиск стабильных цветных областей */
+  /* Поиск стабильных областей */
 
   const stableBackground = new Uint8Array(pixelCount);
 
@@ -532,10 +522,8 @@ async function buildFrames() {
       }
     }
 
-    /* Удаление мелкого серого шума */
     removeGrayNoise(filtered, width, height);
 
-    /* Геопривязка и строгая палитра из 19 цветов */
     const output = reprojectFrame(filtered, width, height);
 
     const png = await sharp(output, {
@@ -559,6 +547,7 @@ async function buildFrames() {
     height,
     frameCount: frames.length,
     paletteColors: PHENOMENA_PALETTE.length,
+    paletteTolerance: PALETTE_TOLERANCE,
     grayNoiseFilter: true,
     bounds: GIF_BOUNDS,
     adjustment: GEO_ADJUST
@@ -656,7 +645,7 @@ module.exports = async function handler(req, res) {
     ok: true,
     width: data.width,
     height: data.height,
-    frameCount: data.frames.length,
+    frameCount: data.frameCount,
     frame: {
       index: frame.index,
       delay: frame.delay,
@@ -666,5 +655,3 @@ module.exports = async function handler(req, res) {
     updatedAt: data.updatedAt
   });
 };
-
-Бля да когда ты запомнишь что нужно кидать полный код и щас кинь
